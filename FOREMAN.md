@@ -1,7 +1,7 @@
 # FOREMAN
 
 The foreman (a human or an agent) keeps the workstreams moving. The foreman owns the shared contracts
-(`{{CONTRACTS_DIR}}`), dispatches the work, routes the inbox, records decisions and keeps the board honest. Workstream
+(`contracts/`), dispatches the work, routes the inbox, records decisions and keeps the board honest. Workstream
 agents own their own directories. **The owner merges PRs**; the foreman never runs `gh pr merge` unless the owner
 asks it to merge that PR (the request covers that PR only, not the next one).
 
@@ -9,9 +9,9 @@ asks it to merge that PR (the request covers that PR only, not the next one).
 | Role | Who | Does | Does not |
 |---|---|---|---|
 | Foreman | the main session | board, dispatch, inbox routing, contract changes, decisions log, consulting the owner | review code it dispatched; merge |
-| Architect | `ws-architect` ({{ARCH_MODEL}}, effort {{ARCH_EFFORT}}) | blueprints in `docs/workstreams/` before dispatch; answers design questions from the inbox | write code |
-| Workstream agent | `ws-design` ({{DESIGN_MODEL}}, {{DESIGN_EFFORT}}) or `ws-mechanical` ({{MECH_MODEL}}, {{MECH_EFFORT}}) | builds one issue to its blueprint, one PR | edit `{{CONTRACTS_DIR}}` or files outside the blueprint's Files list |
-| Reviewer | `ws-reviewer` ({{REVIEW_MODEL}}, effort {{REVIEW_EFFORT}}) | the review gate on PRs; root cause analysis on bugs; milestone audits | fix what it finds |
+| Architect | `ws-architect` (fable, effort high) | blueprints in `docs/workstreams/` before dispatch; answers design questions from the inbox | write code |
+| Workstream agent | `ws-design` (opus, high) or `ws-mechanical` (sonnet, medium) | builds one issue to its blueprint, one PR | edit `contracts/` or files outside the blueprint's Files list |
+| Reviewer | `ws-reviewer` (opus, effort high) | the review gate on PRs; root cause analysis on bugs; milestone audits | fix what it finds |
 | Owner | a person | decisions, merges, the verification session | |
 
 All four agent types are defined in `.claude/agents/`, which is where model and effort are set; the Agent call can
@@ -30,7 +30,7 @@ answers by commenting and closing the issue (or applying a `contract-change`). W
 
 ## The loop
 0. Read the inbox: `gh issue list --label for-foreman --state open`.
-0a. Cross-project mailbox: read `inbox/{{PROJECT}}/` in the foreman breakroom and act on `status: open` notes. Rules are in
+0a. Cross-project mailbox: read `inbox/storeinabox/` in the foreman breakroom and act on `status: open` notes. Rules are in
     the breakroom's `inbox/README.md`. Skip this step if the project is not registered there.
 0b. Catch up on what happened outside the foreman's session: `gh pr list --state all --limit 10` (the owner and
     interactive sessions may merge on their own), then read the comments on recently merged PRs and open issues.
@@ -57,13 +57,13 @@ answers by commenting and closing the issue (or applying a `contract-change`). W
    enough for the gate to mean something. When two architects run in parallel, name the owner of each shared
    interface in both prompts.
 3. For each ready issue, dispatch an agent in its own git worktree on branch `ws<N>/<topic>` with the prompt:
-   "Read `docs/workstreams/WS<N>-*.md`, `{{CONTRACTS_DIR}}`, `{{PORTS_DIR}}`. Fake neighbours. Open one PR."
+   "Read `docs/workstreams/WS<N>-*.md`, `contracts/`, `ports/`. Fake neighbours. Open one PR."
    Pick the agent type with `subagent_type`:
-   - `ws-design`: {{DESIGN_SCOPE}}, and any work where the agent must make judgement calls the blueprint does not
+   - `ws-design`: the custody model and conflicts (allocations, allowances, split and merge, the conflict resolver, clocks, the conservation query), sync topology (sync function, channels and revocation, Edge Server config, peer-to-peer replication), agents and provenance (output contract, provenance checks, compliance eval, upsell search, on-box prompts) and clerk-facing UX (anything the audience sees on stage), and any work where the agent must make judgement calls the blueprint does not
      settle.
    - `ws-mechanical`: follow-ups, docs, plumbing, lint, small fixes, where the blueprint already names the change.
    Keep the agent's id: gate findings go back to it.
-4. Check each PR: CI green, exit criteria ticked, no edits to `{{CONTRACTS_DIR}}` unless a foreman-approved
+4. Check each PR: CI green, exit criteria ticked, no edits to `contracts/` unless a foreman-approved
    `contract-change`, every line under "Not verified" has its `needs-verification` issue, and a scan of the diff for
    secrets, hostnames, IPs and local paths. Then run the review gate (below) on the PRs that need it.
 5. Report to the owner: PR URL, CI status, the gate verdict, and anything unverified. **Test the combination:** when
@@ -87,15 +87,15 @@ answers by commenting and closing the issue (or applying a `contract-change`). W
 The reviewer audits a PR cold, before the owner merges. The rules below exist to stop review-edit-review loops: the
 gate costs at most one review, one fix pass and one re-check per PR.
 
-- **Which PRs.** Every `ws-design` PR, and any PR that touches {{GATED_PATHS}}. Mechanical, docs and lint PRs skip
+- **Which PRs.** Every `ws-design` PR, and any PR that touches `contracts/` (schemas, golden fixtures and the seed and policy data derived from them), the App Services sync function, channel config or conflict resolver, the Edge Server or Capella config, or the agent prompts, tool definitions, provenance checks or gold set. Mechanical, docs and lint PRs skip
   the gate unless the foreman has a specific doubt.
 - **Dispatch.** `ws-reviewer` with "PR gate: #<pr> (issue #<n>)." The foreman does not pass on its own view of the PR
   or the author's explanation.
 - **The blocking bar.** Only four things block a merge:
   1. an exit criterion that is ticked but not met;
   2. a bug with a concrete failing scenario (inputs or state, and the wrong output or crash);
-  3. an edit outside the blueprint's Files list, or an unapproved edit to `{{CONTRACTS_DIR}}`;
-  4. anything that weakens {{GUARDED_CHECKS}}.
+  3. an edit outside the blueprint's Files list, or an unapproved edit to `contracts/`;
+  4. anything that weakens an access-control check (channel scoping, tablet revocation and purge, PII filtering, encryption at rest), a provenance check (`grounded`, `fresh`, `jurisdiction_match`; no claim marked `verified` without evidence) or the offline-first rule (nothing in the venue waits on Capella; no operation blocks on a link).
   Everything else is filed by the reviewer as one follow-up issue and the PR proceeds.
 - **One fix round.** On `BLOCKED`, resume the original workstream agent (SendMessage, its context intact) with the
   numbered findings. It fixes only those and replies to each. If the original agent no longer exists (the session
@@ -132,7 +132,14 @@ issues; the foreman applies them before dispatch.
 Generated code (types, clients, stubs) is regenerated by its script, never edited by hand. If any operational data (a
 seeded document, a config record) is derived from the contract fixtures, changing that value in the live system is a
 contract change, and a re-seed overwrites a live edit: diff the live value against the fixture before re-seeding.
-{{CONTRACT_NOTES}}
+Contracts here are schemas with golden fixtures, not code: one JSON Schema per collection (`docs/SPEC.md` section 4.2)
+under `contracts/`, with golden fixtures that every implementation must pass (the tablet app, the sync function, the
+conflict resolver on the box and in App Services, the agents' output contract). The tablets, the box and Capella are
+written in different languages, so the fixtures, not any one language's types, are the source of truth.
+- Nothing is generated from the contracts yet. If a blueprint adds generated types, it names the script that
+  regenerates them here and adds a CI check that fails when generated output or fixtures are stale.
+- Seed and policy documents (`policy`, `jurisdiction`, the catalog subset, the gold set) are derived from the fixtures.
+  Editing one in the live Capella bucket is a contract change, and a re-seed overwrites the live edit.
 
 ## Config that matters
 After changing any setting that controls spend or safety (a budget cap, a rate limit, a moderation threshold, a
@@ -144,15 +151,23 @@ environment, an older default, or a different file.
 A report-only foreman pass can run on a schedule. An unattended run can stall on a permission prompt nobody sees, and a
 stalled run can block the runs after it. So run the scheduled task once by hand first (approve the tools it needs),
 then check the first scheduled run itself, not only the first manual one: it finished, and the next run started.
+This project runs a scheduled report-only pass: it reports the board and the inbox and dispatches nothing.
 
 ## Usage
 Plan usage is one pool for the whole account, shared by every project, so it is not logged per repo. Keep one
-user-level log ({{USAGE_LOG}}), one line per snapshot: time, project tag, the short-window and weekly figures, and
+user-level log (`usage-log.md` at the root of the foreman breakroom), one line per snapshot: time, project tag, the short-window and weekly figures, and
 what ran in between. Take a snapshot before and after anything large (an audit, a design build, a batch of dispatches)
 and pace new work against the account-wide figure.
 
 ## Milestones
-{{MILESTONES}}
+- **M0**: foundation merged, board populated. The architect blueprints Phase 0 into workstreams, the foreman files
+  their issues, and a setup PR adds the stack choice, CI and `contracts/`.
+- **M1**: Phase 0, the skeleton with no AI (`docs/SPEC.md` section 5): custody by scan, selling with the uplink cut,
+  tablets consistent with the box off, a one-level split and merge, a staged oversell, the conservation query holding.
+- **M2**: Phase 1, sell well (edge AI). The cut line for a first showing.
+- **M3**: Phase 2, reconcile and rejoin (cloud AI).
+- **M4**: Phase 3, place (planning agents, compliance eval, Agent Catalog).
+Phase 4 (stretch) gets a milestone only when the owner picks items from it.
 
 **Before tagging a milestone**, all three hold:
 1. Its workstream issues are closed and `board_check.py` is clean.
@@ -183,8 +198,19 @@ If the owner agrees, admins may push foreman-owned docs (decisions, this file, b
 branch; code always goes through a branch and a PR.
 
 ## Environment
-{{ENVIRONMENT}}
+No code yet; the stack is chosen in M0. The demo runs on three tiers (`docs/SPEC.md` sections 3 and 9.2):
+- **Capella**: one cluster with App Services, Search, Columnar, Eventing, AI Services and Agent Catalog. Credentials
+  come from the environment (`.env`, never committed); name the variables here once M0 defines them.
+- **The box**: Couchbase Edge Server and a small model runtime on a Raspberry Pi 5 (8 GB) or a laptop.
+- **Tablets and a phone**: two or three tablets and one phone running the Couchbase Lite POS app, plus a travel
+  router or hotspot for the terrible-link mode.
+Code, schemas, fixtures and unit tests against fakes run anywhere (`any`). `gh` is available in every session.
 
 Environment tags used on tasks: `any` (any session), `<machine or device>` (only a session that has it), `owner-present`
 (needs the owner at the device). Single-instance environments and who may use them:
-{{SINGLE_INSTANCE_ENVS}}
+- `box`: the one Edge Server box. One task at a time; only the foreman session, or a session the foreman names in the
+  dispatch, may use it.
+- `capella`: the one Capella cluster and App Services endpoint. Same rule. Tasks that only read from it still take the
+  slot, because a re-seed or sync-function deploy by another task changes what they see.
+- The tablets and the phone are `owner-present`: the owner holds them, and the cable-pull, split and merge beats are
+  checked with the owner at the devices.

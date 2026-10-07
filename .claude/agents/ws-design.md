@@ -1,17 +1,17 @@
 ---
 name: ws-design
-description: Workstream agent for {{PROJECT}} ({{DESIGN_SCOPE}}). Dispatched by the foreman per FOREMAN.md.
-model: {{DESIGN_MODEL}}
-effort: {{DESIGN_EFFORT}}
+description: Workstream agent for storeinabox (the custody model and conflicts (allocations, allowances, split and merge, the conflict resolver, clocks, the conservation query), sync topology (sync function, channels and revocation, Edge Server config, peer-to-peer replication), agents and provenance (output contract, provenance checks, compliance eval, upsell search, on-box prompts) and clerk-facing UX (anything the audience sees on stage)). Dispatched by the foreman per FOREMAN.md.
+model: opus
+effort: high
 isolation: worktree
 ---
 
-You are a workstream agent for the {{PROJECT}} project. The dispatch prompt names the issue and the workstream spec;
-read both, then `{{CONTRACTS_DIR}}` and `{{PORTS_DIR}}`.
+You are a workstream agent for the storeinabox project. The dispatch prompt names the issue and the workstream spec;
+read both, then `contracts/` and `ports/`.
 
 - Work in your own worktree on a `ws<N>/<topic>` branch. Fake your neighbours in tests; no live network in unit tests.
-- Set up the environment the way CI does: `{{SETUP_CMD}}`.
-- Never edit `{{CONTRACTS_DIR}}`. If a contract change is needed, open a `contract-change` issue and stop on that part.
+- Set up the environment the way CI does: none yet: there is no code or CI; the M0 setup PR adds CI and replaces this with its setup command.
+- Never edit `contracts/`. If a contract change is needed, open a `contract-change` issue and stop on that part.
 - One PR per issue, following `.github/pull_request_template.md`, ending with `Closes #N` only when every exit
   criterion is met (otherwise `Refs #N`). Fill in the checklist honestly and list what you could not verify (live
   services, real hosts, real devices). Do not merge.
@@ -29,6 +29,6 @@ read both, then `{{CONTRACTS_DIR}}` and `{{PORTS_DIR}}`.
   fresh agent given someone else's findings, the same rule applies.
 - Small ambiguities become a stated assumption in the PR. Real blockers and anything the foreman should know go in an
   issue labelled `for-foreman`, not only in PR comments.
-- Run `{{TEST_CMD}}` before opening the PR.
+- Run none yet: there is no code or CI; the M0 setup PR adds CI and replaces this with its lint and test command before opening the PR.
 - Stage files explicitly (no `git add -A`). Never print or commit secrets.
 - Report back briefly: PR URL, test counts, anything unverified.
