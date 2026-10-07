@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Store in a Box</title>
+<meta name="description" content="A retail store that packs itself into a box, sells with no signal, splits into pieces that keep selling, and rejoins the chain with every unit accounted for. Built on Couchbase Lite, Edge Server, App Services and Capella. Open source demo.">
+<meta property="og:title" content="Store in a Box: the store that divides and merges without stopping">
+<meta property="og:description" content="Pack by scanning. Pull the cable. Split the store. Merge in any order. Reconcile without the cloud. Couchbase Lite, Edge Server, App Services, Capella.">
+<meta property="og:image" content="images/banner.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Stardos+Stencil:wght@400;700&family=Barlow+Condensed:wght@500;600&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<nav class="topnav">
+  <a class="brand" href="#top">STORE IN A BOX</a>
+  <div class="links">
+    <a href="#features">Features</a>
+    <a href="#why-now">Why now</a>
+    <a href="#specs">Specs</a>
+    <a class="buy" href="#get-it">Get it</a>
+  </div>
+</nav>
+
+<!-- ============================== HERO ============================== -->
+<header class="hero" id="top">
+  <div class="hero-inner">
+    <div class="hero-copy">
+      <p class="eyebrow">Couchbase Lite · Device-to-device sync · Edge Server · App Services · Capella</p>
+      <h1>STORE<br>IN A BOX</h1>
+      <p class="tagline">The store that divides and merges without stopping.</p>
+      <p class="lede">Pack a store by scanning it into a box. Sell at a venue with no signal. Hand eight jackets to a tablet that walks away and keeps selling. Merge back in any order. Plug in, and every unit and every dollar is accounted for. Agents planned the trip; the tablets ran the day.</p>
+      <div class="ctas">
+        <a class="btn primary" href="deck/">Watch the deck</a>
+        <a class="btn outline" href="https://github.com/omnifroodle/store-in-a-box">Get the code</a>
+      </div>
+    </div>
+    <figure class="hero-fig">
+      <svg class="crate" viewBox="0 0 520 400" aria-labelledby="crate-title" role="img">
+        <title id="crate-title">A shipping crate open at the top; three tablets stand in it, each marked with a small store icon; a fourth tablet is walking away to the right with a dotted line back to the crate.</title>
+        <!-- crate body -->
+        <rect x="40" y="150" width="340" height="210" fill="#B08F5C" stroke="#1C1A17" stroke-width="5"/>
+        <g stroke="#1C1A17" stroke-width="5" fill="none">
+          <line x1="40" y1="220" x2="380" y2="220"/><line x1="40" y1="290" x2="380" y2="290"/>
+          <line x1="125" y1="150" x2="125" y2="360"/><line x1="210" y1="150" x2="210" y2="360"/><line x1="295" y1="150" x2="295" y2="360"/>
+        </g>
+        <!-- stencil label -->
+        <rect x="60" y="300" width="200" height="46" fill="#F5EEDF" stroke="#1C1A17" stroke-width="4"/>
+        <text x="160" y="333" text-anchor="middle" font-family="Stardos Stencil, Impact, sans-serif" font-size="26" fill="#B5321F">STORE 07</text>
+        <!-- tape -->
+        <rect x="24" y="140" width="372" height="18" fill="#E4B83C" stroke="#1C1A17" stroke-width="4"/>
+        <!-- tablets in the crate -->
+        <g>
+          <rect x="70" y="60" width="70" height="100" rx="6" fill="#1C1A17"/><rect x="76" y="68" width="58" height="84" rx="3" fill="#F5EEDF"/>
+          <rect x="160" y="50" width="70" height="110" rx="6" fill="#1C1A17"/><rect x="166" y="58" width="58" height="94" rx="3" fill="#F5EEDF"/>
+          <rect x="250" y="62" width="70" height="98" rx="6" fill="#1C1A17"/><rect x="256" y="70" width="58" height="82" rx="3" fill="#F5EEDF"/>
+          <!-- little store icons -->
+          <g fill="#3F6B4A"><rect x="92" y="105" width="26" height="22"/><rect x="182" y="100" width="26" height="22"/><rect x="272" y="106" width="26" height="22"/></g>
+          <g fill="#B5321F"><polygon points="86,105 105,88 124,105"/><polygon points="176,100 195,83 214,100"/><polygon points="266,106 285,89 304,106"/></g>
+        </g>
+        <!-- walking-away tablet -->
+        <g>
+          <path d="M330 110 C 390 90, 420 150, 440 180" stroke="#1C1A17" stroke-width="4" stroke-dasharray="10 9" fill="none"/>
+          <rect x="420" y="170" width="70" height="104" rx="6" fill="#1C1A17"/><rect x="426" y="178" width="58" height="88" rx="3" fill="#F5EEDF"/>
+          <rect x="442" y="222" width="26" height="22" fill="#3F6B4A"/><polygon points="436,222 455,205 474,222" fill="#B5321F"/>
+          <text x="455" y="300" text-anchor="middle" font-family="Barlow Condensed, sans-serif" font-weight="600" font-size="16" fill="#1C1A17">STILL A STORE</text>
+        </g>
+        <!-- ground -->
+        <line x1="20" y1="368" x2="500" y2="368" stroke="#1C1A17" stroke-width="5"/>
+      </svg>
+    </figure>
+  </div>
+</header>
+
+<section class="statement">
+  <p>Every node is a store.</p>
+  <p class="quiet">The chain, the box, a tablet, a phone. Same documents, same gestures, different sizes. Two of them that meet reconcile with each other and are done.</p>
+</section>
+
+<!-- ============================ FEATURES ============================ -->
+<div id="features">
+
+<section class="feature">
+  <div class="copy">
+    <p class="kicker">Custody, not counts</p>
+    <h2>A unit is wherever it was last scanned.</h2>
+    <p>Inventory is modelled as units in custody, not numbers to be merged. Scan a unit onto the box and the store's allocation hands it over. Scan it onto a tablet and the box hands it over. Sell it, and the tablet hands it to a customer with a tender attached. Pack, split, merge and sell are one gesture and one document shape.</p>
+    <div class="bignum"><span>1</span> query proves the whole trip: the sum over every custodian never changes.<sup><a href="#fn1">1</a></sup></div>
+    <ul class="facts">
+      <li><b>One batch per sale.</b> The transaction, the stock decrement and the credit decrement land together or not at all.</li>
+      <li><b>Scans outrank records.</b> Check in a unit the record says is elsewhere and you get an exception, not an error.</li>
+    </ul>
+    <a class="more" href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/couchbase-lite-custody.md">How custody works in Couchbase Lite →</a>
+  </div>
+  <figure class="card">
+    <svg viewBox="0 0 420 260" role="img" aria-label="Custody tree: store 1000 units, box 50, tablet B 8, phone 3. Each arrow is a scan.">
+      <g font-family="Barlow Condensed, sans-serif" font-weight="600" font-size="16" fill="#1C1A17">
+        <rect x="20" y="20" width="120" height="44" fill="#F5EEDF" stroke="#1C1A17" stroke-width="3"/><text x="80" y="48" text-anchor="middle">STORE · 1,000</text>
+        <rect x="150" y="100" width="120" height="44" fill="#F5EEDF" stroke="#1C1A17" stroke-width="3"/><text x="210" y="128" text-anchor="middle">BOX · 50</text>
+        <rect x="280" y="180" width="120" height="44" fill="#F5EEDF" stroke="#1C1A17" stroke-width="3"/><text x="340" y="208" text-anchor="middle">TABLET B · 8</text>
+        <rect x="150" y="200" width="100" height="44" fill="#F5EEDF" stroke="#1C1A17" stroke-width="3"/><text x="200" y="228" text-anchor="middle">PHONE · 3</text>
+      </g>
+      <g stroke="#B5321F" stroke-width="3" fill="none" marker-end="url(#arr)">
+        <path d="M140 42 L 190 100"/><path d="M270 122 L 320 180"/><path d="M300 224 L 252 224"/>
+      </g>
+      <defs><marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#B5321F"/></marker></defs>
+      <text x="20" y="250" font-family="IBM Plex Mono, monospace" font-size="12" fill="#1C1A17">each arrow = one scan; qty conserved at every level</text>
+    </svg>
+    <figcaption>The custody tree, three scans deep</figcaption>
+  </figure>
+</section>
+
+<hr class="tape">
+
+<section class="feature flip">
+  <div class="copy">
+    <p class="kicker">Device-to-device sync</p>
+    <h2>Split the store. Merge in any order.</h2>
+    <p>Tablets replicate to each other directly. Three at one booth are three replicas of the same store with no primary. Walk one out of range with eight jackets on it and it keeps selling. Split three of those onto a phone. Bring the phone back to the tablet and the tablet back to the box, or the other way round; the answer is the same.</p>
+    <div class="bignum"><span>0</span> coordinators. Two custodians that meet reconcile with each other and are done.<sup><a href="#fn2">2</a></sup></div>
+    <p>The cloud finds out later and has nothing to adjudicate.</p>
+    <a class="more" href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/device-to-device-sync.md">How splitting and merging work →</a>
+  </div>
+  <figure class="card">
+    <svg viewBox="0 0 420 240" role="img" aria-label="Three tablets connected to each other and to a box; one tablet drifts away with a dotted link; later it returns.">
+      <g fill="#1C1A17"><rect x="30" y="40" width="50" height="70" rx="5"/><rect x="120" y="40" width="50" height="70" rx="5"/><rect x="330" y="140" width="50" height="70" rx="5"/></g>
+      <g fill="#F5EEDF"><rect x="35" y="46" width="40" height="58" rx="2"/><rect x="125" y="46" width="40" height="58" rx="2"/><rect x="335" y="146" width="40" height="58" rx="2"/></g>
+      <rect x="60" y="150" width="90" height="60" fill="#B08F5C" stroke="#1C1A17" stroke-width="3"/>
+      <text x="105" y="186" text-anchor="middle" font-family="Stardos Stencil, Impact, sans-serif" font-size="18" fill="#B5321F">BOX</text>
+      <g stroke="#2C5F8A" stroke-width="3" fill="none">
+        <line x1="80" y1="75" x2="120" y2="75"/><line x1="55" y1="110" x2="90" y2="150"/><line x1="145" y1="110" x2="120" y2="150"/>
+      </g>
+      <path d="M170 75 C 240 60, 290 110, 330 150" stroke="#B5321F" stroke-width="3" stroke-dasharray="9 8" fill="none"/>
+      <text x="250" y="60" font-family="Barlow Condensed, sans-serif" font-weight="600" font-size="15" fill="#1C1A17">OUT OF RANGE, STILL SELLING</text>
+      <text x="200" y="228" font-family="IBM Plex Mono, monospace" font-size="12" fill="#1C1A17">peer to peer · no server in the path</text>
+    </svg>
+    <figcaption>Multiple units at one sale, and one that left</figcaption>
+  </figure>
+</section>
+
+<section class="feature hero-feature">
+  <div class="copy">
+    <p class="kicker">Pull the cable</p>
+    <h2>Nothing on this side of the room noticed.</h2>
+    <p>The box is a Couchbase Edge Server in a backpack. It holds the whole packed dataset, serves the tablets, runs the small model for the clerk, and phones home when it can. Cut its uplink and the venue carries on. Power it off and the tablets keep each other current. Throttle it to 2G and only the cloud's view gets slower.</p>
+    <div class="bignum"><span>KB</span> not MB. A day of sales reconciles in kilobytes; a 10,000-SKU price change arrives as a few hundred.<sup><a href="#fn3">3</a></sup></div>
+    <p>Every write is local and correct the moment it lands. Replication is continuous and opportunistic and never blocks the thing that produced the data. The cloud is informed, not consulted.</p>
+    <a class="more" href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/edge-server-box.md">How the box phones home →</a>
+  </div>
+  <figure class="card">
+    <svg viewBox="0 0 420 220" role="img" aria-label="A byte counter reading 41 KB after a day offline, with a cable icon unplugged then plugged.">
+      <rect x="20" y="20" width="380" height="180" fill="#1C1A17" rx="8"/>
+      <text x="40" y="60" font-family="IBM Plex Mono, monospace" font-size="14" fill="#B8AE9A">box-07 · uplink restored 17:42</text>
+      <text x="40" y="120" font-family="Stardos Stencil, Impact, sans-serif" font-size="56" fill="#E4B83C">41 KB</text>
+      <text x="40" y="150" font-family="IBM Plex Mono, monospace" font-size="14" fill="#F5EEDF">53 transactions · 2 exceptions · 1 inspection · 6 demand signals</text>
+      <text x="40" y="180" font-family="IBM Plex Mono, monospace" font-size="14" fill="#F5EEDF">resumed from checkpoint seq 4,118 · conservation: OK</text>
+    </svg>
+    <figcaption>The byte counter on the box</figcaption>
+  </figure>
+</section>
+
+<hr class="tape">
+
+<section class="feature flip">
+  <div class="copy">
+    <p class="kicker">Hybrid search on the tablet</p>
+    <h2>Goes with this. Makes sense here.</h2>
+    <p>Scan the second item and the tablet proposes an add-on. Vector similarity to the basket, fused with a full-text match on tags and structured filters for category, price band and the weather, in one SQL++ statement on the device. A custody join means it only ever offers what is in the box.</p>
+    <div class="bignum"><span>&lt;1 s</span> on the tablet, radio off. The small model on the box adds the reason; kill the box and the suggestions still come.<sup><a href="#fn4">4</a></sup></div>
+    <pre class="query"><span class="c">-- vector half, on the tablet</span>
+SELECT META(p).id, p.name,
+       <span class="k">APPROX_VECTOR_DISTANCE</span>(p.embedding, $basket) AS d
+FROM store.product p
+WHERE p.category_family IN $complements
+  AND p.price BETWEEN $lo AND $hi
+ORDER BY d LIMIT 20;
+<span class="c">-- keyword half: MATCH(p.tags, "waterproof socks pack-cover"), same filters</span>
+<span class="c">-- fused by rank, then joined to this custodian's allocations</span></pre>
+    <a class="more" href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/hybrid-upsell.md">How the upsell advisor works →</a>
+  </div>
+  <figure class="card">
+    <svg viewBox="0 0 420 240" role="img" aria-label="A checkout screen: rain shell in the basket; two suggestions, wool socks and a pack cover, with a one-line reason.">
+      <rect x="30" y="10" width="360" height="220" rx="10" fill="#1C1A17"/><rect x="40" y="20" width="340" height="200" rx="6" fill="#F5EEDF"/>
+      <g font-family="Barlow Condensed, sans-serif" font-weight="600" font-size="16" fill="#1C1A17">
+        <text x="56" y="48">BASKET · RAIN SHELL M · $129</text>
+        <line x1="56" y1="60" x2="364" y2="60" stroke="#B08F5C" stroke-width="2"/>
+        <text x="56" y="88" fill="#B5321F">ADD TO THE BASKET?</text>
+        <rect x="56" y="100" width="300" height="40" fill="#EADFC8" stroke="#1C1A17" stroke-width="2"/><text x="66" y="126">WOOL SOCKS · $18</text><text x="300" y="126" fill="#3F6B4A">IN BOX ✓</text>
+        <rect x="56" y="148" width="300" height="40" fill="#EADFC8" stroke="#1C1A17" stroke-width="2"/><text x="66" y="174">PACK COVER · $24</text><text x="300" y="174" fill="#3F6B4A">IN BOX ✓</text>
+      </g>
+      <text x="56" y="210" font-family="IBM Plex Serif, serif" font-style="italic" font-size="13" fill="#4A443C">"Rain tomorrow. You have a shell, not dry feet."</text>
+    </svg>
+    <figcaption>One basket, two offers, a reason</figcaption>
+  </figure>
+</section>
+
+<section class="feature">
+  <div class="copy">
+    <p class="kicker">Offline loyalty</p>
+    <h2>Credit travels like inventory.</h2>
+    <p>A member's offline allowance is reserved in Capella, allocated to the box and split to tablets, then enforced on the device with no lookup. The QR is signed with a key the tablet already holds; the second factor is four digits checked against a salted hash. Pessimistic by policy, encrypted at rest, and still a real sale.</p>
+    <div class="bignum"><span>$0</span> of card risk. It is the retailer's own credit to its own customers, capped by a number on a policy document.<sup><a href="#fn5">5</a></sup></div>
+    <p>Spend past the allowance at a second tablet and it declines, offline, and says why. Two slices overspent across tablets become an exception with both sales attached, never an overdraft.</p>
+    <a class="more" href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/offline-loyalty.md">How offline loyalty works →</a>
+  </div>
+  <figure class="card">
+    <svg viewBox="0 0 420 240" role="img" aria-label="A loyalty card QR code, a verified stamp, and an allowance bar dropping from 120 to 55.">
+      <rect x="30" y="30" width="120" height="120" fill="#F5EEDF" stroke="#1C1A17" stroke-width="3"/>
+      <g fill="#1C1A17">
+        <rect x="42" y="42" width="30" height="30"/><rect x="108" y="42" width="30" height="30"/><rect x="42" y="108" width="30" height="30"/>
+        <rect x="84" y="42" width="8" height="8"/><rect x="84" y="58" width="8" height="8"/><rect x="100" y="84" width="8" height="8"/><rect x="84" y="100" width="8" height="8"/><rect x="116" y="100" width="8" height="8"/><rect x="100" y="116" width="8" height="8"/><rect x="124" y="124" width="14" height="14"/>
+      </g>
+      <g transform="rotate(-10 230 80)"><circle cx="230" cy="80" r="42" fill="none" stroke="#3F6B4A" stroke-width="4"/><circle cx="230" cy="80" r="34" fill="none" stroke="#3F6B4A" stroke-width="2"/><text x="230" y="86" text-anchor="middle" font-family="Stardos Stencil, Impact, sans-serif" font-size="18" fill="#3F6B4A">VERIFIED</text></g>
+      <text x="300" y="60" font-family="IBM Plex Mono, monospace" font-size="12" fill="#1C1A17">sig ok · 48h window</text>
+      <text x="300" y="80" font-family="IBM Plex Mono, monospace" font-size="12" fill="#1C1A17">phone ····8841 ok</text>
+      <text x="30" y="190" font-family="Barlow Condensed, sans-serif" font-weight="600" font-size="15" fill="#1C1A17">OFFLINE ALLOWANCE</text>
+      <rect x="30" y="200" width="360" height="22" fill="#EADFC8" stroke="#1C1A17" stroke-width="2"/><rect x="30" y="200" width="165" height="22" fill="#3F6B4A"/>
+      <text x="200" y="217" font-family="IBM Plex Mono, monospace" font-size="13" fill="#1C1A17">$55 of $120 left on this box</text>
+    </svg>
+    <figcaption>Verified on the tablet, nobody looked up</figcaption>
+  </figure>
+</section>
+
+<hr class="tape">
+
+<section class="feature flip">
+  <div class="copy">
+    <p class="kicker">Compliance agent</p>
+    <h2>Every claim carries its passage.</h2>
+    <p>Before the trip, an agent finds what the venue requires: licence, tax registration, tent inspection, organiser permit. Each claim is retrieved with the jurisdiction as a hard filter, drafted with the passage it came from, ground-checked by a second model, and tested for freshness and jurisdiction match by code that is not a model at all.</p>
+    <div class="bignum"><span>3</span> checks, three states. Verified, needs confirmation, not found. Never a bare percentage.<sup><a href="#fn6">6</a></sup></div>
+    <p>We poison one source before the demo. Watch the agent catch it. Then the clerk calls the county from the parking lot, and that phone call becomes a source for next time.</p>
+    <a class="more" href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/agents-and-evaluation.md">How the agent proves its work →</a>
+  </div>
+  <figure class="card">
+    <svg viewBox="0 0 420 240" role="img" aria-label="A compliance checklist with four verified items and one needing confirmation, with a passage quoted below.">
+      <rect x="20" y="16" width="380" height="208" fill="#F5EEDF" stroke="#1C1A17" stroke-width="3"/>
+      <g font-family="Barlow Condensed, sans-serif" font-weight="600" font-size="15" fill="#1C1A17">
+        <text x="36" y="44">RICHMOND, VA · MAKER FAIR · 18 OCT</text>
+        <text x="36" y="74" fill="#3F6B4A">✓ VERIFIED</text><text x="130" y="74">Transient vendor licence · $75 · 10 days</text>
+        <text x="36" y="98" fill="#3F6B4A">✓ VERIFIED</text><text x="130" y="98">Temporary sales tax registration</text>
+        <text x="36" y="122" fill="#3F6B4A">✓ VERIFIED</text><text x="130" y="122">Organiser vendor permit</text>
+        <text x="36" y="146" fill="#E4B83C">? CONFIRM</text><text x="130" y="146">Tent over 400 sq ft: fire inspection</text>
+        <text x="36" y="170" fill="#3F6B4A">✓ VERIFIED</text><text x="130" y="170">Sign ordinance: under 12 sq ft</text>
+      </g>
+      <text x="36" y="196" font-family="IBM Plex Mono, monospace" font-size="11" fill="#B5321F">fresh: FAIL · source 2026-09-30, amended 2026-10-01</text>
+      <text x="36" y="212" font-family="IBM Plex Mono, monospace" font-size="11" fill="#4A443C">"...tents exceeding 400 square feet require..." · click for passage</text>
+    </svg>
+    <figcaption>Four verified, one to confirm, zero not found</figcaption>
+  </figure>
+</section>
+
+<section class="feature">
+  <div class="copy">
+    <p class="kicker">Permit flow</p>
+    <h2>The agent drafts. The office vets. The field confirms.</h2>
+    <p>Each permit is one document with a state machine. The agent writes it as <code>drafted</code> and can go no further. The back office vets, files, and attaches the approval. The box carries it to the venue. The clerk shows it to the inspector, records the visit with a photo, or flags that the booth moved into a different fire zone. All offline. The office sees it when the box phones home.</p>
+    <div class="bignum"><span>2</span> directions. Approvals flow down; inspections, confirmations and flags flow up.<sup><a href="#fn7">7</a></sup></div>
+    <p>Policy gates what the box may do per state: no account tender until tax registration is approved. Flip it from HQ; the tablet honours it after the next sync and names the permit that caused it.</p>
+    <a class="more" href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/permit-flow.md">How the permit flow works →</a>
+  </div>
+  <figure class="card">
+    <svg viewBox="0 0 420 240" role="img" aria-label="Permit states in a row: drafted, vetting, filed, approved, inspected, with the first owned by the agent and the rest by people.">
+      <g font-family="Barlow Condensed, sans-serif" font-weight="600" font-size="13" fill="#1C1A17">
+        <rect x="20" y="60" width="66" height="40" fill="#EADFC8" stroke="#B5321F" stroke-width="3"/><text x="53" y="85" text-anchor="middle">DRAFTED</text>
+        <rect x="104" y="60" width="66" height="40" fill="#F5EEDF" stroke="#1C1A17" stroke-width="3"/><text x="137" y="85" text-anchor="middle">VETTING</text>
+        <rect x="188" y="60" width="66" height="40" fill="#F5EEDF" stroke="#1C1A17" stroke-width="3"/><text x="221" y="85" text-anchor="middle">FILED</text>
+        <rect x="272" y="60" width="66" height="40" fill="#F5EEDF" stroke="#1C1A17" stroke-width="3"/><text x="305" y="85" text-anchor="middle">APPROVED</text>
+        <rect x="356" y="60" width="54" height="40" fill="#F5EEDF" stroke="#1C1A17" stroke-width="3"/><text x="383" y="85" text-anchor="middle">INSP.</text>
+      </g>
+      <g stroke="#1C1A17" stroke-width="3" fill="none"><line x1="86" y1="80" x2="104" y2="80"/><line x1="170" y1="80" x2="188" y2="80"/><line x1="254" y1="80" x2="272" y2="80"/><line x1="338" y1="80" x2="356" y2="80"/></g>
+      <text x="53" y="40" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="#B5321F">agent</text>
+      <text x="221" y="40" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="#1C1A17">back office · cloud</text>
+      <text x="383" y="40" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="#1C1A17">field · offline</text>
+      <path d="M383 100 C 383 150, 60 150, 53 100" stroke="#2C5F8A" stroke-width="3" stroke-dasharray="8 7" fill="none"/>
+      <text x="215" y="170" text-anchor="middle" font-family="Barlow Condensed, sans-serif" font-weight="600" font-size="14" fill="#2C5F8A">CONFIRMATION FROM THE FIELD BECOMES A SOURCE</text>
+      <g transform="rotate(-8 330 200)"><rect x="285" y="186" width="90" height="30" fill="none" stroke="#3F6B4A" stroke-width="3"/><text x="330" y="207" text-anchor="middle" font-family="Stardos Stencil, Impact, sans-serif" font-size="14" fill="#3F6B4A">APPROVED</text></g>
+    </svg>
+    <figcaption>One document, three parties, both directions</figcaption>
+  </figure>
+</section>
+
+<hr class="tape">
+
+<section class="feature flip">
+  <div class="copy">
+    <p class="kicker">Sync with Capella App Services</p>
+    <h2>Nine lines decide what reaches the venue.</h2>
+    <p>A sync function validates each document, checks the writer holds the trip, and routes it to the trip's channel. The box receives its trip, its region's catalog without cost or margin, its region's members, and nothing else. The other forty thousand SKUs are not hidden on the tablet. They were never sent.</p>
+    <div class="bignum"><span>0</span> silent losses. Two sales of the last unit become one exception with both sides attached.<sup><a href="#fn8">8</a></sup></div>
+    <p>The custom conflict resolver is application code and runs on the device, the box and in App Services. Lose access to a channel and the documents leave the device on their own. No admin credential anywhere.</p>
+    <a class="more" href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/app-services-sync.md">How channels and conflicts work →</a>
+  </div>
+  <figure class="card">
+    <pre class="query" style="margin:0"><span class="c">// the whole access model</span>
+function (doc, oldDoc, meta) {
+  if (doc._deleted) { return; }
+  if (!doc.trip) { throw({ forbidden: "trip is required" }); }
+  if (doc.type === "transaction"
+      &amp;&amp; doc.custodian !== meta.user.name) {
+    throw({ forbidden: "write only your own sales" });
+  }
+  <span class="k">requireAccess</span>("trip:" + doc.trip);
+  <span class="k">channel</span>("trip:" + doc.trip);
+}</pre>
+    <figcaption>Validate, authorise, route</figcaption>
+  </figure>
+</section>
+
+<section class="feature wide">
+  <div class="copy">
+    <p class="kicker">Capella</p>
+    <h2>Once it syncs, it is just data. Then it is the next trip.</h2>
+    <p>Data a tablet wrote in a field with no signal is ordinary Capella data when it lands: SQL++ for the conservation query and the exception queue, Columnar for the venue scorer, Search for the compliance agent's retrieval, Eventing for reorders, AI Services and Agent Catalog for the agents. The explainer writes the end-of-day narrative. The retrospective is evidence for the scorer's next run.</p>
+    <div class="bignum"><span>5</span> agents before the trip, three on the box, two after. None calls another. They read and write documents.<sup><a href="#fn9">9</a></sup></div>
+    <a class="more" href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/capella-reconcile.md">How Capella reconciles and plans →</a>
+  </div>
+</section>
+
+</div><!-- /features -->
+
+<!-- ============================== WATCH ============================= -->
+<section class="watch">
+  <div class="inner">
+    <p class="kicker">Twelve minutes, one cable</p>
+    <h2>Watch it happen.</h2>
+    <p>Five venues scored. Permits checked with proof. Pack by scanning. Pull the cable. Sell on two tablets. Split the store onto a phone and hand it to someone in the audience. Merge. Plug in. Forty-one kilobytes, and the conservation query has the same answer it had this morning.</p>
+    <div class="placeholder">Capture video lands here after Phase 1</div>
+  </div>
+</section>
+
+<!-- ============================== WHY NOW =========================== -->
+<section class="why" id="why-now">
+  <p class="kicker">Why this approach, and why now</p>
+  <h2>The store stopped being a place. The database followed.</h2>
+  <div class="grid">
+    <div><h3>Retail went to where the customers are</h3><p>Pop-ups, markets, festivals, drops, trunk shows, stadium concessions. The venue changes weekly and the connectivity is whatever the organiser's router does. A POS that needs the cloud is a POS that needs luck.</p></div>
+    <div><h3>Sync moved to the device</h3><p>Couchbase Lite replicates peer to peer. A tablet is not a client of anything; it is a replica that can meet another replica. That is what makes a split store a store and not an outage.</p></div>
+    <div><h3>Custody beats counts</h3><p>Count-based inventory has one failure mode and every offline system eventually finds it. Units in custody conserve, and the proof is one query that works while two custodians are out of range.</p></div>
+    <div><h3>Agents are only as good as their evidence</h3><p>An agent that files permits is a liability. An agent that drafts them with the passage attached, gets caught when a source is poisoned, and learns from the clerk's phone call is a colleague.</p></div>
+  </div>
+  <table>
+    <thead><tr><th></th><th>Cloud POS with an offline cache</th><th>Store in a Box</th></tr></thead>
+    <tbody>
+      <tr><td>Uplink cut</td><td>Degraded mode, queued writes, prayers</td><td>Nothing on the venue side notices</td></tr>
+      <tr><td>Tablet walks away</td><td>Blind until it returns</td><td>A smaller store, still selling</td></tr>
+      <tr><td>Two tablets meet</td><td>Wait for the server</td><td>Reconcile with each other, final</td></tr>
+      <tr><td>Last unit sold twice</td><td>Silent loss or silent oversell</td><td>Exception with both sides attached</td></tr>
+      <tr><td>Member buys on account offline</td><td>Not offered</td><td>Signed QR, local allowance, capped by policy</td></tr>
+      <tr><td>Permit at the venue</td><td>In someone's email</td><td>On the tablet, inspection flows back</td></tr>
+    </tbody>
+  </table>
+  <div class="split">
+    <div><h3>ON THE TABLET</h3><p>Every scan, sale, split and merge. Hybrid search for the upsell. Loyalty verification. The permit and the policy. Encrypted, conserved, peer to peer.</p></div>
+    <div><h3>ON THE BOX</h3><p>The whole trip's dataset. The small model for the clerk and the briefing. The conflict resolver. The link to the cloud, used when it exists.</p></div>
+    <div><h3>IN CAPELLA</h3><p>The system of record. Channels and the sync function. The agents that plan, the agent that explains, and the eval harness that keeps them honest.</p></div>
+  </div>
+</section>
+
+<!-- ============================== SPECS ============================= -->
+<section class="specs" id="specs">
+  <div class="inner">
+    <p class="kicker">Tech specs</p>
+    <h2>What's inside.</h2>
+    <dl>
+      <div><dt>On the device</dt><dd>Couchbase Lite with the Vector Search extension and database encryption. Scopes <code>store</code>, <code>agents</code>, <code>ref</code>; same names as the cluster.</dd></div>
+      <div><dt>Device-to-device</dt><dd>Couchbase Lite peer-to-peer replication between tablets and phones, and to the box. No server in the path.</dd></div>
+      <div><dt>The box</dt><dd>Couchbase Edge Server on a Raspberry Pi 5 (8 GB) or a laptop, plus a small model runtime for the on-box agents.<sup><a href="#fn10">10</a></sup></dd></div>
+      <div><dt>Sync</dt><dd>Capella App Services over a WebSocket. Channels per trip, region and box. One sync function, nine lines. Custom conflict resolver in app code.</dd></div>
+      <div><dt>Cloud</dt><dd>Capella: Data Service, Search (hybrid and geo), Columnar, Eventing, AI Services, Agent Catalog.</dd></div>
+      <div><dt>Custody</dt><dd>Allocation tree with parents. Conservation invariant checked live. Scan to check out, scan to check in; unit-level QR for the demo.</dd></div>
+      <div><dt>Upsell</dt><dd>Hybrid SQL++ on the tablet: <code>APPROX_VECTOR_DISTANCE</code> plus full-text <code>MATCH</code>, rank fusion, custody join. Weight is a policy value.</dd></div>
+      <div><dt>Loyalty</dt><dd>Signed QR (retailer key, validity window), salted phone hash, per-member allowance reserved in Capella and split like inventory.</dd></div>
+      <div><dt>Compliance</dt><dd>Hybrid retrieval with jurisdiction filter, second-model ground check, deterministic freshness and jurisdiction checks, 20-site gold set, zero false verifieds to ship.</dd></div>
+      <div><dt>Seed data</dt><dd>300 to 500 outdoor-apparel SKUs with embeddings, two stores, 18 months of synthetic sales, three past pop-ups, three to four real jurisdictions' ordinance text.</dd></div>
+      <div><dt>Not in scope</dt><dd>Real payments, PCI, receipt printing, filing permits, social media ingestion beyond an optional labelled feed, fleet optimisation.</dd></div>
+      <div><dt>Status</dt><dd>Spec complete. Build in phases; Phase 0 is sync and custody with no AI. See the spec for acceptance criteria.</dd></div>
+    </dl>
+  </div>
+</section>
+
+<!-- ============================== GET IT ============================ -->
+<section class="get" id="get-it">
+  <h2>Get Store in a Box.</h2>
+  <p class="price">Free. Open source. MIT licensed.</p>
+  <p>The spec, the architecture notes, the sync function, the conflict resolver, the seed data and the demo runbook. Fork it, point it at your own Capella, and pull the cable on your own tablets.</p>
+  <div class="ctas">
+    <a class="btn primary" href="https://github.com/omnifroodle/store-in-a-box">Get the code</a>
+    <a class="btn outline" href="deck/">Watch the deck</a>
+    <a class="btn outline" href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/SPEC.md">Read the spec</a>
+  </div>
+  <ul class="doclinks">
+    <li><a href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/overview.md">Architecture overview</a></li>
+    <li><a href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/couchbase-lite-custody.md">Couchbase Lite and custody</a></li>
+    <li><a href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/device-to-device-sync.md">Device-to-device sync</a></li>
+    <li><a href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/edge-server-box.md">Edge Server, the box</a></li>
+    <li><a href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/app-services-sync.md">App Services and conflicts</a></li>
+    <li><a href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/capella-reconcile.md">Capella: reconcile and plan</a></li>
+    <li><a href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/hybrid-upsell.md">Hybrid upsell</a></li>
+    <li><a href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/offline-loyalty.md">Offline loyalty</a></li>
+    <li><a href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/permit-flow.md">Permit flow</a></li>
+    <li><a href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/agents-and-evaluation.md">Agents and evaluation</a></li>
+  </ul>
+</section>
+
+<!-- ============================ FINE PRINT ========================== -->
+<footer class="fineprint">
+  <ol>
+    <li id="fn1">The conservation query sums store on-hand, every active allocation at every level of the custody tree, units sold and units returned to stock, per SKU, and compares to opening on-hand plus received. It is a design invariant, not yet a measured result; Phase 0 acceptance is that it holds through a staged split with two custodians out of range.</li>
+    <li id="fn2">Order-independence of merges is a property of custody moves being additive records rather than edits to a shared quantity. Phase 1 acceptance runs the same split and merges it in both orders and checks the final state is identical.</li>
+    <li id="fn3">"Kilobytes" is the design target for delta sync: Phase 0 acceptance is under 100 KB for a day of fifty transactions. The 41 KB on the illustrated counter is an illustration. The 10,000-SKU figure assumes a one-field price change shipped as deltas; measure before quoting.</li>
+    <li id="fn4">Under one second is the Phase 1 acceptance target on the demo tablets with 300 to 500 SKUs and a precomputed embedding per product. The reason line needs the box's small model; the ranking does not.</li>
+    <li id="fn5">No card is ever authorised offline and no payment instrument reaches the venue. The exposure is the sum of active allowances, each reserved against the member's real balance in Capella before the trip and capped by the trip's policy document.</li>
+    <li id="fn6">The ground check uses a second prompt and, where available, a second model. Freshness compares the chunk's retrieval date against the ordinance's last-amended date where that date is known; where it is not, the check reports unknown rather than pass. Jurisdiction match compares ids, not names. Phase 3 acceptance is at least 90% claim-level accuracy on the 20-site gold set and zero false verifieds on a poisoned chunk.</li>
+    <li id="fn7">The agent writes permits in state <code>drafted</code> only; there is no code path for an agent to advance one. Outbound contact with any authority is a human act recorded in the document, not performed by the system.</li>
+    <li id="fn8">The custom resolver handles <code>allocation</code>, <code>allowance</code> and <code>transaction</code>; everything else is last-write-wins. Where the resolver runs on Edge Server as well as on devices and in App Services is a spec open question to confirm against current docs.</li>
+    <li id="fn9">Before: venue scorer, compliance checker, research agent, packing planner, plus the explainer and retrospective after; on the box: clerk copilot, upsell reason line, briefing. Counted from the spec's agent roster; the v1 cut is smaller and listed there.</li>
+    <li id="fn10">Whether a Raspberry Pi 5 carries the small model at demo-acceptable latency is an open question in the spec; the fallback box is a laptop. Everything in the demo except the model runtime is sized for the Pi.</li>
+  </ol>
+  <p>Store in a Box is a demo built to show Couchbase Lite, device-to-device sync, Couchbase Edge Server, Capella App Services and Capella working together. Couchbase, Capella and Couchbase Lite are trademarks of Couchbase, Inc. The retailer, the venues and the ordinance figures on this page are illustrative. Sample product data is synthetic.</p>
+</footer>
+
+</body>
+</html>
