@@ -11,3 +11,4 @@ after five or six PRs and tighten or loosen the bar.
 | #43 WS2 Capella and sync functions | 1 | 0 | 0 | #53 (7 non-blocking items) | no |
 | #52 WS3 Edge Server box | 1 | 0 | 0 | #54 (6 non-blocking items) | no |
 | #55 contracts 0.3.1 (foreman-applied CC7) | 1 | 0 | 0 | #56 (5 non-blocking items) | no |
+| #71 contracts 0.4.0 (foreman-applied CC8) | 1 | 0 | 0 | #72 (4 reducer ambiguities, to the architect), #73 (stale 0.3.1 text in WS1) | no |
