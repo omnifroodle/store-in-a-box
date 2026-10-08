@@ -67,3 +67,13 @@ def test_returned_to_store(fixture):
     day = fixture("conservation-day")
     shell = rows(day, day["inventory"])["JKT-RAIN-M-BLU"]
     assert (shell.left_store, shell.returned_to_store, shell.store_on_hand) == (8, 1, 5)
+
+
+def test_untraced_unit_returned_to_the_store_counts_as_returned(fixture):
+    """0.4.0: returned_to_store counts every unit the store holds, so the row partitions the units."""
+    fx = fixture("untraced-unit-returned")
+    for inventory in (None, fx["inventory"]):
+        row = rows(fx, inventory)["SOC-WOOL-M"]
+        assert (row.left_store, row.untraced, row.returned_to_store, row.in_custody) == (1, 1, 1, {"box-07": 1})
+        assert row.holds is False
+    assert rows(fx, fx["inventory"])["SOC-WOOL-M"].store_on_hand == 10

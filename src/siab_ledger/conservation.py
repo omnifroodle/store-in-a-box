@@ -74,8 +74,7 @@ def conservation(state: LedgerState, store: str, inventory: Iterable[Mapping] | 
             elif unit.state == DISPUTED:
                 disputed += 1
             elif unit.state == HELD and unit.holder == store:
-                if unit_id not in state.untraced:
-                    returned += 1
+                returned += 1  # untraced units included (0.4.0): the row partitions every unit
             elif unit.state == HELD:
                 in_custody[unit.holder] += 1
         if books is None:

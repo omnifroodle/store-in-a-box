@@ -164,16 +164,25 @@ def _reduce_unit(unit_id: str, movements: Mapping[str, Mapping], store: str, res
     if len(store_roots) >= 2:
         groups.insert(0, (None, store_roots))
 
-    mine = [r for r in resolutions if r.get("unit_id") == unit_id]
-    forks: list[Fork] = []
+    # Rule 3 (0.4.0): a resolution matches the fork with its dispute_key and exactly its transactions; among several
+    # matches the greatest (resolution.at, _id) decides, and it settles the fork only if it chose one of the branches.
+    # The other branches and their descendants are set aside, and a fork whose branches are all set aside (one
+    # inside a set-aside branch) is not reported. Every settled fork's set-aside subtree is computed first: a
+    # settled fork nested inside another's set-aside subtree only sets aside movements already set aside.
+    settled: list[tuple[str | None, list[str], str | None]] = []
     ignored: set[str] = set()
     for prev, branches in groups:
-        settling = [r for r in mine if r["resolution"].get("chosen_txn") in branches]
-        resolved_by = settling[0]["_id"] if settling else None
-        if settling:
-            chosen = settling[0]["resolution"]["chosen_txn"]
+        key = f"{unit_id}|{prev or 'root'}"
+        matching = [r for r in resolutions
+                    if r.get("dispute_key") == key and sorted(r.get("transactions") or ()) == branches]
+        latest = max(matching, key=lambda r: (r["resolution"].get("at") or "", r["_id"]), default=None)
+        chosen = latest["resolution"].get("chosen_txn") if latest else None
+        resolved_by = latest["_id"] if chosen in branches else None
+        if resolved_by is not None:
             ignored |= _descendants((b for b in branches if b != chosen), children)
-        forks.append(Fork(unit_id, sku, prev, tuple(branches), resolved_by))
+        settled.append((prev, branches, resolved_by))
+    forks = [Fork(unit_id, sku, prev, tuple(branches), resolved_by) for prev, branches, resolved_by in settled
+             if not all(b in ignored for b in branches)]
 
     # Rule 3: an unresolved fork disputes the unit. Rule 4: otherwise the canonical leaf with the greatest hlc.
     canonical = {mid for mid in movements if mid not in ignored}

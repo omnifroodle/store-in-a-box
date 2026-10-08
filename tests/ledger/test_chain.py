@@ -202,3 +202,79 @@ def test_a_prev_txn_cycle_terminates(fixture):
     a["prev_txn"], b["prev_txn"] = b["_id"], a["_id"]
     state = reduce([a, b], [], store=STORE)
     assert set(state.units) == {"JKT-RAIN-M-BLU#001"}
+
+
+# ---------------------------------------------------------------- contracts 0.4.0 (CC8, decision 006)
+
+PHONE_TAKE = "txn::1792331000000-0000-phone-1"
+
+
+def test_third_branch_reopens_a_settled_fork(fixture):
+    """A resolution binds to the branches it was written for; a third branch is a fork it does not match."""
+    fx = fixture("third-branch-at-resolved-fork")
+    state = state_of(fx)
+    (fork,) = state.forks
+    assert fork.branches == (TAKE_A, TAKE_B, PHONE_TAKE)
+    assert fork.resolved_by is None
+    assert state.units["JKT-RAIN-M-BLU#001"].state == "disputed"
+    (doc,) = exceptions_for(state, "tablet-a", fx["trip"], fx["box"])
+    assert doc["transactions"] == [TAKE_A, TAKE_B, PHONE_TAKE]
+    assert doc["_id"] != fx["resolutions"][0]["_id"]
+    # Without the third branch the same resolution still settles the two-branch fork.
+    two = state_of(fx, transactions=[t for t in fx["transactions"] if t["_id"] != PHONE_TAKE])
+    assert two.forks[0].resolved_by == fx["resolutions"][0]["_id"]
+
+
+def test_resolution_must_match_the_dispute_key(fixture):
+    fx = fixture("resolved-fork")
+    moved = copy.deepcopy(fx["resolutions"])
+    moved[0]["dispute_key"] = "JKT-RAIN-M-BLU#001|root"
+    state = state_of(fx, resolutions=moved)
+    assert state.forks[0].resolved_by is None
+    assert state.units["JKT-RAIN-M-BLU#001"].state == "disputed"
+
+
+def test_fork_inside_a_set_aside_branch_is_not_reported(fixture):
+    fx = fixture("fork-inside-set-aside-branch")
+    state = state_of(fx)
+    (fork,) = state.forks  # only the resolved fork at the pack
+    assert fork.prev_txn == PACK_1 and fork.resolved_by == fx["resolutions"][0]["_id"]
+    unit = state.units["JKT-RAIN-M-BLU#001"]
+    assert (unit.holder, unit.state, unit.last_txn) == ("tablet-a", "held", TAKE_A)
+    assert exceptions_for(state, "tablet-a", fx["trip"], fx["box"]) == []
+    # Without the resolution both forks are reported and the unit is disputed.
+    open_state = state_of(fx, resolutions=[])
+    assert [f.prev_txn for f in open_state.forks] == [PACK_1, "txn::1792330400000-0000-tablet-b"]
+
+
+def test_the_latest_resolution_settles_a_fork(fixture):
+    fx = fixture("two-resolutions-one-fork")
+    hq_copy, tablet_copy = fx["resolutions"]
+    for order in ([hq_copy, tablet_copy], [tablet_copy, hq_copy]):
+        state = state_of(fx, resolutions=order)
+        assert state.forks[0].resolved_by == tablet_copy["_id"]  # 13:35 beats 13:30 although its _id sorts later
+        assert state.units["JKT-RAIN-M-BLU#001"].holder == "tablet-b"
+    # Equal resolution.at: the greatest _id decides.
+    tie = copy.deepcopy([hq_copy, tablet_copy])
+    tie[1]["resolution"]["at"] = tie[0]["resolution"]["at"]
+    tie[0]["resolution"]["chosen_txn"], tie[1]["resolution"]["chosen_txn"] = TAKE_B, TAKE_A
+    state = state_of(fx, resolutions=tie)
+    assert state.forks[0].resolved_by == tablet_copy["_id"]
+    assert state.units["JKT-RAIN-M-BLU#001"].holder == "tablet-a"
+
+
+def test_resolution_naming_no_branch_settles_nothing(fixture):
+    fx = fixture("resolution-without-choice")
+    state = state_of(fx)
+    assert state.forks[0].resolved_by is None
+    assert state.units["JKT-RAIN-M-BLU#001"].state == "disputed"
+    assert exceptions_for(state, "tablet-a", fx["trip"], fx["box"]) == []
+    elsewhere = copy.deepcopy(fx["resolutions"])
+    elsewhere[0]["resolution"]["chosen_txn"] = PACK_1  # a transaction, but not a branch
+    assert state_of(fx, resolutions=elsewhere).units["JKT-RAIN-M-BLU#001"].state == "disputed"
+
+
+def test_two_blind_takes_with_no_pack_fixture(fixture):
+    state = state_of(fixture("null-root-double-take-no-pack"))
+    assert state.forks == ()
+    assert state.units["JKT-RAIN-M-BLU#001"].holder == "tablet-b"

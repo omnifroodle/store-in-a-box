@@ -68,16 +68,27 @@ trip, box, *, detected_at=None)`, `siab_ledger.conservation(state, store, invent
    not in the input: a store root, a *dangling root* (`prev_txn` names a transaction this node does not have, or a
    blind movement with no predecessor; not an error), or a `check_in` with `prev_txn` null. Successor, descendant
    and leaf follow this relation, not `prev_txn` alone.
-2. **Fork.** Two or more movements with the same predecessor id, in the input or not (two dangling roots naming the
-   same missing transaction are a fork, found before it arrives and unchanged by its arrival); its `prev_txn` is that
-   id. Two or more store roots of one unit are a *root fork* (`prev_txn` null). A blind movement with no predecessor
-   is in no fork, and a `check_in` with `prev_txn` null never joins any fork.
+2. **Fork.** Two or more movements with the same predecessor id, in the input or not; its `prev_txn` is that id. Two
+   dangling roots naming the same missing transaction are a fork, found before it arrives; its arrival adds no
+   branch of its own, though a blind movement that now continues it does (rule 1). Two or more store roots of one
+   unit are a *root fork* (`prev_txn` null). A blind movement with no predecessor is in no fork (what it continues is
+   unknown until the movement into its `from_custodian` arrives), and a `check_in` with `prev_txn` null never joins
+   any fork.
 3. **Disputed; only HQ resolves.** An unresolved fork makes the unit `disputed`: `holder`, `allocation` and
    `last_txn` null, counted under `disputed` and under no custodian or allocation. A resolution counts only when its
-   `status` is `resolved` and `resolution.by` is `hq`; any other is ignored everywhere. A resolution settles the fork
-   of its `unit_id` whose branches include `resolution.chosen_txn`: that branch is canonical, the other branches and
-   their descendants are ignored for holder and counts, and the fork stays in `forks` with `resolved_by` = the
-   resolution's `_id`.
+   `status` is `resolved` and `resolution.by` is `hq`; any other is ignored everywhere.
+   - *Match.* A resolution matches the fork whose `dispute_key` (`<unit_id>|<prev_txn or "root">`) and sorted
+     branches equal its own `dispute_key` and `transactions`. A resolution binds to the branches it was written for:
+     a new branch at a settled fork makes a fork it does not match, so the fork is open again, the unit is
+     `disputed` and rule 7 writes a new document.
+   - *Latest wins.* When several counting resolutions match one fork, the one with the greatest `resolution.at`
+     decides, ties going to the greatest `_id` (HQ writes `at` in UTC with `Z` and whole seconds, so the strings
+     compare as instants).
+   - *Settle.* That resolution settles the fork when its `chosen_txn` is one of the branches: that branch is
+     canonical, and the other branches and their descendants are *set aside*, ignored for holder, counts, forks and
+     exceptions (a fork among set-aside movements is not reported). The fork stays in `forks` with `resolved_by` =
+     the resolution's `_id`. A matching resolution whose `chosen_txn` is null or names no branch settles nothing:
+     the unit stays `disputed` and `resolved_by` is null (rule 7 still writes nothing new for it).
 4. **Leaf.** Otherwise the unit's leaf is the canonical movement with no canonical successor; when several chains
    exist, the leaf with the greatest `hlc` wins. `holder` = `leaf.to_custodian`, `allocation` = `leaf.to_allocation`,
    `last_txn` = the leaf's id, `state` = `sold` when `leaf.kind` is `sale`, else `held`.
@@ -86,9 +97,10 @@ trip, box, *, detected_at=None)`, `siab_ledger.conservation(state, store, invent
 6. **Unexpected check-in.** A `check_in` whose `from_custodian` is neither its `device` nor its `box`, or whose
    `prev_txn` is null, is unexpected. The movement stands (the physical scan is the stronger evidence) and an
    `unexpected_check_in` exception attaches the check-in and, when the input has it, its `prev_txn`.
-7. **Detectors only create.** `exceptions_for` emits one document per unresolved fork and one per unexpected
-   check-in, and leaves out any whose `dispute_key` and `transactions` match a resolution that counts. A new branch at
-   the same fork gives a new document id (a different hash), never an update.
+7. **Detectors only create.** `exceptions_for` emits one document per unresolved fork in `forks` and one per
+   unexpected check-in, and leaves out any whose `dispute_key` and `transactions` match a resolution that counts
+   (rule 3), whether or not that resolution chose a branch. A new branch at the same fork gives a new document id (a
+   different hash), never an update.
 
 ## Exception documents
 
@@ -107,8 +119,10 @@ trip, box, *, detected_at=None)`, `siab_ledger.conservation(state, store, invent
 
 - `untraced`: units of the SKU whose every root is a `check_in` with `prev_txn` null (nothing says the store
   released them). `left_store`: every other unit of the SKU in the ledger (release is presumed for a store root or a
-  dangling root). `returned_to_store`: the `left_store` units held by the store. `in_custody`: held units per holder
-  other than the store, holders with at least one. `sold`, `disputed`: units in those states.
+  dangling root). `returned_to_store`: units of the SKU held by the store, untraced ones included (an untraced unit
+  brought back is on the shelf; whether the opening count already had it is what `untraced` flags).
+  `in_custody`: held units per holder other than the store, holders with at least one. `sold`, `disputed`: units in
+  those states.
 - With inventory: rows for the SKUs in the ledger or in the store's inventory; `opening_on_hand` and `received` from
   the inventory document (0 when the SKU has none), `store_on_hand = opening_on_hand + received - left_store +
   returned_to_store` (may be negative), `holds = untraced == 0 and store_on_hand >= 0`.
