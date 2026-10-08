@@ -169,7 +169,9 @@ def test_env_example_lists_exactly_the_contract_names():
     from siab_capella.config import ENV_VARS, read_dotenv
 
     example = read_dotenv(ROOT / ".env.example")
-    assert list(example) == list(ENV_VARS)
-    assert set(example.values()) == {""}  # names only, never values
+    # Other workstreams add their own names to this file (WS3's box settings), so check WS2's names only: all present,
+    # in order, and empty (names only, never values).
+    assert [n for n in example if n in ENV_VARS] == list(ENV_VARS)
+    assert {example[n] for n in ENV_VARS} == {""}
     port = (ROOT / "ports" / "capella.md").read_text()
     assert all(f"`{n}`" in port for n in ENV_VARS)
