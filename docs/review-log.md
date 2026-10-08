@@ -11,3 +11,4 @@ after five or six PRs and tighten or loosen the bar.
 | #43 WS2 Capella and sync functions | 1 | 0 | 0 | #53 (7 non-blocking items) | no |
 | #52 WS3 Edge Server box | 1 | 0 | 0 | #54 (6 non-blocking items) | no |
 | #55 contracts 0.3.1 (foreman-applied CC7) | 1 | 0 | 0 | #56 (5 non-blocking items) | no |
+| #60 WS1 custody ledger reference | 1 | 0 | 0 | #67 (4 non-blocking items); author filed #58, #59 | no |
