@@ -1,0 +1,208 @@
+{
+  "name": "oversell-hq",
+  "description": "HQ sells #001 from the store while it is at the venue, where tablet-a sells it too: a root fork between the pack and HQ's sale. The unit is disputed and one oversell exception proposes a refund.",
+  "order_independent": true,
+  "trip": "trip-2026-10-18-riverfest",
+  "box": "box-07",
+  "store": "store-richmond",
+  "inventory": [
+    {
+      "_id": "inventory::store-richmond::JKT-RAIN-M-BLU",
+      "v": 1,
+      "type": "inventory",
+      "store": "store-richmond",
+      "sku": "JKT-RAIN-M-BLU",
+      "opening_on_hand": 12,
+      "received": 0,
+      "as_of": "2026-10-17T00:00:00Z"
+    }
+  ],
+  "transactions": [
+    {
+      "_id": "txn::1792328410000-0000-tablet-a",
+      "v": 1,
+      "type": "transaction",
+      "trip": "trip-2026-10-18-riverfest",
+      "box": "box-07",
+      "kind": "check_out",
+      "unit_id": "JKT-RAIN-M-BLU#001",
+      "sku": "JKT-RAIN-M-BLU",
+      "from_custodian": "store-richmond",
+      "to_custodian": "box-07",
+      "prev_txn": null,
+      "from_allocation": null,
+      "to_allocation": "alloc::1792328400000-0000-tablet-a",
+      "device": "tablet-a",
+      "hlc": "1792328410000-0000-tablet-a",
+      "device_clock": "2026-10-18T13:00:10Z",
+      "box_clock": null,
+      "basket": null,
+      "price": null,
+      "tender": null
+    },
+    {
+      "_id": "txn::1792329000000-0000-tablet-a",
+      "v": 1,
+      "type": "transaction",
+      "trip": "trip-2026-10-18-riverfest",
+      "box": "box-07",
+      "kind": "sale",
+      "unit_id": "JKT-RAIN-M-BLU#001",
+      "sku": "JKT-RAIN-M-BLU",
+      "from_custodian": "box-07",
+      "to_custodian": "customer",
+      "prev_txn": "txn::1792328410000-0000-tablet-a",
+      "from_allocation": "alloc::1792328400000-0000-tablet-a",
+      "to_allocation": null,
+      "device": "tablet-a",
+      "hlc": "1792329000000-0000-tablet-a",
+      "device_clock": "2026-10-18T13:10:00Z",
+      "box_clock": null,
+      "basket": "00000000-0000-4000-8000-000000000003",
+      "price": {
+        "cents": 12900,
+        "currency": "USD"
+      },
+      "tender": {
+        "kind": "cash",
+        "amount": {
+          "cents": 12900,
+          "currency": "USD"
+        }
+      }
+    },
+    {
+      "_id": "txn::1792329100000-0000-hq",
+      "v": 1,
+      "type": "transaction",
+      "trip": "trip-2026-10-18-riverfest",
+      "box": null,
+      "kind": "sale",
+      "unit_id": "JKT-RAIN-M-BLU#001",
+      "sku": "JKT-RAIN-M-BLU",
+      "from_custodian": "store-richmond",
+      "to_custodian": "customer",
+      "prev_txn": null,
+      "from_allocation": null,
+      "to_allocation": null,
+      "device": "hq",
+      "hlc": "1792329100000-0000-hq",
+      "device_clock": "2026-10-18T13:11:40Z",
+      "box_clock": null,
+      "basket": "00000000-0000-4000-8000-000000000004",
+      "price": {
+        "cents": 12900,
+        "currency": "USD"
+      },
+      "tender": {
+        "kind": "card_simulated",
+        "amount": {
+          "cents": 12900,
+          "currency": "USD"
+        }
+      }
+    }
+  ],
+  "resolutions": [],
+  "expected": {
+    "units": {
+      "JKT-RAIN-M-BLU#001": {
+        "sku": "JKT-RAIN-M-BLU",
+        "holder": null,
+        "allocation": null,
+        "state": "disputed",
+        "last_txn": null
+      }
+    },
+    "counts": [],
+    "allocation_counts": {
+      "alloc::1792328400000-0000-tablet-a": 0
+    },
+    "forks": [
+      {
+        "unit_id": "JKT-RAIN-M-BLU#001",
+        "sku": "JKT-RAIN-M-BLU",
+        "prev_txn": null,
+        "branches": [
+          "txn::1792328410000-0000-tablet-a",
+          "txn::1792329100000-0000-hq"
+        ],
+        "resolved_by": null
+      }
+    ],
+    "exceptions": {
+      "detector": "tablet-a",
+      "docs": [
+        {
+          "_id": "exc::tablet-a::JKT-RAIN-M-BLU#001::57cf515b",
+          "v": 1,
+          "type": "exception",
+          "trip": "trip-2026-10-18-riverfest",
+          "box": "box-07",
+          "kind": "oversell",
+          "unit_id": "JKT-RAIN-M-BLU#001",
+          "sku": "JKT-RAIN-M-BLU",
+          "dispute_key": "JKT-RAIN-M-BLU#001|root",
+          "fork_txn": null,
+          "transactions": [
+            "txn::1792328410000-0000-tablet-a",
+            "txn::1792329100000-0000-hq"
+          ],
+          "branches": [
+            {
+              "txn": "txn::1792328410000-0000-tablet-a",
+              "device": "tablet-a",
+              "kind": "check_out",
+              "to_custodian": "box-07",
+              "hlc": "1792328410000-0000-tablet-a"
+            },
+            {
+              "txn": "txn::1792329100000-0000-hq",
+              "device": "hq",
+              "kind": "sale",
+              "to_custodian": "customer",
+              "hlc": "1792329100000-0000-hq"
+            }
+          ],
+          "proposed_resolution": {
+            "action": "refund",
+            "note": "Sold twice. Refund one sale, then choose the branch that stands."
+          },
+          "status": "open",
+          "resolution": null,
+          "detected_by": "tablet-a"
+        }
+      ]
+    },
+    "conservation": {
+      "with_inventory": [
+        {
+          "sku": "JKT-RAIN-M-BLU",
+          "opening_on_hand": 12,
+          "received": 0,
+          "left_store": 1,
+          "returned_to_store": 0,
+          "store_on_hand": 11,
+          "in_custody": {},
+          "sold": 0,
+          "disputed": 1,
+          "holds": true
+        }
+      ],
+      "venue_only": [
+        {
+          "sku": "JKT-RAIN-M-BLU",
+          "opening_on_hand": null,
+          "received": null,
+          "left_store": 1,
+          "returned_to_store": 0,
+          "store_on_hand": null,
+          "in_custody": {},
+          "sold": 0,
+          "disputed": 1,
+          "holds": true
+        }
+      ]
+    }
+  }
+}

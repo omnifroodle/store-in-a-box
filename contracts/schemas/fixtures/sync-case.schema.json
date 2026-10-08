@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "siab://contracts/fixtures/sync-case.schema.json",
+  "title": "sync case",
+  "description": "One golden case for an App Services sync function (fixtures/sync/*.json): the function for collection runs as user on (doc, oldDoc) and must accept with exactly these channels, or reject with an error containing the substring. A delete is doc {\"_id\": ..., \"_deleted\": true}. invalid_doc marks a case whose doc deliberately fails its schema (the validator checks that it does).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "collection", "user", "doc", "oldDoc", "expect"],
+  "properties": {
+    "name": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "description": { "type": "string" },
+    "collection": { "enum": ["product", "trip", "allocation", "transaction", "exception"] },
+    "user": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "channels"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "channels": { "type": "array", "uniqueItems": true, "items": { "type": "string" } }
+      }
+    },
+    "doc": { "type": "object", "required": ["_id"] },
+    "oldDoc": { "anyOf": [{ "type": "object", "required": ["_id"] }, { "type": "null" }] },
+    "invalid_doc": { "type": "string", "minLength": 1 },
+    "expect": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ok", "channels"],
+          "properties": {
+            "ok": { "const": true },
+            "channels": { "type": "array", "uniqueItems": true, "items": { "type": "string" } }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ok", "error"],
+          "properties": {
+            "ok": { "const": false },
+            "error": {
+              "enum": ["type mismatch", "trip is required", "box is required", "writer must be hq",
+                       "a box writes only its own documents", "immutable", "only status and closed_at may change",
+                       "only hq may resolve", "only status and resolution may change", "deletes are hq only", "access"]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "_id": "inventory::store-richmond::SOC-WOOL-M",
+  "v": 1,
+  "type": "inventory",
+  "store": "store-richmond",
+  "sku": "SOC-WOOL-M",
+  "opening_on_hand": -1,
+  "received": 0,
+  "as_of": "2026-10-17T00:00:00Z",
+  "_why": "opening_on_hand cannot be negative"
+}

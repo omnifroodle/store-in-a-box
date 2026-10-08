@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "siab://contracts/fixtures/custodians.schema.json",
+  "title": "custodians",
+  "description": "The registry of custodians and devices (fixtures/seed/custodians.json): the single place device and user names live. No passwords, ever. The pseudo-custodians customer and unknown appear in documents but not here.",
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["id", "kind"],
+    "properties": {
+      "id": { "$ref": "../common.schema.json#/$defs/custodian_id" },
+      "kind": { "enum": ["store", "box", "device", "hq"] },
+      "box": { "$ref": "../common.schema.json#/$defs/custodian_id" },
+      "app_services_user": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+      "edge_user": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+      "channels": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": { "type": "string", "pattern": "^(\\*|(trip|catalog|box):[a-z0-9-]+)$" }
+      }
+    },
+    "allOf": [
+      {
+        "if": { "properties": { "kind": { "const": "device" } }, "required": ["kind"] },
+        "then": { "required": ["box", "edge_user"] }
+      },
+      {
+        "if": { "properties": { "kind": { "enum": ["box", "hq"] } }, "required": ["kind"] },
+        "then": { "required": ["app_services_user", "channels"] }
+      }
+    ]
+  }
+}

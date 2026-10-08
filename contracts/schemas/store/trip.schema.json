@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "siab://contracts/store/trip.schema.json",
+  "title": "trip",
+  "description": "store.trip, id trip::<trip_id>. Written by hq only; routed to trip:<trip_id> and box:<box>.",
+  "x-id-template": "trip::{trip_id}",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["v", "type", "trip_id", "store", "box", "region", "venue", "starts", "ends", "status", "devices"],
+  "properties": {
+    "v": { "const": 1 },
+    "type": { "const": "trip" },
+    "trip_id": { "$ref": "../common.schema.json#/$defs/trip_id" },
+    "store": { "$ref": "../common.schema.json#/$defs/custodian_id" },
+    "box": { "$ref": "../common.schema.json#/$defs/custodian_id" },
+    "region": { "$ref": "../common.schema.json#/$defs/region" },
+    "venue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "city", "state"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "city": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "state": { "type": "string", "pattern": "^[A-Z]{2}$" }
+      }
+    },
+    "starts": { "type": "string", "format": "date" },
+    "ends": { "type": "string", "format": "date" },
+    "status": { "enum": ["planned", "packing", "selling", "returned", "closed"] },
+    "devices": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "../common.schema.json#/$defs/custodian_id" }
+    }
+  }
+}

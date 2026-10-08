@@ -1,0 +1,32 @@
+{
+  "name": "allocation-no-trip-channel",
+  "description": "A box without the trip's channel cannot write to the trip.",
+  "collection": "allocation",
+  "user": {
+    "name": "box-07",
+    "channels": [
+      "catalog:va-central",
+      "box:box-07"
+    ]
+  },
+  "doc": {
+    "_id": "alloc::1792328400000-0000-tablet-a",
+    "v": 1,
+    "type": "allocation",
+    "trip": "trip-2026-10-18-riverfest",
+    "box": "box-07",
+    "sku": "JKT-RAIN-M-BLU",
+    "custodian": "box-07",
+    "parent": null,
+    "from_custodian": "store-richmond",
+    "opened_by": "tablet-a",
+    "opened_at": "1792328400000-0000-tablet-a",
+    "closed_at": null,
+    "status": "active"
+  },
+  "oldDoc": null,
+  "expect": {
+    "ok": false,
+    "error": "access"
+  }
+}

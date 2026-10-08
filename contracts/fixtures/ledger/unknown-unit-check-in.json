@@ -1,0 +1,133 @@
+{
+  "name": "unknown-unit-check-in",
+  "description": "tablet-b checks in a sun hat it has no record of; the pack of that hat (earlier hlc) arrives later. A null-prev check-in never joins a root fork: the later leaf wins and one unexpected_check_in attaches only the check-in.",
+  "order_independent": true,
+  "trip": "trip-2026-10-18-riverfest",
+  "box": "box-07",
+  "store": "store-richmond",
+  "inventory": null,
+  "transactions": [
+    {
+      "_id": "txn::1792328900000-0000-tablet-b",
+      "v": 1,
+      "type": "transaction",
+      "trip": "trip-2026-10-18-riverfest",
+      "box": "box-07",
+      "kind": "check_in",
+      "unit_id": "HAT-BRIM-OS#004",
+      "sku": "HAT-BRIM-OS",
+      "from_custodian": "unknown",
+      "to_custodian": "box-07",
+      "prev_txn": null,
+      "from_allocation": null,
+      "to_allocation": null,
+      "device": "tablet-b",
+      "hlc": "1792328900000-0000-tablet-b",
+      "device_clock": "2026-10-18T13:08:20Z",
+      "box_clock": null,
+      "basket": null,
+      "price": null,
+      "tender": null
+    },
+    {
+      "_id": "txn::1792328410000-0000-tablet-a",
+      "v": 1,
+      "type": "transaction",
+      "trip": "trip-2026-10-18-riverfest",
+      "box": "box-07",
+      "kind": "check_out",
+      "unit_id": "HAT-BRIM-OS#004",
+      "sku": "HAT-BRIM-OS",
+      "from_custodian": "store-richmond",
+      "to_custodian": "box-07",
+      "prev_txn": null,
+      "from_allocation": null,
+      "to_allocation": "alloc::1792328400000-0000-tablet-a",
+      "device": "tablet-a",
+      "hlc": "1792328410000-0000-tablet-a",
+      "device_clock": "2026-10-18T13:00:10Z",
+      "box_clock": null,
+      "basket": null,
+      "price": null,
+      "tender": null
+    }
+  ],
+  "resolutions": [],
+  "expected": {
+    "units": {
+      "HAT-BRIM-OS#004": {
+        "sku": "HAT-BRIM-OS",
+        "holder": "box-07",
+        "allocation": null,
+        "state": "held",
+        "last_txn": "txn::1792328900000-0000-tablet-b"
+      }
+    },
+    "counts": [
+      {
+        "custodian": "box-07",
+        "sku": "HAT-BRIM-OS",
+        "qty": 1
+      }
+    ],
+    "allocation_counts": {
+      "alloc::1792328400000-0000-tablet-a": 0
+    },
+    "forks": [],
+    "exceptions": {
+      "detector": "tablet-a",
+      "docs": [
+        {
+          "_id": "exc::tablet-a::HAT-BRIM-OS#004::6ca91da0",
+          "v": 1,
+          "type": "exception",
+          "trip": "trip-2026-10-18-riverfest",
+          "box": "box-07",
+          "kind": "unexpected_check_in",
+          "unit_id": "HAT-BRIM-OS#004",
+          "sku": "HAT-BRIM-OS",
+          "dispute_key": "HAT-BRIM-OS#004|txn::1792328900000-0000-tablet-b",
+          "fork_txn": null,
+          "transactions": [
+            "txn::1792328900000-0000-tablet-b"
+          ],
+          "branches": [
+            {
+              "txn": "txn::1792328900000-0000-tablet-b",
+              "device": "tablet-b",
+              "kind": "check_in",
+              "to_custodian": "box-07",
+              "hlc": "1792328900000-0000-tablet-b"
+            }
+          ],
+          "proposed_resolution": {
+            "action": "review",
+            "note": "Checked in by a device that did not hold it. Confirm where the unit is."
+          },
+          "status": "open",
+          "resolution": null,
+          "detected_by": "tablet-a"
+        }
+      ]
+    },
+    "conservation": {
+      "with_inventory": null,
+      "venue_only": [
+        {
+          "sku": "HAT-BRIM-OS",
+          "opening_on_hand": null,
+          "received": null,
+          "left_store": 1,
+          "returned_to_store": 0,
+          "store_on_hand": null,
+          "in_custody": {
+            "box-07": 1
+          },
+          "sold": 0,
+          "disputed": 0,
+          "holds": true
+        }
+      ]
+    }
+  }
+}

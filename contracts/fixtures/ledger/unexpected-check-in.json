@@ -1,0 +1,164 @@
+{
+  "name": "unexpected-check-in",
+  "description": "tablet-a takes #001; tablet-b, which has seen that, checks it back in to the box. No fork: the check-in stands and the box holds the unit, with one unexpected_check_in exception.",
+  "order_independent": true,
+  "trip": "trip-2026-10-18-riverfest",
+  "box": "box-07",
+  "store": "store-richmond",
+  "inventory": null,
+  "transactions": [
+    {
+      "_id": "txn::1792328410000-0000-tablet-a",
+      "v": 1,
+      "type": "transaction",
+      "trip": "trip-2026-10-18-riverfest",
+      "box": "box-07",
+      "kind": "check_out",
+      "unit_id": "JKT-RAIN-M-BLU#001",
+      "sku": "JKT-RAIN-M-BLU",
+      "from_custodian": "store-richmond",
+      "to_custodian": "box-07",
+      "prev_txn": null,
+      "from_allocation": null,
+      "to_allocation": "alloc::1792328400000-0000-tablet-a",
+      "device": "tablet-a",
+      "hlc": "1792328410000-0000-tablet-a",
+      "device_clock": "2026-10-18T13:00:10Z",
+      "box_clock": null,
+      "basket": null,
+      "price": null,
+      "tender": null
+    },
+    {
+      "_id": "txn::1792328510000-0000-tablet-a",
+      "v": 1,
+      "type": "transaction",
+      "trip": "trip-2026-10-18-riverfest",
+      "box": "box-07",
+      "kind": "check_out",
+      "unit_id": "JKT-RAIN-M-BLU#001",
+      "sku": "JKT-RAIN-M-BLU",
+      "from_custodian": "box-07",
+      "to_custodian": "tablet-a",
+      "prev_txn": "txn::1792328410000-0000-tablet-a",
+      "from_allocation": "alloc::1792328400000-0000-tablet-a",
+      "to_allocation": "alloc::1792328500000-0000-tablet-a",
+      "device": "tablet-a",
+      "hlc": "1792328510000-0000-tablet-a",
+      "device_clock": "2026-10-18T13:01:50Z",
+      "box_clock": null,
+      "basket": null,
+      "price": null,
+      "tender": null
+    },
+    {
+      "_id": "txn::1792328900000-0000-tablet-b",
+      "v": 1,
+      "type": "transaction",
+      "trip": "trip-2026-10-18-riverfest",
+      "box": "box-07",
+      "kind": "check_in",
+      "unit_id": "JKT-RAIN-M-BLU#001",
+      "sku": "JKT-RAIN-M-BLU",
+      "from_custodian": "tablet-a",
+      "to_custodian": "box-07",
+      "prev_txn": "txn::1792328510000-0000-tablet-a",
+      "from_allocation": "alloc::1792328500000-0000-tablet-a",
+      "to_allocation": "alloc::1792328400000-0000-tablet-a",
+      "device": "tablet-b",
+      "hlc": "1792328900000-0000-tablet-b",
+      "device_clock": "2026-10-18T13:08:20Z",
+      "box_clock": null,
+      "basket": null,
+      "price": null,
+      "tender": null
+    }
+  ],
+  "resolutions": [],
+  "expected": {
+    "units": {
+      "JKT-RAIN-M-BLU#001": {
+        "sku": "JKT-RAIN-M-BLU",
+        "holder": "box-07",
+        "allocation": "alloc::1792328400000-0000-tablet-a",
+        "state": "held",
+        "last_txn": "txn::1792328900000-0000-tablet-b"
+      }
+    },
+    "counts": [
+      {
+        "custodian": "box-07",
+        "sku": "JKT-RAIN-M-BLU",
+        "qty": 1
+      }
+    ],
+    "allocation_counts": {
+      "alloc::1792328400000-0000-tablet-a": 1,
+      "alloc::1792328500000-0000-tablet-a": 0
+    },
+    "forks": [],
+    "exceptions": {
+      "detector": "tablet-a",
+      "docs": [
+        {
+          "_id": "exc::tablet-a::JKT-RAIN-M-BLU#001::091fc3c3",
+          "v": 1,
+          "type": "exception",
+          "trip": "trip-2026-10-18-riverfest",
+          "box": "box-07",
+          "kind": "unexpected_check_in",
+          "unit_id": "JKT-RAIN-M-BLU#001",
+          "sku": "JKT-RAIN-M-BLU",
+          "dispute_key": "JKT-RAIN-M-BLU#001|txn::1792328900000-0000-tablet-b",
+          "fork_txn": null,
+          "transactions": [
+            "txn::1792328510000-0000-tablet-a",
+            "txn::1792328900000-0000-tablet-b"
+          ],
+          "branches": [
+            {
+              "txn": "txn::1792328510000-0000-tablet-a",
+              "device": "tablet-a",
+              "kind": "check_out",
+              "to_custodian": "tablet-a",
+              "hlc": "1792328510000-0000-tablet-a"
+            },
+            {
+              "txn": "txn::1792328900000-0000-tablet-b",
+              "device": "tablet-b",
+              "kind": "check_in",
+              "to_custodian": "box-07",
+              "hlc": "1792328900000-0000-tablet-b"
+            }
+          ],
+          "proposed_resolution": {
+            "action": "review",
+            "note": "Checked in by a device that did not hold it. Confirm where the unit is."
+          },
+          "status": "open",
+          "resolution": null,
+          "detected_by": "tablet-a"
+        }
+      ]
+    },
+    "conservation": {
+      "with_inventory": null,
+      "venue_only": [
+        {
+          "sku": "JKT-RAIN-M-BLU",
+          "opening_on_hand": null,
+          "received": null,
+          "left_store": 1,
+          "returned_to_store": 0,
+          "store_on_hand": null,
+          "in_custody": {
+            "box-07": 1
+          },
+          "sold": 0,
+          "disputed": 0,
+          "holds": true
+        }
+      ]
+    }
+  }
+}

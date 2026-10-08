@@ -1,0 +1,20 @@
+{
+  "_id": "product::PCK-DAY-20",
+  "v": 1,
+  "type": "product",
+  "sku": "PCK-DAY-20",
+  "name": "Daypack 20 L",
+  "price": {
+    "cents": 8900,
+    "currency": "USD"
+  },
+  "category": "packs",
+  "category_family": "bags",
+  "size": "20",
+  "color": "green",
+  "tags": [],
+  "regions": [
+    "va-central",
+    "va-tidewater"
+  ]
+}

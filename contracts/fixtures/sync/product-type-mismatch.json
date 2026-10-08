@@ -1,0 +1,39 @@
+{
+  "name": "product-type-mismatch",
+  "description": "A trip document written into the product collection.",
+  "collection": "product",
+  "user": {
+    "name": "hq",
+    "channels": [
+      "*"
+    ]
+  },
+  "doc": {
+    "_id": "product::JKT-RAIN-M-BLU",
+    "v": 1,
+    "type": "trip",
+    "trip_id": "trip-2026-10-18-riverfest",
+    "store": "store-richmond",
+    "box": "box-07",
+    "region": "va-central",
+    "venue": {
+      "name": "Richmond Riverfest",
+      "city": "Richmond",
+      "state": "VA"
+    },
+    "starts": "2026-10-18",
+    "ends": "2026-10-19",
+    "status": "planned",
+    "devices": [
+      "tablet-a",
+      "tablet-b",
+      "phone-1"
+    ]
+  },
+  "oldDoc": null,
+  "invalid_doc": "type is trip in the product collection",
+  "expect": {
+    "ok": false,
+    "error": "type mismatch"
+  }
+}

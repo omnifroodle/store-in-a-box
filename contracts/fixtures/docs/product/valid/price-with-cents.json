@@ -1,0 +1,19 @@
+{
+  "_id": "product::SOC-LINER-M",
+  "v": 1,
+  "type": "product",
+  "sku": "SOC-LINER-M",
+  "name": "Liner socks",
+  "price": {
+    "cents": 1999,
+    "currency": "USD"
+  },
+  "category": "socks",
+  "category_family": "accessories",
+  "size": "M",
+  "color": null,
+  "tags": [],
+  "regions": [
+    "va-central"
+  ]
+}

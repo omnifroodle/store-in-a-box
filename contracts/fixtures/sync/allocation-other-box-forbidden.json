@@ -1,0 +1,33 @@
+{
+  "name": "allocation-other-box-forbidden",
+  "description": "box-07 cannot write box-08's documents.",
+  "collection": "allocation",
+  "user": {
+    "name": "box-07",
+    "channels": [
+      "trip:trip-2026-10-18-riverfest",
+      "catalog:va-central",
+      "box:box-07"
+    ]
+  },
+  "doc": {
+    "_id": "alloc::1792328400000-0000-tablet-a",
+    "v": 1,
+    "type": "allocation",
+    "trip": "trip-2026-10-18-riverfest",
+    "box": "box-08",
+    "sku": "JKT-RAIN-M-BLU",
+    "custodian": "box-07",
+    "parent": null,
+    "from_custodian": "store-richmond",
+    "opened_by": "tablet-a",
+    "opened_at": "1792328400000-0000-tablet-a",
+    "closed_at": null,
+    "status": "active"
+  },
+  "oldDoc": null,
+  "expect": {
+    "ok": false,
+    "error": "a box writes only its own documents"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "_id": "inventory::store-richmond::JKT-RAIN-M-BLU",
+  "v": 1,
+  "type": "inventory",
+  "store": "store-richmond",
+  "sku": "JKT-RAIN-M-BLU",
+  "opening_on_hand": 12,
+  "received": 0,
+  "as_of": "2026-10-17T00:00:00Z"
+}
