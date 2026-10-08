@@ -38,11 +38,20 @@ expected exceptions because it is the detector's clock.
 
 The rules (decision 001; `ports/ledger.md` restates them as an interface):
 
-1. A unit's movements form a forest by `prev_txn`. A root is a movement whose `prev_txn` is null or names a
-   transaction this node does not have (a dangling root, not an error: the predecessor may not have arrived).
-2. A fork is two or more movements with the same `(unit_id, prev_txn)`, including `prev_txn: null` (a root fork),
-   except that a `check_in` with `prev_txn: null` never joins a root fork (rule 6 covers it). Two dangling roots with
-   different missing predecessors are not a fork.
+1. A unit's movements form a forest by predecessor. A movement's predecessor is the transaction its `prev_txn`
+   names, except for a *blind* movement: a `check_out` or `sale` with `prev_txn` null whose `from_custodian` is
+   not the store (its writer had no record of the unit, for example a tablet taking a unit off the box before the
+   pack replicated). A blind movement's predecessor is the movement of the same unit with `to_custodian` equal to
+   the blind movement's `from_custodian` and the greatest `hlc` below the blind movement's own, among every
+   movement of the unit in the input (branches a resolution set aside included); when there is none, it has no
+   predecessor. A root is a movement with no predecessor: a *store root* (`prev_txn` null and `from_custodian` the
+   store), a *dangling root* (`prev_txn` names a transaction this node does not have, or a blind movement whose
+   implied predecessor has not arrived; not an error, the predecessor may not have arrived), or a `check_in` with
+   `prev_txn` null (rule 6). Successor, descendant and leaf follow this predecessor relation, not `prev_txn` alone.
+2. A fork is two or more movements with the same `(unit_id, predecessor)`. A root fork is two or more store roots
+   of one unit (two packs, or a pack and an HQ sale). Dangling roots are never a fork, whether their missing
+   predecessors are named or implied, and a `check_in` with `prev_txn` null never joins any fork (rule 6 covers
+   it).
 3. An unresolved fork makes the unit `disputed`: `holder`, `allocation` and `last_txn` are null and it is counted
    under `disputed`, not under any custodian or allocation. Only HQ resolves: a resolution counts only when
    `resolution.by` is `hq`, and any other is ignored everywhere (tablet-to-tablet sync never runs the App Services
@@ -71,10 +80,11 @@ What `expected` holds, and in what order (so two implementations produce identic
   disputed units are not counted.
 - `allocation_counts`: held units per allocation, for every allocation id named in any transaction's
   `from_allocation` or `to_allocation`, zeros included.
-- `forks`: sorted by `unit_id`, then `prev_txn` (null first); `branches` sorted.
+- `forks`: sorted by `unit_id`, then `prev_txn` (null first); `branches` sorted. A fork's `prev_txn` is the
+  branches' shared predecessor (rule 1: the implied one for a blind branch), null for a root fork.
 - `exceptions.docs`: the documents `exceptions_for` must write, sorted by `_id`:
   - fork: `kind` is `oversell` when the branch with the greatest `hlc` is a sale, else `double_scan`; `fork_txn` is
-    the shared `prev_txn` (null for a root fork); `dispute_key` is `<unit_id>|<prev_txn or "root">`; `transactions`
+    the shared predecessor (rule 1; null for a root fork); `dispute_key` is `<unit_id>|<predecessor or "root">`; `transactions`
     are the branches.
   - unexpected check-in: `kind` `unexpected_check_in`, `fork_txn` null, `dispute_key` `<unit_id>|<check-in id>`,
     `transactions` the check-in and its predecessor when present.
@@ -96,9 +106,8 @@ What `expected` holds, and in what order (so two implementations produce identic
   - `untraced`: units of the SKU in the ledger whose every root (rule 1) is a `check_in` with `prev_txn` null: the
     unit entered only by an unexpected check-in (rule 6), and nothing says it left the store.
   - `left_store`: every other unit of the SKU in the ledger. The store's release is presumed for any unit with
-    another kind of root: a movement from the store, a dangling root (the predecessor has not arrived), or a
-    movement with `prev_txn` null from another custodian (its writer had no record yet, for example a tablet taking
-    a unit off the box before the pack replicated). So a unit mid-replication never turns a row false.
+    another kind of root: a store root, or a dangling root (the predecessor has not arrived, whether `prev_txn`
+    names it or a blind movement implies it, rule 1). So a unit mid-replication never turns a row false.
     `left_store + untraced` is the number of distinct units of the SKU in the ledger.
   - `returned_to_store`: of the `left_store` units, those held by the store.
   - `in_custody`: held units per holder other than the store, only holders with at least one.
