@@ -1,0 +1,80 @@
+{
+  "name": "null-root-take",
+  "description": "tablet-b takes #005 off the box's table before the pack of it has replicated, so it writes the take with no predecessor. Release by the store is presumed for any root other than an unknown check-in: the row holds and nothing turns red on stage while the pack is in flight.",
+  "order_independent": true,
+  "trip": "trip-2026-10-18-riverfest",
+  "box": "box-07",
+  "store": "store-richmond",
+  "inventory": null,
+  "transactions": [
+    {
+      "_id": "txn::1792329400000-0000-tablet-b",
+      "v": 1,
+      "type": "transaction",
+      "trip": "trip-2026-10-18-riverfest",
+      "box": "box-07",
+      "kind": "check_out",
+      "unit_id": "JKT-RAIN-M-BLU#005",
+      "sku": "JKT-RAIN-M-BLU",
+      "from_custodian": "box-07",
+      "to_custodian": "tablet-b",
+      "prev_txn": null,
+      "from_allocation": null,
+      "to_allocation": "alloc::1792329300000-0000-tablet-b",
+      "device": "tablet-b",
+      "hlc": "1792329400000-0000-tablet-b",
+      "device_clock": "2026-10-18T13:16:40Z",
+      "box_clock": null,
+      "basket": null,
+      "price": null,
+      "tender": null
+    }
+  ],
+  "resolutions": [],
+  "expected": {
+    "units": {
+      "JKT-RAIN-M-BLU#005": {
+        "sku": "JKT-RAIN-M-BLU",
+        "holder": "tablet-b",
+        "allocation": "alloc::1792329300000-0000-tablet-b",
+        "state": "held",
+        "last_txn": "txn::1792329400000-0000-tablet-b"
+      }
+    },
+    "counts": [
+      {
+        "custodian": "tablet-b",
+        "sku": "JKT-RAIN-M-BLU",
+        "qty": 1
+      }
+    ],
+    "allocation_counts": {
+      "alloc::1792329300000-0000-tablet-b": 1
+    },
+    "forks": [],
+    "exceptions": {
+      "detector": "tablet-a",
+      "docs": []
+    },
+    "conservation": {
+      "with_inventory": null,
+      "venue_only": [
+        {
+          "sku": "JKT-RAIN-M-BLU",
+          "opening_on_hand": null,
+          "received": null,
+          "left_store": 1,
+          "untraced": 0,
+          "returned_to_store": 0,
+          "store_on_hand": null,
+          "in_custody": {
+            "tablet-b": 1
+          },
+          "sold": 0,
+          "disputed": 0,
+          "holds": true
+        }
+      ]
+    }
+  }
+}

@@ -93,12 +93,13 @@ What `expected` holds, and in what order (so two implementations produce identic
   of four states (held by the store, held by another custodian, sold, disputed), so a sum over those states is an
   identity, not a check. What `holds` checks is that the ledger agrees with what the store released: no unit the
   store never let go of (both modes), and no more units than the store had (with inventory).
-  - `left_store`: units of the SKU in the ledger that the store released: some movement of the unit, including a
-    branch a resolution set aside, has `from_custodian` equal to the store, or the unit has a dangling root
-    (rule 1: the store's record has not arrived and its release is presumed).
-  - `untraced`: the other units of the SKU in the ledger: every root is a `check_in` with `prev_txn` null (the
-    unit entered by an unexpected check-in, rule 6, and nothing says it left the store). `left_store + untraced`
-    is the number of distinct units of the SKU in the ledger.
+  - `untraced`: units of the SKU in the ledger whose every root (rule 1) is a `check_in` with `prev_txn` null: the
+    unit entered only by an unexpected check-in (rule 6), and nothing says it left the store.
+  - `left_store`: every other unit of the SKU in the ledger. The store's release is presumed for any unit with
+    another kind of root: a movement from the store, a dangling root (the predecessor has not arrived), or a
+    movement with `prev_txn` null from another custodian (its writer had no record yet, for example a tablet taking
+    a unit off the box before the pack replicated). So a unit mid-replication never turns a row false.
+    `left_store + untraced` is the number of distinct units of the SKU in the ledger.
   - `returned_to_store`: of the `left_store` units, those held by the store.
   - `in_custody`: held units per holder other than the store, only holders with at least one.
   - `sold`, `disputed`: units in those states.

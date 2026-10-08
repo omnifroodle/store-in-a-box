@@ -81,10 +81,10 @@ exceptions_for(state, detector, trip, box) -> [ exception documents ]
 conservation(state, store, inventory) -> [ Row{ sku, opening_on_hand, received, left_store, untraced,
                                                  returned_to_store, store_on_hand, in_custody: {custodian: int},
                                                  sold, disputed, holds } ]
-  left_store = units of the SKU the store released: some movement of the unit (any branch) has
-               from_custodian == store, or the unit has a dangling root (rule 1: the release is presumed)
-  untraced   = the other units of the SKU in the ledger: every root is a check_in with prev_txn null
-               (entered by an unexpected check-in, rule 6; nothing says the store released it)
+  untraced   = units of the SKU in the ledger whose every root is a check_in with prev_txn null
+               (entered only by an unexpected check-in, rule 6; nothing says the store released it)
+  left_store = every other unit of the SKU in the ledger (the release is presumed for any other root: a
+               movement from the store, a dangling root, or a null-prev movement from another custodian)
   returned_to_store = of the left_store units, those held by the store
   Identity, true by construction and NOT the check:
     left_store + untraced == returned_to_store + sum(in_custody) + sold + disputed
