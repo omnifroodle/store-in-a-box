@@ -1,6 +1,6 @@
 # WS4: Tablet data layer: Couchbase Lite, the Swift ledger, replication to the box and device-to-device sync
 
-**Milestone:** M1  **Depends on:** WS1 (reducer rules and fixtures), contracts v0.3.0 (CC3, CC4, CC5, CC6); WS3 for the live tasks  **Label:** `ws:4-tablet-data`  **Agent type:** ws-design
+**Milestone:** M1  **Depends on:** WS1 (reducer rules and fixtures), contracts v0.3.1 (CC3, CC4, CC5, CC6, CC7); WS3 for the live tasks  **Label:** `ws:4-tablet-data`  **Agent type:** ws-design
 **Issue:** #15
 
 The blueprint. The architect (`ws-architect`) writes it before any code is dispatched; the PR is judged against it.
@@ -133,9 +133,10 @@ box's pairing QR (camera; WS6 reuses the scanner view) and a "Rebuild derived st
 ## Contract changes
 
 - CC3 (#4), CC4 (#5), CC5 (#29, the conservation row), CC6 (#33, blind movements: rules 1 and 2 and three
-  fixtures, which the Swift port must pass like every other). No new change of its own. If the Swift port needs a
-  fixture the Python one did not (an edge case the port hits), file a `contract-change` for the fixture rather
-  than diverging.
+  fixtures, which the Swift port must pass like every other), CC7 (#44, contracts 0.3.1: two dangling roots naming
+  the same missing `prev_txn` are a fork, and four more blind-movement fixtures, one of them a blind `sale`, which
+  is what `sell` writes with no record). No new change of its own. If the Swift port needs a fixture the Python
+  one did not (an edge case the port hits), file a `contract-change` for the fixture rather than diverging.
 
 ## Exit criteria
 
