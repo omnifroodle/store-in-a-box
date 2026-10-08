@@ -1,0 +1,49 @@
+/* The HQ screen, the left half of the split screen on a projector: large type, high contrast, red for a failing row. */
+:root {
+  --bg: #fafaf7;
+  --fg: #1a1a1a;
+  --muted: #5c5c5c;
+  --line: #d6d6d0;
+  --ok: #17663a;
+  --fail: #b3261e;
+  --fail-bg: #fde8e6;
+  --accent: #1f4e8c;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.35 system-ui, -apple-system, sans-serif; }
+main { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px; }
+.panel { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 12px 16px; min-width: 0; }
+.wide { grid-column: 1 / -1; }
+h2 { margin: 0 0 4px; font-size: 1.3rem; }
+h3 { margin: 8px 0 4px; font-size: 1.05rem; }
+small { color: var(--muted); font-size: 0.8em; margin-left: 4px; }
+.live { margin: 0; color: var(--muted); }
+.indicator { margin: 4px 0 8px; font-size: 2.4rem; font-weight: 700; }
+.indicator.holds { color: var(--ok); }
+.indicator.fails, .fails { color: var(--fail); }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { padding: 4px 6px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+th { font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+td.n { text-align: right; }
+td.sku small { display: block; margin: 0; }
+tr.fail td { background: var(--fail-bg); }
+td.reason { color: var(--fail); font-weight: 700; }
+.as-of { color: var(--muted); font-size: 0.8rem; }
+.tree, .tree ul { list-style: none; padding-left: 18px; margin: 2px 0; }
+.tree { padding-left: 0; }
+.custodian { font-weight: 700; }
+.alloc { color: var(--muted); }
+.alloc b { color: var(--fg); }
+.dispute { border-top: 1px solid var(--line); padding: 6px 0; }
+.dispute ul { padding-left: 18px; margin: 4px 0; }
+.label { font-weight: 400; color: var(--accent); margin-left: 8px; }
+.dispute.open .label { color: var(--fail); }
+.leaf, .pred, .why, .detectors, .resolution { color: var(--muted); }
+button { font: inherit; padding: 4px 10px; border: 1px solid var(--accent); background: var(--accent); color: #fff;
+         border-radius: 4px; cursor: pointer; }
+button[disabled] { opacity: 0.4; cursor: default; }
+input, select { font: inherit; padding: 3px 6px; max-width: 100%; }
+.empty { color: var(--muted); }
+.bytes { font-size: 2rem; font-weight: 700; margin: 4px 0; font-variant-numeric: tabular-nums; }
+#error { grid-column: 1 / -1; color: var(--fail); min-height: 1em; margin: 0; }
+@media (max-width: 900px) { main { grid-template-columns: 1fr; } }

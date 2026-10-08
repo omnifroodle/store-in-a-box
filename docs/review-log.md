@@ -17,3 +17,4 @@ From 2026-10-08 to 2026-10-12 the reviewer runs on Sonnet as a trial (the owner 
 | #66 WS8 part A, the ledger story | 1 | 0 | 0 | #69 (non-blocking items) | no |
 | #71 contracts 0.4.0 (foreman-applied CC8) | 1 | 0 | 0 | #72 (4 reducer ambiguities, to the architect), #73 (stale 0.3.1 text in WS1) | no |
 | #82 contracts 0.5.0 (CC9) and WS1 update, Sonnet | 1 | 0 | 0 | #83 (rule-8 fixture gap: a non-hq writer moving stock from the store; a closed foreign movement reappears when its predecessor arrives; stale text) | no |
+| #87 contracts 0.6.0 (CC10) and WS1 update, Sonnet (an audit: merged before the gate reported) | 1 | 0 | 0 | #88 (kind-match reverse unpinned; acts_for vs "hq has no box"; stale text; no unit test for the rule 7 split) | no |
