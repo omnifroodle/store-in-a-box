@@ -1,0 +1,40 @@
+{
+  "_id": "exc::tablet-a::JKT-RAIN-M-BLU#001::111c7a4e",
+  "v": 1,
+  "type": "exception",
+  "trip": "trip-2026-10-18-riverfest",
+  "box": "box-07",
+  "kind": "double_scan",
+  "unit_id": "JKT-RAIN-M-BLU#001",
+  "sku": "JKT-RAIN-M-BLU",
+  "dispute_key": "JKT-RAIN-M-BLU#001|txn::1792328410000-0000-tablet-a",
+  "fork_txn": "txn::1792328410000-0000-tablet-a",
+  "transactions": [
+    "txn::1792328510000-0000-tablet-a",
+    "txn::1792328511000-0000-tablet-b"
+  ],
+  "branches": [
+    {
+      "txn": "txn::1792328510000-0000-tablet-a",
+      "device": "tablet-a",
+      "kind": "check_out",
+      "to_custodian": "tablet-a",
+      "hlc": "1792328510000-0000-tablet-a"
+    },
+    {
+      "txn": "txn::1792328511000-0000-tablet-b",
+      "device": "tablet-b",
+      "kind": "check_out",
+      "to_custodian": "tablet-b",
+      "hlc": "1792328511000-0000-tablet-b"
+    }
+  ],
+  "proposed_resolution": {
+    "action": "review",
+    "note": "Scanned out twice. Choose the movement that matches where the unit is."
+  },
+  "status": "open",
+  "resolution": null,
+  "detected_by": "tablet-a",
+  "detected_at": "1792328520000-0000-tablet-a"
+}

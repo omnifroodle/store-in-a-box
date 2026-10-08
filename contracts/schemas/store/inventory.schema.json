@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "siab://contracts/store/inventory.schema.json",
+  "title": "inventory",
+  "description": "store.inventory, id inventory::<store>::<sku>. Capella only, never linked to the App Endpoint. On-hand is derived by the conservation query, never stored here.",
+  "x-id-template": "inventory::{store}::{sku}",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["v", "type", "store", "sku", "opening_on_hand", "received", "as_of"],
+  "properties": {
+    "v": { "const": 1 },
+    "type": { "const": "inventory" },
+    "store": { "$ref": "../common.schema.json#/$defs/custodian_id" },
+    "sku": { "$ref": "../common.schema.json#/$defs/sku" },
+    "opening_on_hand": { "type": "integer", "minimum": 0 },
+    "received": { "type": "integer", "minimum": 0 },
+    "as_of": { "type": "string", "format": "date-time" }
+  }
+}

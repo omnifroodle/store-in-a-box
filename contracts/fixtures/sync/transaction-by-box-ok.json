@@ -1,0 +1,42 @@
+{
+  "name": "transaction-by-box-ok",
+  "description": "A pack movement replicated from the box.",
+  "collection": "transaction",
+  "user": {
+    "name": "box-07",
+    "channels": [
+      "trip:trip-2026-10-18-riverfest",
+      "catalog:va-central",
+      "box:box-07"
+    ]
+  },
+  "doc": {
+    "_id": "txn::1792328410000-0000-tablet-a",
+    "v": 1,
+    "type": "transaction",
+    "trip": "trip-2026-10-18-riverfest",
+    "box": "box-07",
+    "kind": "check_out",
+    "unit_id": "JKT-RAIN-M-BLU#001",
+    "sku": "JKT-RAIN-M-BLU",
+    "from_custodian": "store-richmond",
+    "to_custodian": "box-07",
+    "prev_txn": null,
+    "from_allocation": null,
+    "to_allocation": "alloc::1792328400000-0000-tablet-a",
+    "device": "tablet-a",
+    "hlc": "1792328410000-0000-tablet-a",
+    "device_clock": "2026-10-18T13:00:10Z",
+    "box_clock": null,
+    "basket": null,
+    "price": null,
+    "tender": null
+  },
+  "oldDoc": null,
+  "expect": {
+    "ok": true,
+    "channels": [
+      "trip:trip-2026-10-18-riverfest"
+    ]
+  }
+}

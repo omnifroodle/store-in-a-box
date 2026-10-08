@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "siab://contracts/store/allocation.schema.json",
+  "title": "allocation",
+  "description": "store.allocation, id alloc::<hlc>. A slice of one SKU held by one custodian. No qty: counts are derived by the ledger reducer (allocation_counts). Edited only by opened_by, and only in status and closed_at. Cross-field rule checked by scripts/check_contracts.py: opened_at ends with opened_by.",
+  "x-id-template": "alloc::{opened_at}",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["v", "type", "trip", "box", "sku", "custodian", "parent", "from_custodian", "opened_by", "opened_at", "closed_at", "status"],
+  "properties": {
+    "v": { "const": 1 },
+    "type": { "const": "allocation" },
+    "trip": { "$ref": "../common.schema.json#/$defs/trip_id" },
+    "box": { "$ref": "../common.schema.json#/$defs/custodian_id" },
+    "sku": { "$ref": "../common.schema.json#/$defs/sku" },
+    "custodian": { "$ref": "../common.schema.json#/$defs/custodian_id" },
+    "parent": { "anyOf": [{ "$ref": "../common.schema.json#/$defs/doc_ref_alloc" }, { "type": "null" }] },
+    "from_custodian": { "$ref": "../common.schema.json#/$defs/custodian_id" },
+    "opened_by": { "$ref": "../common.schema.json#/$defs/device_id" },
+    "opened_at": { "$ref": "../common.schema.json#/$defs/hlc" },
+    "closed_at": { "anyOf": [{ "$ref": "../common.schema.json#/$defs/hlc" }, { "type": "null" }] },
+    "status": { "enum": ["active", "closed"] }
+  },
+  "allOf": [
+    {
+      "description": "closed_at is set exactly when the allocation is closed.",
+      "if": { "properties": { "status": { "const": "closed" } }, "required": ["status"] },
+      "then": { "properties": { "closed_at": { "type": "string" } } },
+      "else": { "properties": { "closed_at": { "type": "null" } } }
+    }
+  ]
+}

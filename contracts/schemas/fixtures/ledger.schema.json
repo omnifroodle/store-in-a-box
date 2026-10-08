@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "siab://contracts/fixtures/ledger.schema.json",
+  "title": "ledger fixture",
+  "description": "One golden scenario for the custody ledger reducer (fixtures/ledger/*.json). Every implementation (Python WS1, Swift WS4) reduces transactions + resolutions and must produce expected exactly. The documents inside are validated against their collection schemas by scripts/check_contracts.py. Semantics are in fixtures/README.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "description", "order_independent", "trip", "box", "store", "inventory", "transactions", "resolutions", "expected"],
+  "properties": {
+    "name": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "description": { "type": "string", "minLength": 1 },
+    "order_independent": { "type": "boolean" },
+    "trip": { "$ref": "../common.schema.json#/$defs/trip_id" },
+    "box": { "$ref": "../common.schema.json#/$defs/custodian_id" },
+    "store": { "$ref": "../common.schema.json#/$defs/custodian_id" },
+    "inventory": { "anyOf": [{ "type": "array", "items": { "type": "object" } }, { "type": "null" }] },
+    "transactions": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["_id"] } },
+    "resolutions": { "type": "array", "items": { "type": "object", "required": ["_id"] } },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["units", "counts", "allocation_counts", "forks", "exceptions", "conservation"],
+      "properties": {
+        "units": {
+          "type": "object",
+          "propertyNames": { "$ref": "../common.schema.json#/$defs/unit_id" },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["sku", "holder", "allocation", "state", "last_txn"],
+            "properties": {
+              "sku": { "$ref": "../common.schema.json#/$defs/sku" },
+              "holder": { "anyOf": [{ "$ref": "../common.schema.json#/$defs/custodian_id" }, { "type": "null" }] },
+              "allocation": { "anyOf": [{ "$ref": "../common.schema.json#/$defs/doc_ref_alloc" }, { "type": "null" }] },
+              "state": { "enum": ["held", "sold", "disputed"] },
+              "last_txn": { "anyOf": [{ "$ref": "../common.schema.json#/$defs/doc_ref_txn" }, { "type": "null" }] }
+            }
+          }
+        },
+        "counts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["custodian", "sku", "qty"],
+            "properties": {
+              "custodian": { "$ref": "../common.schema.json#/$defs/custodian_id" },
+              "sku": { "$ref": "../common.schema.json#/$defs/sku" },
+              "qty": { "type": "integer", "minimum": 1 }
+            }
+          }
+        },
+        "allocation_counts": {
+          "type": "object",
+          "propertyNames": { "$ref": "../common.schema.json#/$defs/doc_ref_alloc" },
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "forks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["unit_id", "sku", "prev_txn", "branches", "resolved_by"],
+            "properties": {
+              "unit_id": { "$ref": "../common.schema.json#/$defs/unit_id" },
+              "sku": { "$ref": "../common.schema.json#/$defs/sku" },
+              "prev_txn": { "anyOf": [{ "$ref": "../common.schema.json#/$defs/doc_ref_txn" }, { "type": "null" }] },
+              "branches": { "type": "array", "minItems": 2, "items": { "$ref": "../common.schema.json#/$defs/doc_ref_txn" } },
+              "resolved_by": { "anyOf": [{ "$ref": "../common.schema.json#/$defs/doc_ref_exc" }, { "type": "null" }] }
+            }
+          }
+        },
+        "exceptions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["detector", "docs"],
+          "properties": {
+            "detector": { "$ref": "../common.schema.json#/$defs/device_id" },
+            "docs": { "type": "array", "items": { "type": "object", "required": ["_id"], "not": { "required": ["detected_at"] } } }
+          }
+        },
+        "conservation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["with_inventory", "venue_only"],
+          "properties": {
+            "with_inventory": { "anyOf": [{ "type": "array", "items": { "$ref": "#/$defs/row" } }, { "type": "null" }] },
+            "venue_only": { "type": "array", "items": { "$ref": "#/$defs/row" } }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sku", "opening_on_hand", "received", "left_store", "returned_to_store", "store_on_hand", "in_custody", "sold", "disputed", "holds"],
+      "properties": {
+        "sku": { "$ref": "../common.schema.json#/$defs/sku" },
+        "opening_on_hand": { "type": ["integer", "null"], "minimum": 0 },
+        "received": { "type": ["integer", "null"], "minimum": 0 },
+        "left_store": { "type": "integer", "minimum": 0 },
+        "returned_to_store": { "type": "integer", "minimum": 0 },
+        "store_on_hand": { "type": ["integer", "null"] },
+        "in_custody": {
+          "type": "object",
+          "propertyNames": { "$ref": "../common.schema.json#/$defs/custodian_id" },
+          "additionalProperties": { "type": "integer", "minimum": 1 }
+        },
+        "sold": { "type": "integer", "minimum": 0 },
+        "disputed": { "type": "integer", "minimum": 0 },
+        "holds": { "type": "boolean" }
+      }
+    }
+  }
+}

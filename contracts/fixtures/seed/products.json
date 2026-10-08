@@ -1,0 +1,337 @@
+[
+  {
+    "_id": "product::JKT-RAIN-M-BLU",
+    "v": 1,
+    "type": "product",
+    "sku": "JKT-RAIN-M-BLU",
+    "name": "Rain shell",
+    "price": {
+      "cents": 12900,
+      "currency": "USD"
+    },
+    "category": "jackets",
+    "category_family": "outerwear",
+    "size": "M",
+    "color": "blue",
+    "tags": [
+      "waterproof"
+    ],
+    "regions": [
+      "va-central"
+    ]
+  },
+  {
+    "_id": "product::JKT-RAIN-L-BLU",
+    "v": 1,
+    "type": "product",
+    "sku": "JKT-RAIN-L-BLU",
+    "name": "Rain shell",
+    "price": {
+      "cents": 12900,
+      "currency": "USD"
+    },
+    "category": "jackets",
+    "category_family": "outerwear",
+    "size": "L",
+    "color": "blue",
+    "tags": [
+      "waterproof"
+    ],
+    "regions": [
+      "va-central"
+    ]
+  },
+  {
+    "_id": "product::JKT-RAIN-M-OLV",
+    "v": 1,
+    "type": "product",
+    "sku": "JKT-RAIN-M-OLV",
+    "name": "Rain shell",
+    "price": {
+      "cents": 12900,
+      "currency": "USD"
+    },
+    "category": "jackets",
+    "category_family": "outerwear",
+    "size": "M",
+    "color": "olive",
+    "tags": [
+      "waterproof"
+    ],
+    "regions": [
+      "va-central"
+    ]
+  },
+  {
+    "_id": "product::JKT-INS-M-BLK",
+    "v": 1,
+    "type": "product",
+    "sku": "JKT-INS-M-BLK",
+    "name": "Insulated jacket",
+    "price": {
+      "cents": 18900,
+      "currency": "USD"
+    },
+    "category": "jackets",
+    "category_family": "outerwear",
+    "size": "M",
+    "color": "black",
+    "tags": [
+      "insulated"
+    ],
+    "regions": [
+      "va-central"
+    ]
+  },
+  {
+    "_id": "product::JKT-INS-L-BLK",
+    "v": 1,
+    "type": "product",
+    "sku": "JKT-INS-L-BLK",
+    "name": "Insulated jacket",
+    "price": {
+      "cents": 18900,
+      "currency": "USD"
+    },
+    "category": "jackets",
+    "category_family": "outerwear",
+    "size": "L",
+    "color": "black",
+    "tags": [
+      "insulated"
+    ],
+    "regions": [
+      "va-central"
+    ]
+  },
+  {
+    "_id": "product::FLC-ZIP-M-GRY",
+    "v": 1,
+    "type": "product",
+    "sku": "FLC-ZIP-M-GRY",
+    "name": "Fleece half-zip",
+    "price": {
+      "cents": 7900,
+      "currency": "USD"
+    },
+    "category": "fleece",
+    "category_family": "layers",
+    "size": "M",
+    "color": "grey",
+    "tags": [
+      "insulated"
+    ],
+    "regions": [
+      "va-central"
+    ]
+  },
+  {
+    "_id": "product::FLC-ZIP-L-GRY",
+    "v": 1,
+    "type": "product",
+    "sku": "FLC-ZIP-L-GRY",
+    "name": "Fleece half-zip",
+    "price": {
+      "cents": 7900,
+      "currency": "USD"
+    },
+    "category": "fleece",
+    "category_family": "layers",
+    "size": "L",
+    "color": "grey",
+    "tags": [
+      "insulated"
+    ],
+    "regions": [
+      "va-central"
+    ]
+  },
+  {
+    "_id": "product::BAS-TEE-M-BLK",
+    "v": 1,
+    "type": "product",
+    "sku": "BAS-TEE-M-BLK",
+    "name": "Merino tee",
+    "price": {
+      "cents": 5500,
+      "currency": "USD"
+    },
+    "category": "base-layers",
+    "category_family": "layers",
+    "size": "M",
+    "color": "black",
+    "tags": [
+      "merino"
+    ],
+    "regions": [
+      "va-central"
+    ]
+  },
+  {
+    "_id": "product::BAS-TEE-L-BLK",
+    "v": 1,
+    "type": "product",
+    "sku": "BAS-TEE-L-BLK",
+    "name": "Merino tee",
+    "price": {
+      "cents": 5500,
+      "currency": "USD"
+    },
+    "category": "base-layers",
+    "category_family": "layers",
+    "size": "L",
+    "color": "black",
+    "tags": [
+      "merino"
+    ],
+    "regions": [
+      "va-central"
+    ]
+  },
+  {
+    "_id": "product::SOC-WOOL-M",
+    "v": 1,
+    "type": "product",
+    "sku": "SOC-WOOL-M",
+    "name": "Wool socks",
+    "price": {
+      "cents": 2200,
+      "currency": "USD"
+    },
+    "category": "socks",
+    "category_family": "accessories",
+    "size": "M",
+    "color": "charcoal",
+    "tags": [
+      "wool"
+    ],
+    "regions": [
+      "va-central"
+    ]
+  },
+  {
+    "_id": "product::SOC-WOOL-L",
+    "v": 1,
+    "type": "product",
+    "sku": "SOC-WOOL-L",
+    "name": "Wool socks",
+    "price": {
+      "cents": 2200,
+      "currency": "USD"
+    },
+    "category": "socks",
+    "category_family": "accessories",
+    "size": "L",
+    "color": "charcoal",
+    "tags": [
+      "wool"
+    ],
+    "regions": [
+      "va-central"
+    ]
+  },
+  {
+    "_id": "product::HAT-BEANIE-OS",
+    "v": 1,
+    "type": "product",
+    "sku": "HAT-BEANIE-OS",
+    "name": "Beanie",
+    "price": {
+      "cents": 2800,
+      "currency": "USD"
+    },
+    "category": "hats",
+    "category_family": "accessories",
+    "size": "OS",
+    "color": "navy",
+    "tags": [
+      "wool",
+      "insulated"
+    ],
+    "regions": [
+      "va-central"
+    ]
+  },
+  {
+    "_id": "product::HAT-BRIM-OS",
+    "v": 1,
+    "type": "product",
+    "sku": "HAT-BRIM-OS",
+    "name": "Sun hat",
+    "price": {
+      "cents": 3400,
+      "currency": "USD"
+    },
+    "category": "hats",
+    "category_family": "accessories",
+    "size": "OS",
+    "color": "sand",
+    "tags": [
+      "sun"
+    ],
+    "regions": [
+      "va-central"
+    ]
+  },
+  {
+    "_id": "product::PCK-COVER-M",
+    "v": 1,
+    "type": "product",
+    "sku": "PCK-COVER-M",
+    "name": "Pack cover",
+    "price": {
+      "cents": 2500,
+      "currency": "USD"
+    },
+    "category": "packs",
+    "category_family": "bags",
+    "size": "M",
+    "color": "yellow",
+    "tags": [
+      "waterproof"
+    ],
+    "regions": [
+      "va-central"
+    ]
+  },
+  {
+    "_id": "product::PCK-DAY-20",
+    "v": 1,
+    "type": "product",
+    "sku": "PCK-DAY-20",
+    "name": "Daypack 20 L",
+    "price": {
+      "cents": 8900,
+      "currency": "USD"
+    },
+    "category": "packs",
+    "category_family": "bags",
+    "size": "20",
+    "color": "green",
+    "tags": [],
+    "regions": [
+      "va-central"
+    ]
+  },
+  {
+    "_id": "product::GLV-LINER-OS",
+    "v": 1,
+    "type": "product",
+    "sku": "GLV-LINER-OS",
+    "name": "Glove liners",
+    "price": {
+      "cents": 2400,
+      "currency": "USD"
+    },
+    "category": "gloves",
+    "category_family": "accessories",
+    "size": "OS",
+    "color": "black",
+    "tags": [
+      "insulated"
+    ],
+    "regions": [
+      "va-central"
+    ]
+  }
+]

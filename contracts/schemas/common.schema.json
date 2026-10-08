@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "siab://contracts/common.schema.json",
+  "title": "common",
+  "description": "Shared definitions referenced by every collection schema.",
+  "$defs": {
+    "custodian_id": {
+      "description": "A custodian: a store, a box, a device, hq, or the pseudo-custodians customer and unknown. The registry of real ids is fixtures/seed/custodians.json.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "device_id": {
+      "description": "The writer of a document. A device is a custodian in Phase 0; hq is the device for HQ-written documents.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "sku": {
+      "type": "string",
+      "pattern": "^[A-Z0-9]+(-[A-Z0-9]+)*$"
+    },
+    "unit_id": {
+      "description": "One physical unit; the QR payload <SKU>#<serial> (decision D3, #8).",
+      "type": "string",
+      "pattern": "^[A-Z0-9]+(-[A-Z0-9]+)*#[0-9]{3}$"
+    },
+    "trip_id": {
+      "type": "string",
+      "pattern": "^trip-[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9-]+$"
+    },
+    "region": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "hlc": {
+      "description": "Hybrid logical clock: <unix ms, 13 digits>-<counter, 4 hex>-<device id>. Lexicographic order is causal order.",
+      "type": "string",
+      "pattern": "^[0-9]{13}-[0-9a-f]{4}-[a-z][a-z0-9-]*$"
+    },
+    "money": {
+      "description": "Integer cents (decision 003): a $129.00 price is {\"cents\": 12900, \"currency\": \"USD\"}.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cents", "currency"],
+      "properties": {
+        "cents": { "type": "integer", "minimum": 0 },
+        "currency": { "const": "USD" }
+      }
+    },
+    "doc_ref_txn": {
+      "type": "string",
+      "pattern": "^txn::[0-9]{13}-[0-9a-f]{4}-[a-z][a-z0-9-]*$"
+    },
+    "doc_ref_alloc": {
+      "type": "string",
+      "pattern": "^alloc::[0-9]{13}-[0-9a-f]{4}-[a-z][a-z0-9-]*$"
+    },
+    "doc_ref_exc": {
+      "type": "string",
+      "pattern": "^exc::[a-z][a-z0-9-]*::[A-Z0-9]+(-[A-Z0-9]+)*#[0-9]{3}::[0-9a-f]{8}$"
+    }
+  }
+}

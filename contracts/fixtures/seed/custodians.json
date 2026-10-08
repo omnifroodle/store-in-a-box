@@ -1,0 +1,42 @@
+[
+  {
+    "id": "store-richmond",
+    "kind": "store"
+  },
+  {
+    "id": "box-07",
+    "kind": "box",
+    "app_services_user": "box-07",
+    "channels": [
+      "trip:trip-2026-10-18-riverfest",
+      "catalog:va-central",
+      "box:box-07"
+    ]
+  },
+  {
+    "id": "tablet-a",
+    "kind": "device",
+    "box": "box-07",
+    "edge_user": "tablet-a"
+  },
+  {
+    "id": "tablet-b",
+    "kind": "device",
+    "box": "box-07",
+    "edge_user": "tablet-b"
+  },
+  {
+    "id": "phone-1",
+    "kind": "device",
+    "box": "box-07",
+    "edge_user": "phone-1"
+  },
+  {
+    "id": "hq",
+    "kind": "hq",
+    "app_services_user": "hq",
+    "channels": [
+      "*"
+    ]
+  }
+]

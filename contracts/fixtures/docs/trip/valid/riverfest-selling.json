@@ -1,0 +1,21 @@
+{
+  "_id": "trip::trip-2026-10-18-riverfest",
+  "v": 1,
+  "type": "trip",
+  "trip_id": "trip-2026-10-18-riverfest",
+  "store": "store-richmond",
+  "box": "box-07",
+  "region": "va-central",
+  "venue": {
+    "name": "Richmond Riverfest",
+    "city": "Richmond",
+    "state": "VA"
+  },
+  "starts": "2026-10-18",
+  "ends": "2026-10-19",
+  "status": "selling",
+  "devices": [
+    "tablet-a",
+    "tablet-b"
+  ]
+}

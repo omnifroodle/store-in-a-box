@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "siab://contracts/store/transaction.schema.json",
+  "title": "transaction",
+  "description": "store.transaction, id txn::<hlc>. One custody movement of one unit, written once by one device and never edited (decision 001). prev_txn names the movement that gave the writer's record its current holder; two movements with the same prev_txn are a fork. Cross-field rules the schema cannot express (sku is the SKU part of unit_id; hlc ends with the device id) are checked by scripts/check_contracts.py.",
+  "x-id-template": "txn::{hlc}",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["v", "type", "trip", "box", "kind", "unit_id", "sku", "from_custodian", "to_custodian", "prev_txn",
+               "from_allocation", "to_allocation", "device", "hlc", "device_clock", "box_clock", "basket", "price", "tender"],
+  "properties": {
+    "v": { "const": 1 },
+    "type": { "const": "transaction" },
+    "trip": { "$ref": "../common.schema.json#/$defs/trip_id" },
+    "box": { "anyOf": [{ "$ref": "../common.schema.json#/$defs/custodian_id" }, { "type": "null" }] },
+    "kind": { "enum": ["check_out", "check_in", "sale"] },
+    "unit_id": { "$ref": "../common.schema.json#/$defs/unit_id" },
+    "sku": { "$ref": "../common.schema.json#/$defs/sku" },
+    "from_custodian": { "$ref": "../common.schema.json#/$defs/custodian_id" },
+    "to_custodian": { "allOf": [{ "$ref": "../common.schema.json#/$defs/custodian_id" }, { "not": { "const": "unknown" } }] },
+    "prev_txn": { "anyOf": [{ "$ref": "../common.schema.json#/$defs/doc_ref_txn" }, { "type": "null" }] },
+    "from_allocation": { "anyOf": [{ "$ref": "../common.schema.json#/$defs/doc_ref_alloc" }, { "type": "null" }] },
+    "to_allocation": { "anyOf": [{ "$ref": "../common.schema.json#/$defs/doc_ref_alloc" }, { "type": "null" }] },
+    "device": { "$ref": "../common.schema.json#/$defs/device_id" },
+    "hlc": { "$ref": "../common.schema.json#/$defs/hlc" },
+    "device_clock": { "type": "string", "format": "date-time" },
+    "box_clock": { "description": "Null in Phase 0.", "type": ["string", "null"], "format": "date-time" },
+    "basket": {
+      "description": "Shared by the sales of one basket.",
+      "type": ["string", "null"],
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "price": { "anyOf": [{ "$ref": "../common.schema.json#/$defs/money" }, { "type": "null" }] },
+    "tender": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "amount"],
+          "properties": {
+            "kind": { "enum": ["cash", "card_simulated"] },
+            "amount": { "$ref": "../common.schema.json#/$defs/money" }
+          }
+        },
+        { "type": "null" }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "description": "A sale goes to the customer, carries a price, a tender and a basket, and opens no allocation; nothing else goes to the customer.",
+      "if": { "properties": { "kind": { "const": "sale" } }, "required": ["kind"] },
+      "then": {
+        "properties": {
+          "to_custodian": { "const": "customer" },
+          "to_allocation": { "type": "null" },
+          "price": { "type": "object" },
+          "tender": { "type": "object" },
+          "basket": { "type": "string" }
+        }
+      },
+      "else": {
+        "properties": {
+          "to_custodian": { "not": { "const": "customer" } },
+          "price": { "type": "null" },
+          "tender": { "type": "null" },
+          "basket": { "type": "null" }
+        }
+      }
+    },
+    {
+      "description": "box is null only when hq wrote the transaction.",
+      "if": { "not": { "properties": { "device": { "const": "hq" } }, "required": ["device"] } },
+      "then": { "properties": { "box": { "type": "string" } } }
+    },
+    {
+      "description": "unknown is a source only for a check-in of a unit the writer had no record of.",
+      "if": { "properties": { "from_custodian": { "const": "unknown" } }, "required": ["from_custodian"] },
+      "then": { "properties": { "kind": { "const": "check_in" }, "prev_txn": { "type": "null" } } }
+    }
+  ]
+}

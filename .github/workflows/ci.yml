@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    name: contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install 'jsonschema>=4.18,<5'
+      - run: python scripts/check_contracts.py --self-test
+      - run: python scripts/check_contracts.py
+      - run: python scripts/board_check.py --self-test

@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "siab://contracts/store/exception.schema.json",
+  "title": "exception",
+  "description": "store.exception, id exc::<detected_by>::<unit_id>::<hash8>, where hash8 is the first 8 hex characters of sha256 over the transactions ids, sorted and joined by '|'. Created by its detector; afterwards edited only by hq, and only in status and resolution. Cross-field rules checked by scripts/check_contracts.py: transactions sorted, branches[i].txn == transactions[i], sku is the SKU part of unit_id.",
+  "x-id-template": "exc::{detected_by}::{unit_id}::{sha256_8:transactions}",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["v", "type", "trip", "box", "kind", "unit_id", "sku", "dispute_key", "fork_txn", "transactions", "branches",
+               "proposed_resolution", "status", "resolution", "detected_by", "detected_at"],
+  "properties": {
+    "v": { "const": 1 },
+    "type": { "const": "exception" },
+    "trip": { "$ref": "../common.schema.json#/$defs/trip_id" },
+    "box": { "anyOf": [{ "$ref": "../common.schema.json#/$defs/custodian_id" }, { "type": "null" }] },
+    "kind": { "enum": ["oversell", "double_scan", "unexpected_check_in"] },
+    "unit_id": { "$ref": "../common.schema.json#/$defs/unit_id" },
+    "sku": { "$ref": "../common.schema.json#/$defs/sku" },
+    "dispute_key": {
+      "description": "Fork: <unit_id>|<prev_txn or root>. Unexpected check-in: <unit_id>|<check-in id>. HQ groups detectors' copies of one dispute by it.",
+      "type": "string",
+      "pattern": "^[A-Z0-9]+(-[A-Z0-9]+)*#[0-9]{3}\\|(root|txn::[0-9]{13}-[0-9a-f]{4}-[a-z][a-z0-9-]*)$"
+    },
+    "fork_txn": { "anyOf": [{ "$ref": "../common.schema.json#/$defs/doc_ref_txn" }, { "type": "null" }] },
+    "transactions": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "../common.schema.json#/$defs/doc_ref_txn" }
+    },
+    "branches": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["txn", "device", "kind", "to_custodian", "hlc"],
+        "properties": {
+          "txn": { "$ref": "../common.schema.json#/$defs/doc_ref_txn" },
+          "device": { "$ref": "../common.schema.json#/$defs/device_id" },
+          "kind": { "enum": ["check_out", "check_in", "sale"] },
+          "to_custodian": { "$ref": "../common.schema.json#/$defs/custodian_id" },
+          "hlc": { "$ref": "../common.schema.json#/$defs/hlc" }
+        }
+      }
+    },
+    "proposed_resolution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "note"],
+      "properties": {
+        "action": { "enum": ["review", "refund", "backorder", "substitute"] },
+        "note": { "type": "string" }
+      }
+    },
+    "status": { "enum": ["open", "resolved"] },
+    "resolution": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["by", "at", "chosen_txn", "note"],
+          "properties": {
+            "by": { "$ref": "../common.schema.json#/$defs/device_id" },
+            "at": { "type": "string", "format": "date-time" },
+            "chosen_txn": { "anyOf": [{ "$ref": "../common.schema.json#/$defs/doc_ref_txn" }, { "type": "null" }] },
+            "note": { "type": "string" }
+          }
+        },
+        { "type": "null" }
+      ]
+    },
+    "detected_by": { "$ref": "../common.schema.json#/$defs/device_id" },
+    "detected_at": { "$ref": "../common.schema.json#/$defs/hlc" }
+  },
+  "allOf": [
+    {
+      "description": "A fork has at least two branches.",
+      "if": { "properties": { "kind": { "enum": ["oversell", "double_scan"] } }, "required": ["kind"] },
+      "then": { "properties": { "transactions": { "minItems": 2 }, "branches": { "minItems": 2 } } }
+    },
+    {
+      "description": "resolution is set exactly when the exception is resolved.",
+      "if": { "properties": { "status": { "const": "resolved" } }, "required": ["status"] },
+      "then": { "properties": { "resolution": { "type": "object" } } },
+      "else": { "properties": { "resolution": { "type": "null" } } }
+    },
+    {
+      "description": "box is null exactly when hq detected the exception.",
+      "if": { "properties": { "detected_by": { "const": "hq" } }, "required": ["detected_by"] },
+      "then": { "properties": { "box": { "type": "null" } } },
+      "else": { "properties": { "box": { "type": "string" } } }
+    }
+  ]
+}

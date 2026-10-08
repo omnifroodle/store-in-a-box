@@ -1,0 +1,33 @@
+{
+  "name": "allocation-by-hq-ok",
+  "description": "HQ may write a box's allocation.",
+  "collection": "allocation",
+  "user": {
+    "name": "hq",
+    "channels": [
+      "*"
+    ]
+  },
+  "doc": {
+    "_id": "alloc::1792328400000-0000-tablet-a",
+    "v": 1,
+    "type": "allocation",
+    "trip": "trip-2026-10-18-riverfest",
+    "box": "box-07",
+    "sku": "JKT-RAIN-M-BLU",
+    "custodian": "box-07",
+    "parent": null,
+    "from_custodian": "store-richmond",
+    "opened_by": "tablet-a",
+    "opened_at": "1792328400000-0000-tablet-a",
+    "closed_at": null,
+    "status": "active"
+  },
+  "oldDoc": null,
+  "expect": {
+    "ok": true,
+    "channels": [
+      "trip:trip-2026-10-18-riverfest"
+    ]
+  }
+}

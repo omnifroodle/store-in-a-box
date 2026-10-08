@@ -1,0 +1,26 @@
+{
+  "_id": "product::JKT-RAIN-M-BLU",
+  "v": 1,
+  "type": "product",
+  "sku": "JKT-RAIN-M-BLU",
+  "name": "Rain shell",
+  "price": {
+    "cents": 12900,
+    "currency": "USD"
+  },
+  "category": "jackets",
+  "category_family": "outerwear",
+  "size": "M",
+  "color": "blue",
+  "tags": [
+    "waterproof"
+  ],
+  "regions": [
+    "va-central"
+  ],
+  "margin": {
+    "cents": 6400,
+    "currency": "USD"
+  },
+  "_why": "the venue-facing product has no margin column, by schema"
+}

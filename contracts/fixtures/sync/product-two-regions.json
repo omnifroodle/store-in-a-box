@@ -1,0 +1,39 @@
+{
+  "name": "product-two-regions",
+  "description": "A product in two regions routes to both catalogs.",
+  "collection": "product",
+  "user": {
+    "name": "hq",
+    "channels": [
+      "*"
+    ]
+  },
+  "doc": {
+    "_id": "product::PCK-DAY-20",
+    "v": 1,
+    "type": "product",
+    "sku": "PCK-DAY-20",
+    "name": "Daypack 20 L",
+    "price": {
+      "cents": 8900,
+      "currency": "USD"
+    },
+    "category": "packs",
+    "category_family": "bags",
+    "size": "20",
+    "color": "green",
+    "tags": [],
+    "regions": [
+      "va-central",
+      "va-tidewater"
+    ]
+  },
+  "oldDoc": null,
+  "expect": {
+    "ok": true,
+    "channels": [
+      "catalog:va-central",
+      "catalog:va-tidewater"
+    ]
+  }
+}

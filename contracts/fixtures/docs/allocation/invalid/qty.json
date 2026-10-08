@@ -1,0 +1,17 @@
+{
+  "_id": "alloc::1792328400000-0000-tablet-a",
+  "v": 1,
+  "type": "allocation",
+  "trip": "trip-2026-10-18-riverfest",
+  "box": "box-07",
+  "sku": "JKT-RAIN-M-BLU",
+  "custodian": "box-07",
+  "parent": null,
+  "from_custodian": "store-richmond",
+  "opened_by": "tablet-a",
+  "opened_at": "1792328400000-0000-tablet-a",
+  "closed_at": null,
+  "status": "active",
+  "qty": 10,
+  "_why": "no qty: counts are derived by the reducer"
+}

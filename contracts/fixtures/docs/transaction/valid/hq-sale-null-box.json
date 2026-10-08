@@ -1,0 +1,31 @@
+{
+  "_id": "txn::1792329100000-0000-hq",
+  "v": 1,
+  "type": "transaction",
+  "trip": "trip-2026-10-18-riverfest",
+  "box": null,
+  "kind": "sale",
+  "unit_id": "JKT-RAIN-M-BLU#001",
+  "sku": "JKT-RAIN-M-BLU",
+  "from_custodian": "store-richmond",
+  "to_custodian": "customer",
+  "prev_txn": null,
+  "from_allocation": null,
+  "to_allocation": null,
+  "device": "hq",
+  "hlc": "1792329100000-0000-hq",
+  "device_clock": "2026-10-18T13:11:40Z",
+  "box_clock": null,
+  "basket": "00000000-0000-4000-8000-000000000011",
+  "price": {
+    "cents": 12900,
+    "currency": "USD"
+  },
+  "tender": {
+    "kind": "cash",
+    "amount": {
+      "cents": 12900,
+      "currency": "USD"
+    }
+  }
+}
