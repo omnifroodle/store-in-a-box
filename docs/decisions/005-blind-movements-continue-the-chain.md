@@ -15,11 +15,17 @@ rule 2 made a root fork of the two once the pack arrived: a `double_scan` for wh
    never to do); treating a blind movement as a plain dangling root (no false fork, but a double take where one
    tablet had the record goes uncaught).
 2. **What it costs.** One more clause in rules 1 and 2 for both reducers (Python and Swift), and the `hlc` bound,
-   which exists so the link can never cycle (a return to the box after the take also gave the box custody). A
-   blind take written by a device whose clock is behind the packer's finds no predecessor and loses the leaf race
-   until its writer moves the unit again; Phase 1's clock-skew staging revisits this.
+   which exists so the link can never cycle (a return to the box after the take also gave the box custody). Two
+   clock-skew cases are accepted until Phase 1's clock-skew staging: a blind take written by a device whose clock
+   is behind the packer's finds no predecessor and loses the leaf race until its writer moves the unit again; and
+   a blind take whose clock is behind a *later return of the unit to the box* continues the pack instead of the
+   return, a false `double_scan` at the pack that HQ resolves (the unit is `disputed`, never lost or doubled; #37).
+   Named predecessors are untouched by this decision: two movements whose `prev_txn` name the same transaction are
+   a fork whether or not the node has it, as in 0.2.0 (0.3.0's wording dropped this by accident; restored in 0.3.1,
+   CC7 #44).
 3. **When to revisit.** Phase 1 (clock skew, allowances), or if the writers gain a way to name a pack they have
    not seen.
 
 Contract change: version 0.3.0 (rules 1 and 2; fixtures `null-root-take-pack-arrives`, `null-root-double-take`,
-`null-root-take-returned`).
+`null-root-take-returned`); 0.3.1 (rule 2 wording; fixtures `dangling-double-take`, `null-root-take-after-return`,
+`null-root-sale-oversell`, `null-root-take-resolved-fork`).

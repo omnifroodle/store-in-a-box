@@ -3,6 +3,12 @@
 One line per version, newest first: version, date, what was added (additive) or changed (breaking). The first
 version line must match `VERSION` (`scripts/check_contracts.py` checks it).
 
+- 0.3.1 (2026-10-08): rule 2 restored for named predecessors: two dangling roots whose `prev_txn` name the same
+  missing transaction are a fork, as in 0.2.0 (0.3.0's wording had dropped it, unrecorded; #37, CC7 #44); a blind
+  movement with no predecessor is still in no fork. Fixtures `dangling-double-take` (pins it),
+  `null-root-take-after-return` (the greatest `hlc` below the blind movement), `null-root-sale-oversell` (a blind
+  sale) and `null-root-take-resolved-fork` (a set-aside branch as the implied predecessor), the gaps in #36. A
+  wording correction and fixtures, so a patch bump.
 - 0.3.0 (2026-10-08): a blind movement (prev_txn null from a custodian other than the store: the writer had no
   record of the unit) continues the movement that gave its from_custodian custody instead of forming a root fork
   with the pack (#32, CC6 #33, decision 005); rules 1 and 2. Fixtures `null-root-take-pack-arrives`,

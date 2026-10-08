@@ -1,6 +1,6 @@
 # WS1: Custody ledger, reference implementation
 
-**Milestone:** M1  **Depends on:** contracts v0.3.0 (CC1, CC3, CC5, CC6)  **Label:** `ws:1-ledger`  **Agent type:** ws-design
+**Milestone:** M1  **Depends on:** contracts v0.3.1 (CC1, CC3, CC5, CC6, CC7)  **Label:** `ws:1-ledger`  **Agent type:** ws-design
 **Issue:** #12
 
 The blueprint. The architect (`ws-architect`) writes it before any code is dispatched; the PR is judged against it.
@@ -34,7 +34,9 @@ Built here:
 Left for later: allowances (Phase 1), two-level splits (the reducer handles any depth; the fixtures for a
 three-deep tree arrive with Phase 1), case-level units, clock-skew staging (Phase 1 showcase 11; this includes a
 blind movement whose writer's clock is behind the packer's, which finds no predecessor and stays a dangling root
-until its writer moves the unit again, and two blind takes of a unit nobody packed, which never fork: CC6, #33),
+until its writer moves the unit again; a blind take whose writer's clock is behind a *later return of the unit to
+the box*, which continues the pack instead of the return and so forks falsely with the earlier take at the pack, a
+`double_scan` HQ resolves (#37); and two blind takes of a unit nobody packed, which never fork: CC6 #33, CC7 #44),
 any I/O.
 
 ## Files
@@ -108,23 +110,28 @@ HLC: string "<unix_ms:13 digits>-<counter:4 hex>-<device_id>", compared lexicogr
 
 **Reducer rules** (also written into `ports/ledger.md`, and they are what the fixtures test):
 1. Movements for a unit form a forest by *predecessor* (edge from the predecessor to the movement). A movement's
-   predecessor is the transaction its `prev_txn` names, except for a *blind* movement: a `check_out` or `sale`
-   with `prev_txn == null` whose `from_custodian` is not the store (its writer had no record of the unit, for
-   example a tablet taking a unit off the box before the pack replicated; CC6, #33). A blind movement's
-   predecessor is the movement of the same unit with `to_custodian == its from_custodian` and the greatest `hlc`
-   below its own, among every movement of the unit in the input (branches a resolution set aside included); when
-   there is none it has no predecessor. A *root* is a movement with no predecessor: a *store root* (`prev_txn`
-   null, `from_custodian` the store), a *dangling* root (`prev_txn` names a transaction this node does not have,
-   or a blind movement whose implied predecessor has not arrived; not an error), or a `check_in` with `prev_txn`
-   null (rule 6). Successor, descendant and leaf follow this relation, not `prev_txn` alone. The `hlc` bound is
-   what keeps the forest acyclic (a later return to the box also gave the box custody; fixture
-   `null-root-take-returned`).
-2. A *fork* is a group of two or more movements with the same `(unit_id, predecessor)`. A *root fork* is two or
-   more store roots of one unit (two packs, or a pack and HQ's sale). Dangling roots are never a fork, whether
-   their missing predecessors are named or implied, and a `check_in` with `prev_txn == null` never joins any fork
-   (rule 6 covers it). So a take written before the pack replicated is the pack's child once the pack arrives
-   (fixture `null-root-take-pack-arrives`), and a double take with one blind side forks at the pack
-   (`null-root-double-take`).
+   predecessor is the transaction its `prev_txn` names, whether or not this node has it, except for a *blind*
+   movement: a `check_out` or `sale` with `prev_txn == null` whose `from_custodian` is not the store (its writer
+   had no record of the unit, for example a tablet taking a unit off the box before the pack replicated; CC6,
+   #33). A blind movement's predecessor is the movement of the same unit with `to_custodian == its
+   from_custodian` and the greatest `hlc` below its own, among every movement of the unit in the input (branches
+   a resolution set aside included; fixture `null-root-take-resolved-fork`); when there is none it has no
+   predecessor. A *root* is a movement whose predecessor is not in the input: a *store root* (`prev_txn` null,
+   `from_custodian` the store), a *dangling* root (`prev_txn` names a transaction this node does not have, or a
+   blind movement with no predecessor; not an error), or a `check_in` with `prev_txn` null (rule 6). Successor,
+   descendant and leaf follow this relation, not `prev_txn` alone. The `hlc` bound is what keeps the forest
+   acyclic (a later return to the box also gave the box custody; fixture `null-root-take-returned`), and
+   "greatest" means the latest movement into the source below the blind one, not the earliest
+   (`null-root-take-after-return`).
+2. A *fork* is a group of two or more movements with the same `(unit_id, predecessor)`, the predecessor being a
+   transaction id, in the input or not: two dangling roots whose `prev_txn` name the same missing transaction are
+   a fork, found before it arrives and unchanged by its arrival (fixture `dangling-double-take`, whose exception
+   is byte for byte `double-scan`'s; CC7 #44). A blind movement with no predecessor is in no fork. A *root fork*
+   is two or more store roots of one unit (two packs, or a pack and HQ's sale). A `check_in` with
+   `prev_txn == null` never joins any fork (rule 6 covers it). So a take written before the pack replicated is the
+   pack's child once the pack arrives (fixture `null-root-take-pack-arrives`), and a double take with one blind
+   side forks at the pack, whether the blind side is a take (`null-root-double-take`) or a sale
+   (`null-root-sale-oversell`).
 3. An unresolved fork makes the unit `disputed`: holder `null`, counted under `disputed`, not under any custodian
    or allocation. Only HQ resolves: a resolution counts only when `resolution.by == "hq"` and any other is ignored
    (peer-to-peer sync never runs the App Services sync function, so the reducer enforces it; fixture
@@ -159,7 +166,11 @@ CLI (fixed): `python -m siab_ledger check [--fixtures DIR] [--seed N]` exits 0 a
 - CC6 (#33, contracts 0.3.0): a blind movement (`prev_txn` null from a custodian other than the store) continues
   the movement that gave that custodian custody instead of forming a root fork with the pack (#32); rules 1 and
   2 above. Fixtures `null-root-take-pack-arrives`, `null-root-double-take`, `null-root-take-returned`.
-All four are applied before dispatch.
+- CC7 (#44, contracts 0.3.1, answering #37 and the fixture gaps in #36): rule 2 keeps a fork between two dangling
+  roots whose `prev_txn` name the same missing transaction (as 0.2.0 had it; 0.3.0's wording dropped it), and a
+  blind movement with no predecessor is in no fork. Fixtures `dangling-double-take`, `null-root-take-after-return`,
+  `null-root-sale-oversell`, `null-root-take-resolved-fork`.
+All five are applied before dispatch.
 
 ## Exit criteria
 
@@ -171,11 +182,17 @@ All four are applied before dispatch.
       `test_resolution_settles_fork`, and `test_conservation_holds_can_fail` (the `overpacked` fixture gives
       `holds: false` only with inventory, with `store_on_hand == -1`; `untraced-unit` gives `holds: false` in both
       modes with `untraced == 1`; a build of `conservation` that returns `holds: true` unconditionally fails it),
-      and `test_blind_take_links_under_the_pack` (`null-root-take-pack-arrives` gives no fork and `tablet-b` as
+      `test_blind_take_links_under_the_pack` (`null-root-take-pack-arrives` gives no fork and `tablet-b` as
       holder; `null-root-double-take` gives one fork whose `prev_txn` is the pack; `null-root-take-returned`
       terminates with the chain pack, take, return, take; a build that puts every null-`prev_txn` movement into a
       root fork fails the first, and one that links a blind movement to the latest movement into its source
-      custodian, with no `hlc` bound, fails or hangs on the third).
+      custodian, with no `hlc` bound, fails or hangs on the third; a build that picks the earliest movement into
+      the source fails `null-root-take-after-return`, one that treats only a `check_out` as blind fails
+      `null-root-sale-oversell`, and one that skips branches a resolution set aside fails
+      `null-root-take-resolved-fork`), and `test_dangling_roots_naming_one_predecessor_fork`
+      (`dangling-double-take` gives one fork whose `prev_txn` is the absent pack and the exception
+      `exc::tablet-a::JKT-RAIN-M-BLU#001::111c7a4e`, the same document `double-scan` gives; a build that makes
+      every dangling root a lone root fails it, and `dangling-predecessor` still gives no fork).
 - [ ] `python scripts/check_contracts.py` passes (every exception document `exceptions_for` emits for the fixtures
       validates against `contracts/schemas/store/exception.schema.json`; the test writes them to a temp dir and runs
       the validator on it, or calls the validator's function).
@@ -204,9 +221,10 @@ Milestones and acceptance tests (ws-design):
 1. `[any]` HLC and chain building: `reduce` over linear chains (pack, sell, split, merge). Accept: fixtures
    `pack-and-sell`, `split-and-merge`, `merge-order-independent` pass.
 2. `[any]` Forks, dangling branches, blind movements, resolutions, `exceptions_for`. Accept: fixtures `double-scan`,
-   `oversell-hq`, `unexpected-check-in`, `dangling-predecessor`, `resolved-fork`, `null-root-take`,
-   `null-root-take-pack-arrives`, `null-root-double-take`, `null-root-take-returned` pass; exception documents
-   validate.
+   `oversell-hq`, `unexpected-check-in`, `dangling-predecessor`, `dangling-double-take`, `resolved-fork`,
+   `null-root-take`, `null-root-take-pack-arrives`, `null-root-double-take`, `null-root-take-returned`,
+   `null-root-take-after-return`, `null-root-sale-oversell`, `null-root-take-resolved-fork` pass; exception
+   documents validate.
 3. `[any]` `conservation` rows, venue-side and HQ-side. Accept: fixtures `conservation-day` (every row holds),
    `overpacked` (holds only venue-side) and `untraced-unit` (holds in neither mode) pass in both modes.
 4. `[any]` `ports/ledger.md`, `ports/README.md`, the CLI, the `pyproject.toml` entries.
