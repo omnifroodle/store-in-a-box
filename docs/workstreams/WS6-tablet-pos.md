@@ -17,7 +17,8 @@ type, one gesture per screen, the current mode named in words at the top so the 
   plus **Pack** (check out from the store onto the box, the tablet acting for the box). The header reads
   "TAKING FROM box-07", "RETURNING TO box-07" or "PACKING store-richmond → box-07". A running list of units scanned
   this session with the allocation they fill or empty.
-- **Exceptions**: open disputes with both transactions side by side (device, time, kind). Read-only; HQ resolves.
+- **Exceptions**: open disputes with both transactions side by side (device, time, kind). `foreign_movement` and
+  `unexpected_check_in` show the movement and its predecessor ("did not hold it"). Read-only; HQ resolves.
 - A **status bar** on every screen: box link (connected / offline since), peer count, and this device's id. The
   gear opens WS4's Diagnostics.
 - The **scanner**: the device camera, QR only, payload `<SKU>#<serial>`, a debounce so one label is one scan,
@@ -65,8 +66,9 @@ issue before building around it), with `basket` set to one UUID on every transac
 
 **Custody semantics**: `.take` → `checkOut(unit, from: box, to: thisDevice)`; `.return_` → `checkIn(unit)`;
 `.pack` → `checkOut(unit, from: store, to: box, actingFor: box)`. A unit the record says is elsewhere, or has no
-record, is still accepted (WS1 rule 6 raises an `unexpected_check_in` exception; the movement stands); the line
-shows an amber "record disagrees" tag, never a refusal.
+record, is still accepted (WS1 rule 6 raises an `unexpected_check_in`, rule 8 a `foreign_movement` for a sale or take
+from a custodian this device does not act for; the movement stands); the line shows an amber "record disagrees" tag,
+never a refusal.
 
 **Shelf semantics**: one row per product that has any unit in this trip's ledger or is in the seeded catalog;
 `here` is `counts[(thisDevice, sku)]`, `box` is `counts[(box, sku)]`. Rows animate on change.
