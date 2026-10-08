@@ -10,3 +10,4 @@ after five or six PRs and tighten or loosen the bar.
 | #35 contracts 0.3.0 (foreman-applied CC6, blind movements) | 1 | 0 | 0 | #36 (fixture gaps), #37 (two rule-2 edges, to the architect) | no |
 | #43 WS2 Capella and sync functions | 1 | 0 | 0 | #53 (7 non-blocking items) | no |
 | #52 WS3 Edge Server box | 1 | 0 | 0 | #54 (6 non-blocking items) | no |
+| #55 contracts 0.3.1 (foreman-applied CC7) | 1 | 0 | 0 | #56 (5 non-blocking items) | no |
