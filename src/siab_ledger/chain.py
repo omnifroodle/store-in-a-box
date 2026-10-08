@@ -59,6 +59,8 @@ class LedgerState:
     None. The id may be absent from ``transactions`` (a dangling root)."""
     untraced: frozenset[str]
     """Units whose every root is a check_in with prev_txn null."""
+    set_aside: frozenset[str]
+    """Movements a resolution set aside (rule 3), by id."""
 
     def to_json(self) -> dict:
         """``units``, ``counts``, ``allocation_counts`` and ``forks`` in the fixtures' shape and order."""
@@ -175,7 +177,7 @@ def _reduce_unit(unit_id: str, movements: Mapping[str, Mapping], store: str, res
         key = f"{unit_id}|{prev or 'root'}"
         matching = [r for r in resolutions
                     if r.get("dispute_key") == key and sorted(r.get("transactions") or ()) == branches]
-        latest = max(matching, key=lambda r: (r["resolution"].get("at") or "", r["_id"]), default=None)
+        latest = max(matching, key=lambda r: (r["resolution"].get("hlc") or "", r["_id"]), default=None)
         chosen = latest["resolution"].get("chosen_txn") if latest else None
         resolved_by = latest["_id"] if chosen in branches else None
         if resolved_by is not None:
@@ -196,7 +198,7 @@ def _reduce_unit(unit_id: str, movements: Mapping[str, Mapping], store: str, res
 
     roots = [m for mid, m in movements.items() if pred[mid] is None or pred[mid] not in movements]
     untraced = bool(roots) and all(is_null_check_in(m) for m in roots)
-    return unit, forks, pred, untraced
+    return unit, forks, pred, untraced, ignored
 
 
 def reduce(transactions: Iterable[Mapping], resolutions: Iterable[Mapping] = (), *, store: str) -> LedgerState:
@@ -215,8 +217,10 @@ def reduce(transactions: Iterable[Mapping], resolutions: Iterable[Mapping] = (),
     forks: list[Fork] = []
     preds: dict[str, str | None] = {}
     untraced: set[str] = set()
+    set_aside: set[str] = set()
     for unit_id in sorted(by_unit):
-        unit, unit_forks, unit_preds, is_untraced = _reduce_unit(unit_id, by_unit[unit_id], store, hq)
+        unit, unit_forks, unit_preds, is_untraced, ignored = _reduce_unit(unit_id, by_unit[unit_id], store, hq)
+        set_aside |= ignored
         units[unit_id] = unit
         forks.extend(unit_forks)
         preds.update(unit_preds)
@@ -246,4 +250,5 @@ def reduce(transactions: Iterable[Mapping], resolutions: Iterable[Mapping] = (),
         resolutions=hq,
         predecessors=preds,
         untraced=frozenset(untraced),
+        set_aside=frozenset(set_aside),
     )

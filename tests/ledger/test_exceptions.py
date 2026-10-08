@@ -102,3 +102,48 @@ def test_resolved_exception_is_left_out_but_others_stay(fixture):
     extra.update(prev_txn="txn::1792328510000-0000-tablet-a")
     state = reduce(fx["transactions"] + [extra], fx["resolutions"], store=fx["store"])
     assert [d["kind"] for d in exceptions_for(state, "tablet-a", fx["trip"], fx["box"])] == ["unexpected_check_in"]
+
+
+# ---------------------------------------------------------------- contracts 0.5.0 (CC9, decision 008)
+
+
+def test_set_aside_check_in_writes_nothing(fixture):
+    fx = fixture("unexpected-check-in-inside-set-aside-branch")
+    state = reduce(fx["transactions"], fx["resolutions"], store=fx["store"])
+    check_in = fx["transactions"][-1]
+    assert check_in["_id"] in state.set_aside
+    assert exceptions_for(state, "tablet-a", fx["trip"], fx["box"]) == []
+    # Without the resolution nothing is set aside and the check-in is unexpected again.
+    open_state = reduce(fx["transactions"], [], store=fx["store"])
+    kinds = {d["kind"] for d in exceptions_for(open_state, "tablet-a", fx["trip"], fx["box"])}
+    assert "unexpected_check_in" in kinds
+
+
+def test_foreign_sale_and_check_out_are_flagged(fixture):
+    for name, last_kind in (("foreign-sale", "sale"), ("foreign-check-out", "check_out")):
+        fx = fixture(name)
+        state = reduce(fx["transactions"], fx["resolutions"], store=fx["store"])
+        (doc,) = exceptions_for(state, "tablet-a", fx["trip"], fx["box"])
+        last = fx["transactions"][-1]
+        assert last["kind"] == last_kind
+        assert (doc["kind"], doc["fork_txn"]) == ("foreign_movement", None)
+        assert doc["dispute_key"] == f"{last['unit_id']}|{last['_id']}"
+        assert doc["transactions"] == sorted([last["_id"], last["prev_txn"]])
+        assert doc["proposed_resolution"] == {
+            "action": "review", "note": "Moved by a device that did not hold it. Confirm where the unit is."}
+    # The foreign movement stands: the sale still sells the unit.
+    fx = fixture("foreign-sale")
+    assert reduce(fx["transactions"], [], store=fx["store"]).units["JKT-RAIN-M-BLU#001"].state == "sold"
+
+
+def test_second_level_take_is_not_foreign(fixture):
+    fx = fixture("second-level-take")
+    state = reduce(fx["transactions"], [], store=fx["store"])
+    assert exceptions_for(state, "tablet-a", fx["trip"], fx["box"]) == []
+    assert state.units["JKT-RAIN-M-BLU#001"].holder == "phone-1"
+
+
+def test_hq_sale_from_the_store_is_not_foreign(fixture):
+    fx = fixture("oversell-hq")
+    state = reduce(fx["transactions"], [], store=fx["store"])
+    assert [d["kind"] for d in exceptions_for(state, "tablet-a", fx["trip"], fx["box"])] == ["oversell"]

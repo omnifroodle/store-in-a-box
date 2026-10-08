@@ -63,15 +63,30 @@ the ledger fixtures' transactions. The ledger is `siab_ledger` (WS1), imported, 
   empty reason cell. Nothing is written for a failing row (see "Left for later").
 - `GET /api/tree?trip=` → `{ "root": "store-richmond", "nodes": [ { "custodian", "parent", "allocations": [ { "id",
   "sku", "status", "count" } ] } ] }` built from `LedgerState.allocation_counts` and the allocation documents.
-- `GET /api/exceptions?trip=&status=open|resolved|all` → `{ "disputes": [ { "dispute_key", "kind", "unit_id", "sku",
-  "detectors": [ids], "transactions": [full transaction docs], "branches": [ { "txn", "leaf": full transaction doc of the
-  branch's last movement } ], "status" } ] }` grouped by `dispute_key`. The dispute view shows each branch's leaf as well as the
-  branch movement: in the staged oversell the branches are the pack and HQ's sale, and the tablet's sale is the pack
-  branch's leaf, so the audience sees both sales only if the leaf is shown (found by WS8, #61).
-- `POST /api/exceptions/resolve` body `{ "trip", "dispute_key", "chosen_txn", "note" }` → updates every exception
-  document with that `dispute_key` (all detectors' copies) to `status: "resolved"`,
-  `resolution: { by: "hq", at: iso8601, chosen_txn, note }`, as the `hq` app user (the sync function allows only
-  `hq` to update these fields). Returns the updated count.
+- `GET /api/exceptions?trip=&status=open|resolved|all` → `{ "disputes": [...], "superseded": [...] }`. **The queue is
+  the reducer's, not the documents'** (#77 finding F, decision 008): one entry per `(dispute_key, transactions)` that
+  HQ's own `reduce` holds as a live dispute (each fork in `forks` with `resolved_by` null, and each unexpected check-in
+  or foreign movement not set aside and not matched by a counting resolution), each with `"dispute_key", "kind",
+  "unit_id", "sku", "detectors", "transactions"` (full docs), `"branches": [ { "txn", "leaf" } ]` (the leaf is the full
+  doc of the branch's last movement), `"documents"` (every exception doc with that key and set, any detector, any
+  status) and `"status"`. An entry whose documents are all resolved with `chosen_txn` null reads `withdrawn: choose
+  again`; one with no document yet gets HQ's own on the reconciler's next run. Open documents that match no live dispute
+  (a fork that vanished when a return arrived, a two-branch copy after a third branch, anything inside a set-aside
+  branch) are listed under `superseded`, not counted, and may be bulk-closed with `chosen_txn` null and note
+  `superseded`. `status` filters by the entry's state, not the document's. The dispute view shows each branch's leaf as
+  well as the branch movement (in the staged oversell the tablet's sale is the pack branch's leaf, #61);
+  `foreign_movement` renders like `unexpected_check_in` (the movement and its predecessor, "did not hold it").
+- `POST /api/exceptions/resolve` body `{ "trip", "dispute_key", "transactions", "chosen_txn", "note" }` (#72 item 3) →
+  updates only the exception documents with that `dispute_key` whose `transactions` equal the branch set HQ chose from
+  (copies written for a smaller set stay as they are, decision 006) to `status: "resolved"`, `resolution: { by: "hq",
+  hlc, at: iso8601, chosen_txn, note }`, as the `hq` app user. For a fork `chosen_txn` must be one of `transactions`
+  (400 otherwise); `unexpected_check_in` and `foreign_movement` close with `chosen_txn` null. `resolution.hlc` comes
+  from HQ's clock and orders HQ's decisions; `at` is a label (decision 008). Returns the updated count.
+- **HQ's clock:** `siab_hq` keeps one HLC for device `hq`, `hlc_now(clock, last, "hq")`, where `last` is the greater of
+  the last it issued and the greatest `resolution.hlc` among the trip's exceptions it has read, so it is monotonic across
+  restarts without a file.
+- **Live, not settled** (decision 007, Phase 0): the conservation indicator reads `HOLDS · live` (or `N SKUs do not hold ·
+  live`) and the panel header says `trip open: live view, nothing settled`. Closes and settlement are Phase 2.
 - `POST /api/stage/hq-sale` body `{ "trip", "unit_id", "price"?: Money }` → writes one `transaction` as device
   `hq`: `kind: "sale"`, `from_custodian: "store-richmond"`, `to_custodian: "customer"`, `prev_txn: null`,
   `box: null`, `tender: { kind: "card_simulated", ... }`. This is the staged oversell: the flagship's count-based
@@ -89,6 +104,8 @@ reconciler also runs once at startup and on `POST /api/reconcile/run`.
 what it would write with `--dry-run`).
 
 ## Contract changes
+- CC9 (#80, contracts 0.5.0, decisions 007 and 008): resolutions ordered by `resolution.hlc`; the reducer-driven queue;
+  `foreign_movement`; the resolve endpoint binds to a branch set.
 
 - CC3 (#4): the `exception` `resolution` block and the `hq` detector are in the schema; `transaction.box` nullable
   for `hq` writers.
@@ -96,6 +113,9 @@ what it would write with `--dry-run`).
   `untraced-unit`). Owned by WS1's interface; this workstream only displays it. No new change of its own.
 
 ## Exit criteria
+- [ ] `test_queue_follows_reducer_not_documents` (#77 finding F: an open `hq` document whose fork no longer exists is
+      listed as superseded) and `test_withdrawn_choice_is_back_on_queue` (fixture `latest-resolution-chooses-nothing`).
+- [ ] `test_resolve_updates_only_the_matching_branch_set` and `test_resolve_rejects_a_choice_outside_the_branches`.
 
 - [ ] `pytest tests/hq` passes against `FakeCapella` loaded from `contracts/fixtures/ledger/`; includes
       `test_reconciler_writes_one_exception_per_open_fork` (the `oversell-hq` and `double-scan` fixtures),

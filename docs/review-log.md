@@ -16,3 +16,4 @@ From 2026-10-08 to 2026-10-12 the reviewer runs on Sonnet as a trial (the owner 
 | #60 WS1 custody ledger reference (re-check of the 0.4.0 update, Sonnet) | 2 | 0 | 0 | #67 (4 non-blocking items); author filed #58, #59 | no |
 | #66 WS8 part A, the ledger story | 1 | 0 | 0 | #69 (non-blocking items) | no |
 | #71 contracts 0.4.0 (foreman-applied CC8) | 1 | 0 | 0 | #72 (4 reducer ambiguities, to the architect), #73 (stale 0.3.1 text in WS1) | no |
+| #82 contracts 0.5.0 (CC9) and WS1 update, Sonnet | 1 | 0 | 0 | #83 (rule-8 fixture gap: a non-hq writer moving stock from the store; a closed foreign movement reappears when its predecessor arrives; stale text) | no |

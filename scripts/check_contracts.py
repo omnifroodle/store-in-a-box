@@ -98,6 +98,9 @@ def check_exception(doc: dict) -> list[str]:
         errors.append(f"sku {doc['sku']} is not the SKU part of unit_id {doc['unit_id']}")
     if "unit_id" in doc and "dispute_key" in doc and not str(doc["dispute_key"]).startswith(doc["unit_id"] + "|"):
         errors.append(f"dispute_key {doc['dispute_key']} does not start with the unit_id")
+    res = doc.get("resolution")
+    if isinstance(res, dict) and "hlc" in res and "by" in res and not str(res["hlc"]).endswith("-" + str(res["by"])):
+        errors.append(f"resolution.hlc {res['hlc']} does not end with resolution.by {res['by']}")
     return errors
 
 
@@ -363,6 +366,8 @@ def self_test() -> None:
     assert len(check_transaction({"unit_id": "A-B#001", "sku": "A", "hlc": "1-0000-tablet-a", "device": "hq"})) == 2
     assert check_exception({"transactions": ["b", "a"], "branches": [{"txn": "b"}, {"txn": "a"}]}) == [
         "transactions are not sorted"]
+    assert check_exception({"resolution": {"hlc": "1-0000-hq", "by": "tablet-a"}}) == [
+        "resolution.hlc 1-0000-hq does not end with resolution.by tablet-a"]
     assert CHANGELOG_VERSION.match("- 0.1.0 (2026-10-07): first").group(1) == "0.1.0"
     print("self-test passed")
 

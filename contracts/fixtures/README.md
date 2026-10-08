@@ -65,16 +65,18 @@ The rules (decision 001; `ports/ledger.md` restates them as an interface):
    and `transactions`; it *settles* that fork when `resolution.chosen_txn` is one of the branches. The chosen
    branch becomes canonical, and the other branches and their descendants are *set aside*: ignored for holder,
    counts, forks and exceptions, so a fork among set-aside movements is not reported
-   (`fork-inside-set-aside-branch`). The fork stays in `forks` with `resolved_by` set to the resolution's id. A
-   resolution binds to the branches it was written for: a new branch at a settled fork makes a fork the
-   resolution does not match, so the fork is open again, the unit is `disputed` and rule 7 writes a new document
-   (`third-branch-at-resolved-fork`). When several counting resolutions match one fork, the one with the greatest
-   `resolution.at` settles it, ties going to the greatest `_id`; HQ writes `resolution.at` in UTC with a `Z`
-   suffix and whole seconds, so comparing the strings compares the instants (`two-resolutions-one-fork`). A
-   matching resolution whose `chosen_txn` is null or names no branch settles nothing: the unit stays `disputed`,
-   `resolved_by` is null, and under rule 7 nothing new is written; HQ edits the resolution to choose a branch
-   (`resolution-without-choice`; `chosen_txn` null is how HQ closes an `unexpected_check_in`, which has no branch
-   to choose).
+   (`fork-inside-set-aside-branch`), and neither is an unexpected check-in or a foreign movement there
+   (`unexpected-check-in-inside-set-aside-branch`). The fork stays in `forks` with `resolved_by` set to the
+   resolution's id. A resolution binds to the branches it was written for: a new branch at a settled fork makes a
+   fork the resolution does not match, so the fork is open again, the unit is `disputed` and rule 7 writes a new
+   document (`third-branch-at-resolved-fork`). When several counting resolutions match one fork, the one with the
+   greatest `resolution.hlc` decides, ties going to the greatest `_id`: HQ is one writer with one clock, so its
+   hybrid logical clock orders its decisions, and `resolution.at` is a label for people that is never compared
+   (`two-resolutions-one-fork`; `resolution-order-by-hlc`, where the labels disagree with the clock). If the
+   deciding resolution's `chosen_txn` is null or names no branch, it settles nothing: the unit stays `disputed`,
+   `resolved_by` is null, and an earlier choice is not revived (`latest-resolution-chooses-nothing`); under rule 7
+   nothing new is written, and HQ chooses again (`resolution-without-choice`; `chosen_txn` null is how HQ closes an
+   `unexpected_check_in` or a `foreign_movement`, which has no branch to choose).
 4. Otherwise the unit's leaf is the canonical movement with no successor; when several chains exist (dangling roots,
    or a null-`prev_txn` check-in beside a pack), the leaf with the greatest `hlc` wins. `holder` is
    `leaf.to_custodian`, `allocation` is `leaf.to_allocation`, `last_txn` is the leaf's id, and `state` is `sold` when
@@ -86,9 +88,20 @@ The rules (decision 001; `ports/ledger.md` restates them as an interface):
    the end of a trip is expected). The movement stands (the physical scan is the stronger evidence) and an exception of kind
    `unexpected_check_in` attaches the check-in and, when the input has it, its predecessor.
 7. `exceptions_for` only creates: a new branch at the same fork gives a new id (a different hash). It emits one
-   exception per unresolved fork in `forks` and one per unexpected check-in, and leaves out any whose
-   `dispute_key` and `transactions` match a resolution that counts (rule 3), whether or not that resolution chose
-   a branch.
+   exception per unresolved fork in `forks`, one per unexpected check-in (rule 6) and one per foreign movement
+   (rule 8), leaving out movements a resolution set aside (rule 3) and any exception whose `dispute_key` and
+   `transactions` match a resolution that counts, whether or not that resolution chose a branch.
+8. A movement is *foreign* when its writer acted for neither custodian it names on its own side of the movement. A
+   writer acts for itself (`device`), for its `box`, and, when it is `hq`, for the store. A `check_out` is foreign
+   when its `to_custodian` is none of those: a take lands on the writer and a pack on its box, and whom it takes
+   from is the chain's business (rules 1 and 2), so a phone taking from a tablet is not foreign (`second-level-take`)
+   and a tablet writing a take onto another tablet is (`foreign-check-out`). A `sale` is foreign when its
+   `from_custodian` is none of those: a device sells what it holds or what is on its box's table, HQ sells from the
+   store (`oversell-hq`), and a device selling what another device holds is foreign (`foreign-sale`). A `check_in`
+   is rule 6's. A foreign movement stands, as an unexpected check-in does (a scan is never refused, and the ledger
+   follows it), and an exception of kind `foreign_movement` attaches the movement and, when the input has it, the
+   transaction its `prev_txn` names. Pre-orders and tenders taken at a terminal that does not hold the unit get
+   their own document kinds later; in Phase 0 they are foreign sales, flagged and standing.
 
 What `expected` holds, and in what order (so two implementations produce identical output):
 
@@ -106,6 +119,8 @@ What `expected` holds, and in what order (so two implementations produce identic
     `dispute_key` is `<unit_id>|<predecessor or "root">`; `transactions` are the branches.
   - unexpected check-in: `kind` `unexpected_check_in`, `fork_txn` null, `dispute_key` `<unit_id>|<check-in id>`,
     `transactions` the check-in and its predecessor when present.
+  - foreign movement: `kind` `foreign_movement`, `fork_txn` null, `dispute_key` `<unit_id>|<movement id>`,
+    `transactions` the movement and the transaction its `prev_txn` names when present.
   - `branches[i]` describes `transactions[i]`: `{txn, device, kind, to_custodian, hlc}`.
   - `proposed_resolution` is fixed text, byte for byte:
 
@@ -114,6 +129,7 @@ What `expected` holds, and in what order (so two implementations produce identic
     | `oversell` | `refund` | `Sold twice. Refund one sale, then choose the branch that stands.` |
     | `double_scan` | `review` | `Scanned out twice. Choose the movement that matches where the unit is.` |
     | `unexpected_check_in` | `review` | `Checked in by a device that did not hold it. Confirm where the unit is.` |
+    | `foreign_movement` | `review` | `Moved by a device that did not hold it. Confirm where the unit is.` |
 
   - `status` `open`, `resolution` null, `detected_by` the detector, `box` the box (null when the detector is `hq`).
 - `conservation`: one row per SKU, sorted by sku. The venue-only rows cover the SKUs in the ledger; the

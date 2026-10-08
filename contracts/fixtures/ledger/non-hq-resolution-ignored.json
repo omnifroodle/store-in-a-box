@@ -114,6 +114,7 @@
       "resolution": {
         "by": "tablet-b",
         "at": "2026-10-18T13:30:00Z",
+        "hlc": "1792330200000-0000-tablet-b",
         "chosen_txn": "txn::1792328511000-0000-tablet-b",
         "note": "tablet-b keeps it."
       },

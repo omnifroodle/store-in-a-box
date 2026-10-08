@@ -1,6 +1,6 @@
 {
-  "name": "two-resolutions-one-fork",
-  "description": "The double-scan with two detectors' copies of the dispute, both resolved by HQ and not alike: HQ's own copy, resolved first, chooses tablet-a's take; tablet-a's copy, resolved five minutes later, chooses tablet-b's. The latest decision stands (rule 3: the greatest resolution.hlc, HQ's own clock, then the greatest _id): tablet-b holds the unit, the fork's resolved_by is tablet-a's copy and nothing is written. A build that takes the copy with the smallest _id (exc::hq sorts before exc::tablet-a), the first resolution it meets, or the smallest resolution.hlc gives tablet-a.",
+  "name": "latest-resolution-chooses-nothing",
+  "description": "two-resolutions-one-fork with HQ's later decision withdrawn: HQ's own copy, resolved first, chooses tablet-a's take; tablet-a's copy, resolved five minutes later by HQ's clock, chooses nothing (chosen_txn null). The latest matching resolution decides and it settles nothing (rule 3), so the fork is open again, the unit is disputed and resolved_by is null; an earlier choice is not revived. Both copies still match the fork's dispute_key and transactions, so the detector writes nothing (rule 7): the dispute is back on HQ's queue by the reducer's open fork, not by a new document. A build that takes the latest resolution that names a branch gives tablet-a the unit with resolved_by exc::hq::...; one that treats a withdrawn copy as not counting writes the exception again.",
   "order_independent": true,
   "trip": "trip-2026-10-18-riverfest",
   "box": "box-07",
@@ -161,8 +161,8 @@
         "by": "hq",
         "at": "2026-10-18T13:35:00Z",
         "hlc": "1792330500000-0000-hq",
-        "chosen_txn": "txn::1792328511000-0000-tablet-b",
-        "note": "Correction: tablet-b has the jacket."
+        "chosen_txn": null,
+        "note": "Withdrawn. Checking again which tablet has it."
       },
       "detected_by": "tablet-a",
       "detected_at": "1792328520000-0000-tablet-a"
@@ -172,23 +172,17 @@
     "units": {
       "JKT-RAIN-M-BLU#001": {
         "sku": "JKT-RAIN-M-BLU",
-        "holder": "tablet-b",
-        "allocation": "alloc::1792328501000-0000-tablet-b",
-        "state": "held",
-        "last_txn": "txn::1792328511000-0000-tablet-b"
+        "holder": null,
+        "allocation": null,
+        "state": "disputed",
+        "last_txn": null
       }
     },
-    "counts": [
-      {
-        "custodian": "tablet-b",
-        "sku": "JKT-RAIN-M-BLU",
-        "qty": 1
-      }
-    ],
+    "counts": [],
     "allocation_counts": {
       "alloc::1792328400000-0000-tablet-a": 0,
       "alloc::1792328500000-0000-tablet-a": 0,
-      "alloc::1792328501000-0000-tablet-b": 1
+      "alloc::1792328501000-0000-tablet-b": 0
     },
     "forks": [
       {
@@ -199,7 +193,7 @@
           "txn::1792328510000-0000-tablet-a",
           "txn::1792328511000-0000-tablet-b"
         ],
-        "resolved_by": "exc::tablet-a::JKT-RAIN-M-BLU#001::111c7a4e"
+        "resolved_by": null
       }
     ],
     "exceptions": {
@@ -217,11 +211,9 @@
           "untraced": 0,
           "returned_to_store": 0,
           "store_on_hand": null,
-          "in_custody": {
-            "tablet-b": 1
-          },
+          "in_custody": {},
           "sold": 0,
-          "disputed": 0,
+          "disputed": 1,
           "holds": true
         }
       ]

@@ -3,7 +3,7 @@
 Owner: WS1 (`src/siab_ledger/`, the Python reference implementation). Users: WS4 (the same operations in Swift, on
 the tablets and phones), WS5 (the Capella-side reconciler and the HQ screen run the Python package). Every
 implementation must pass the golden fixtures in `contracts/fixtures/ledger/`; the fixtures, not this page and not the
-Python code, are the source of truth. Semantics come from `contracts/fixtures/README.md` (rules 1 to 7 and the output
+Python code, are the source of truth. Semantics come from `contracts/fixtures/README.md` (rules 1 to 8 and the output
 order) and decision 001; this page restates them as an interface.
 
 The operations are pure: no I/O, no clock reads (the clock is injected), no database. The caller reads the
@@ -38,6 +38,7 @@ LedgerState
   allocation_counts[allocation_id] -> int   units in state "held" in that allocation, for every allocation id named
                                             in any transaction's from_allocation or to_allocation (zeros included)
   forks -> [ Fork{ unit_id, sku, prev_txn: txn id | null, branches: [txn id, sorted], resolved_by: exc id | null } ]
+  set_aside -> {txn id}                     movements a resolution set aside (rule 3)
   (and, for the next two operations: the transactions by id, the counting resolutions, each movement's predecessor,
    and the set of untraced units)
 
@@ -81,14 +82,17 @@ trip, box, *, detected_at=None)`, `siab_ledger.conservation(state, store, invent
      branches equal its own `dispute_key` and `transactions`. A resolution binds to the branches it was written for:
      a new branch at a settled fork makes a fork it does not match, so the fork is open again, the unit is
      `disputed` and rule 7 writes a new document.
-   - *Latest wins.* When several counting resolutions match one fork, the one with the greatest `resolution.at`
-     decides, ties going to the greatest `_id` (HQ writes `at` in UTC with `Z` and whole seconds, so the strings
-     compare as instants).
+   - *Latest wins.* When several counting resolutions match one fork, the one with the greatest `resolution.hlc`
+     decides, ties going to the greatest `_id`: HQ is one writer with one clock, so its hybrid logical clock orders
+     its decisions, and `resolution.at` is a label for people that is never compared.
    - *Settle.* That resolution settles the fork when its `chosen_txn` is one of the branches: that branch is
      canonical, and the other branches and their descendants are *set aside*, ignored for holder, counts, forks and
-     exceptions (a fork among set-aside movements is not reported). The fork stays in `forks` with `resolved_by` =
+     exceptions (a fork among set-aside movements is not reported, nor is an unexpected check-in or a foreign
+     movement there; they are `set_aside` in the state). The fork stays in `forks` with `resolved_by` =
      the resolution's `_id`. A matching resolution whose `chosen_txn` is null or names no branch settles nothing:
-     the unit stays `disputed` and `resolved_by` is null (rule 7 still writes nothing new for it).
+     the unit stays `disputed` and `resolved_by` is null, and an earlier choice is not revived (rule 7 still
+     writes nothing new for it; `chosen_txn` null is how HQ closes an `unexpected_check_in` or a
+     `foreign_movement`, which has no branch to choose).
 4. **Leaf.** Otherwise the unit's leaf is the canonical movement with no canonical successor; when several chains
    exist, the leaf with the greatest `hlc` wins. `holder` = `leaf.to_custodian`, `allocation` = `leaf.to_allocation`,
    `last_txn` = the leaf's id, `state` = `sold` when `leaf.kind` is `sale`, else `held`.
@@ -97,10 +101,17 @@ trip, box, *, detected_at=None)`, `siab_ledger.conservation(state, store, invent
 6. **Unexpected check-in.** A `check_in` whose `from_custodian` is neither its `device` nor its `box`, or whose
    `prev_txn` is null, is unexpected. The movement stands (the physical scan is the stronger evidence) and an
    `unexpected_check_in` exception attaches the check-in and, when the input has it, its `prev_txn`.
-7. **Detectors only create.** `exceptions_for` emits one document per unresolved fork in `forks` and one per
-   unexpected check-in, and leaves out any whose `dispute_key` and `transactions` match a resolution that counts
-   (rule 3), whether or not that resolution chose a branch. A new branch at the same fork gives a new document id (a
+7. **Detectors only create.** `exceptions_for` emits one document per unresolved fork in `forks`, one per
+   unexpected check-in (rule 6) and one per foreign movement (rule 8), leaves out movements a resolution set aside
+   (rule 3), and leaves out any whose `dispute_key` and `transactions` match a resolution that counts (rule 3),
+   whether or not that resolution chose a branch. A new branch at the same fork gives a new document id (a
    different hash), never an update.
+8. **Foreign movement.** A movement is foreign when its writer acted for neither custodian it names on its own side
+   of the movement. A writer acts for itself (`device`), for its `box`, and, when it is `hq`, for the store. A
+   `check_out` is foreign when its `to_custodian` is none of those (whom it takes from is the chain's business, so
+   a phone taking from a tablet is not foreign); a `sale` is foreign when its `from_custodian` is none of those. A
+   `check_in` is rule 6's. A foreign movement stands, as an unexpected check-in does, and a `foreign_movement`
+   exception attaches the movement and, when the input has it, its `prev_txn`.
 
 ## Exception documents
 
@@ -108,10 +119,13 @@ trip, box, *, detected_at=None)`, `siab_ledger.conservation(state, store, invent
   transaction ids, sorted and joined by `|`.
 - Fork: `kind` = `oversell` when the branch with the greatest `hlc` is a `sale`, else `double_scan`; `fork_txn` =
   the fork's `prev_txn`; `dispute_key` = `<unit_id>|<prev_txn or "root">`; `transactions` = the branches.
-- Unexpected check-in: `kind` = `unexpected_check_in`, `fork_txn` null, `dispute_key` = `<unit_id>|<check-in id>`.
+- Unexpected check-in: `kind` = `unexpected_check_in`, `fork_txn` null, `dispute_key` = `<unit_id>|<check-in id>`;
+  `transactions` the check-in and its predecessor when present.
+- Foreign movement: `kind` = `foreign_movement`, `fork_txn` null, `dispute_key` = `<unit_id>|<movement id>`;
+  `transactions` the movement and the transaction its `prev_txn` names when present.
 - `transactions` sorted; `branches[i]` = `{txn, device, kind, to_custodian, hlc}` of `transactions[i]`.
 - `proposed_resolution` is fixed per kind, byte for byte (`contracts/fixtures/README.md`): `oversell` gives
-  `refund`, the others `review`, with the notes given there.
+  `refund`, the others (`double_scan`, `unexpected_check_in`, `foreign_movement`) `review`, with the notes given there.
 - `status` `open`, `resolution` null, `detected_by` the detector, `box` the box (null when the detector is `hq`).
 - Same state in, byte-identical documents out (key order as in the fixtures).
 
