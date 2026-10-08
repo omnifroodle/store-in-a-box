@@ -10,7 +10,7 @@ flowchart TB
     SCAN["Scan a QR"] --> KIND{"Direction?"}
     KIND -->|"check out to this device"| OUT["allocation: custodian = tablet-A<br/>parent = the box's allocation"]
     KIND -->|"check in to parent"| IN["close child allocation<br/>return qty to parent"]
-    KIND -->|"sell"| SELL["txn:: + decrement<br/>this device's allocation<br/>one batch"]
+    KIND -->|"sell"| SELL["txn:: sale<br/>one more immutable movement<br/>counts are derived"]
     OUT & IN & SELL --> DB[("store.allocation<br/>store.transaction<br/>store.product (+vector index)<br/>store.customer (encrypted)")]
     DB --> LQ["Live queries drive every screen"]
     DB --> REP["Replicator: to peers, to the box<br/>continuous, opportunistic"]
@@ -19,20 +19,13 @@ flowchart TB
 
 ## How Store in a Box uses it
 
-**Custody, not counts.** Inventory is modelled as units in custody. An `allocation` says who holds how many of
-a SKU and which allocation it was split from. The store allocates to the box, the box to a tablet, the tablet to
-a phone. Sales decrement the selling device's allocation. The quantity in the whole tree is conserved, so the
-proof of a correct day is one query, not an argument.
+**Custody, not counts.** Inventory is modelled as units in custody. An `allocation` says who holds a slice of a
+SKU and which allocation it was split from. The store allocates to the box, the box to a tablet, the tablet to
+a phone. A sale is one more immutable movement, to the customer; nothing is decremented, because counts are derived
+from the movements. Every unit is in exactly one place, so the proof of a correct day is one check, not an argument.
 
-```sql
--- Conservation, per SKU, on the box or in Capella. Same statement both places.
-SELECT a.sku,
-       SUM(CASE WHEN a.status = 'active' THEN a.qty ELSE 0 END) AS in_custody,
-       (SELECT RAW SUM(t.qty) FROM store.transaction t
-         WHERE t.sku = a.sku AND t.kind = 'sale')[0]  AS sold
-FROM store.allocation a
-GROUP BY a.sku;
-```
+Conservation is per SKU and derived from the ledger, not summed from allocation quantities (allocations have none):
+see [the reducer and conservation](conflict-free-ledger.md#the-reducer) in the conflict-free ledger note.
 
 **Scan to check out, scan to check in.** Every unit, or every case, carries a QR. A device holding a Couchbase
 Lite database is a custodian and has two gestures. Scanning while the device is the destination moves custody to

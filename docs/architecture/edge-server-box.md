@@ -1,18 +1,16 @@
 # Couchbase Edge Server: the box
 
-The box is the thing you carry. A Raspberry Pi or a laptop running Couchbase Edge Server, holding the whole
-packed dataset for the trip, serving the tablets in the venue, running the small model for the on-box agents,
-and carrying the venue's changes up to Capella whenever it has a link. It is a store-sized server that fits in a
-backpack.
+The box is the thing you carry: a laptop in Phase 0, a Raspberry Pi where Edge Server supports its OS, running
+Couchbase Edge Server, holding the whole packed dataset for the trip, serving the tablets in the venue, running the
+small model for the on-box agents, and carrying the venue's changes up to Capella whenever it has a link. It is a
+store-sized server that fits in a backpack.
 
 ```mermaid
 flowchart LR
   subgraph Box["The Box (Couchbase Edge Server)"]
     ES[("Edge Server<br/>full packed dataset for the trip<br/>allocations · transactions · policy<br/>permits · customers · catalog subset")]
     LLM["Small model runtime<br/>clerk copilot · briefing · upsell reasons"]
-    CR["Conflict resolver<br/>(application code)"]
     ES <--> LLM
-    ES <--> CR
   end
   T1["Tablet A"] <-->|"replication"| ES
   T2["Tablet B"] <-->|"replication"| ES
@@ -27,9 +25,10 @@ where the whole trip's data lives in one place, which is what makes it the right
 the evening briefing. If it is powered off the tablets keep selling through
 [device-to-device sync](device-to-device-sync.md); when it comes back they catch it up.
 
-**Lightweight on purpose.** Edge Server is built for constrained hardware. The demo's box is a Raspberry Pi 5
-with 8 GB, and the open question in the spec is whether the small model fits on it at demo-acceptable latency or
-whether v1 uses a laptop. Either is a box.
+**Lightweight on purpose.** Edge Server is built for constrained hardware. The box is a laptop in Phase 0, and a
+Raspberry Pi where Edge Server supports its OS: Edge Server 1.1 supports ARM64 Linux on Ubuntu 22.04 and later, and
+the demo's Pi runs Debian Trixie, so for now the Pi is best-effort ([decision 002](../decisions/002-stack.md)).
+Whether the small model fits on a Pi at demo-acceptable latency is settled before Phase 1. Either is a box.
 
 **The box phones home lazily.** Its replicator to App Services is continuous and opportunistic. It runs when a
 link exists, resumes from a checkpoint when the link reappears, and never blocks a write on the venue side. The
@@ -53,10 +52,10 @@ the next contact. See [permit-flow](permit-flow.md).
 does not come back can be denied the key on its next attempt. Together with channel revocation this is the
 lost-tablet drill. See [offline-loyalty](offline-loyalty.md).
 
-**Runs the same conflict resolver as the cloud.** When the box receives two conflicting revisions (from two
-tablets, or from a tablet and the cloud), the application's resolver turns the ones that matter into exception
-documents. See [app-services-sync](app-services-sync.md). Confirm against current Edge Server docs where the
-resolver can run; the spec lists it as an open question.
+**Runs no custody logic.** The box moves documents: it stores every movement the tablets write and carries them
+to App Services and back. It never decides who holds a unit, and it needs no conflict hook, which Edge Server 1.1
+does not offer. The tablets and HQ run the ledger, the same rules on each, and a fork is found by whichever of them
+sees both sides first. See [conflict-free-ledger](conflict-free-ledger.md).
 
 ## Talking points
 

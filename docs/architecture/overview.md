@@ -25,7 +25,7 @@ flowchart LR
     T2 <--> BOX
   end
   subgraph Cloud["Capella"]
-    AS["App Services<br/>channels · sync function<br/>conflict handoff"]
+    AS["App Services<br/>channels · sync function<br/>exception handoff"]
     CB[("Capella cluster<br/>bucket retail<br/>scopes store · agents · ref")]
     SVC["Search · Columnar · Eventing<br/>AI Services · Agent Catalog"]
     AS <--> CB
@@ -88,6 +88,9 @@ One bucket, `retail`. Three scopes. Same names on the tablet, the box and the cl
 **Why custody and not counts.** Counts merge badly. Two offline decrements of a shared count is the classic
 sync failure. Units in custody conserve: a unit is wherever it was last scanned, and the sum over every
 custodian at every level is constant. The conservation query is the demo's proof and runs live in Capella.
+Custody never conflicts either: every movement is written once and never edited, and two movements of one unit
+from the same predecessor are a fork that the ledger, the same rules on every node, turns into an exception with
+both sides attached ([conflict-free-ledger](conflict-free-ledger.md)).
 
 ## The beats, mapped to components
 
@@ -102,7 +105,7 @@ custodian at every level is constant. The conservation query is the demo's proof
 | Permit on the tablet, inspection recorded | Blobs, two-way permit state machine | [permit-flow](permit-flow.md) |
 | Split the store, merge in any order | Device-to-device sync, custody tree | [device-to-device-sync](device-to-device-sync.md) |
 | Plug in: kilobytes, conservation holds | Edge Server to App Services replication, delta sync | [edge-server-box](edge-server-box.md), [capella-reconcile](capella-reconcile.md) |
-| Oversell becomes an exception | Custom conflict resolver | [app-services-sync](app-services-sync.md) |
+| Oversell becomes an exception | Conflict-free ledger | [conflict-free-ledger](conflict-free-ledger.md) |
 | Retrospective closes the loop | Capella, agents | [capella-reconcile](capella-reconcile.md), [agents-and-evaluation](agents-and-evaluation.md) |
 
 ## What the demo proves
@@ -146,6 +149,7 @@ custodian at every level is constant. The conservation query is the demo's proof
 | Agents calling agents over APIs | Nothing runs offline, there is no audit trail without building one, and the on-box agents cannot participate. Documents as the bus make the box a peer. |
 
 Component documents: [couchbase-lite-custody](couchbase-lite-custody.md) ·
+[conflict-free-ledger](conflict-free-ledger.md) ·
 [device-to-device-sync](device-to-device-sync.md) · [edge-server-box](edge-server-box.md) ·
 [app-services-sync](app-services-sync.md) · [capella-reconcile](capella-reconcile.md) ·
 [hybrid-upsell](hybrid-upsell.md) · [offline-loyalty](offline-loyalty.md) · [permit-flow](permit-flow.md) ·
