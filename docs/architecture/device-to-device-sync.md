@@ -56,11 +56,12 @@ not seen. Allocations, transactions, exceptions, demand signals. That exchange *
 is final. Capella receives the result when the box next has a link and has nothing to adjudicate. The demo's
 line: "nobody asked the cloud."
 
-**Conflicts are rare by design, and handled when they happen.** Because each custodian decrements only its own
-allocation, two devices do not usually write the same document. The cases that do (a double-scan of one unit,
-or a split allowance overspent across two slices) are exactly the cases that should be exceptions, and the
-custom conflict resolver turns them into one with both versions attached. See
-[app-services-sync](app-services-sync.md); the same resolver runs on the device.
+**Forks, not conflicts.** Every movement is a new document written once by the device that made it, so two
+devices never write the same custody document. When two devices both take one unit (a double-scan while they are
+out of range of each other), they have written two movements with the same `prev_txn`: a fork in that unit's
+chain. Whichever node sees both first (a tablet, a phone or HQ) finds the fork with the same rules every node runs
+and writes the exception with both movements attached; any other node that sees both later finds the same fork
+and files it under the same `dispute_key`. See [conflict-free-ledger](conflict-free-ledger.md).
 
 **Discovery.** On the venue network the phone finds tablet B through the peer listener. Where there is no
 shared network the demo uses a hotspot per node, which is also how a real roaming seller would be set up.

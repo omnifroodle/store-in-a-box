@@ -15,12 +15,20 @@ The product is the demo. The platform is the product.
 3. Sell: pull the cable. Two tablets, device-to-device sync, hybrid-search upsell, offline loyalty.
 4. Split: a tablet walks off with eight jackets and is still a store. Then a phone splits off the tablet.
 5. Merge: in any order, tablet to tablet, no cloud. Plug in: kilobytes, and the conservation query holds.
-6. Rejoin: exceptions with both sides attached, an explainer, a retrospective that feeds the next trip.
+6. Rejoin: forks become exceptions with both sides attached, an explainer, a retrospective that feeds the next trip.
+
+**The pattern underneath: a conflict-free ledger**
+
+Custody never conflicts, by construction. Every movement of a unit (pack, take, return, sale) is an immutable
+document written once by one device and naming the movement before it; counts are derived, never edited. Two sales
+of the last unit are a fork in that unit's history, found by the same rules on every tablet and at HQ, and the fork
+becomes an exception with both sales attached. No resolver, no node choosing between two versions of a document:
+[`docs/architecture/conflict-free-ledger.md`](docs/architecture/conflict-free-ledger.md).
 
 | | |
 |---|---|
 | Spec | [`docs/SPEC.md`](docs/SPEC.md), phased with acceptance criteria |
-| Architecture | [`docs/architecture/overview.md`](docs/architecture/overview.md) and one note per component |
+| Architecture | [`docs/architecture/overview.md`](docs/architecture/overview.md) and one note per component; the custody pattern is [`docs/architecture/conflict-free-ledger.md`](docs/architecture/conflict-free-ledger.md) |
 | Product page | `site/`, published to GitHub Pages by `.github/workflows/pages.yml` |
 | Deck | `deck/`, not started |
 | Status | Spec and architecture notes complete. Phase 0 not started. |

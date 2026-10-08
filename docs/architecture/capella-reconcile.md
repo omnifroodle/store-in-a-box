@@ -28,8 +28,8 @@ tablets left. Any gap is shrinkage by definition and Eventing turns it into an `
 **Reconcile is a read, not a procedure.** Because every custodian reconciled with its peers at the venue (see
 [device-to-device-sync](device-to-device-sync.md)), the cloud receives a consistent picture and has nothing to
 merge. The exceptions it does receive (oversell, overspend, double-scan, a flagged permit) were created by the
-resolver at the venue with both sides attached. The HQ exception queue is a SQL++ query over `store.exception`
-with `status = 'open'`.
+ledger on whichever node saw the fork first, and HQ's reconciler finds any the venue did not, with both sides
+attached. The HQ exception queue is a SQL++ query over `store.exception` with `status = 'open'`.
 
 **The reconciliation explainer.** Rather than a conflict report, an agent reads the trip's allocations,
 transactions and exceptions and writes a narrative onto the `trip` document: "50 packed, 44 sold, 3 returned, 2
