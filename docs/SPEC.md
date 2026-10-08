@@ -66,7 +66,7 @@ dashboard on the left, tablet on the right, a visible network toggle between.
 | 10 | Tablet B comes back into range. The two halves reconcile with each other, not with the cloud. Counts agree. Then the phone comes back and reconciles with tablet B | Merge in any order, no coordinator |
 | 11 | Meanwhile HQ sells the last unit of a SKU the box also has one of. Box sells it too | Conflict staged |
 | 12 | **Plug the cable in.** Byte counter shows a few KB. Capella catches up. Conservation query still sums correctly across store, box, tablet B and phone. The inspection record lands in the HQ permit queue with its photo | Delta sync, custody conservation across the whole tree, field to office |
-| 13 | Exception appears: oversell. Resolver wrote a third document with both sales. Agent drafts the customer message | Custom conflict resolution as app code |
+| 13 | Exception appears: oversell. The ledger wrote a third document with both sales. Agent drafts the customer message | Conflict-free by construction: a fork, not a conflict |
 | 14 | Trip retrospective agent writes the report and three recommendations; venue scorer's inputs now include this trip | Loop closes |
 
 Beat 5 is the moment. Everything before it earns the right to pull the cable;
@@ -144,7 +144,7 @@ the work. These are the names to use on screen and in the deck.
 | **Couchbase Lite** | The database on every tablet and phone. Collections, SQL++, live queries, vector search, blobs, database encryption. Every scan, sale, split and merge is a local write here first | Beats 5, 6, 7, 9 |
 | **Device-to-device sync** (Couchbase Lite peer-to-peer replication) | Tablets and phones replicate directly to each other and to the box with no server in the path. This is what lets the store split, run as pieces, and reconcile piece to piece while offline | Beats 5, 9, 10, and the box-dead mode |
 | **Couchbase Edge Server** | The box. A lightweight server in the venue that the tablets sync to, that holds the whole packed dataset, runs the on-box agents, and carries the venue's changes up to Capella when it can | Beats 4, 8, 12, and the terrible-link mode |
-| **Capella App Services** | The sync tier between the box and the cloud. Channels decide which documents reach which custodian, the sync function validates and routes every write, and conflicts hand off to the application's resolver | Beats 4, 12, 13, revocation drill |
+| **Capella App Services** | The sync tier between the box and the cloud. Channels decide which documents reach which custodian, the sync function validates and routes every write, and custody data never conflicts; forks are found by the ledger on every node | Beats 4, 12, 13, revocation drill |
 | **Capella** | System of record. Data Service for the documents, Search for hybrid retrieval over ordinances and catalog, Columnar for the venue scorer, Eventing for reorder and exception routing, AI Services for cloud model calls and embeddings, Agent Catalog for the agents' tools and prompts | Beats 1, 2, 3, 12, 13, 14 |
 
 Two things to say about device-to-device sync specifically, because it is the
@@ -193,7 +193,7 @@ allocation::<id>
   qty: 12,
   custodian: "box-07",
   from: "store-richmond",
-  trip: "trip-2026-10-18-maker-fair",
+  trip: "trip-2026-10-18-riverfest",
   created: ..., status: "active" | "closed"
 }
 ```
@@ -226,8 +226,9 @@ evidence and the record is what needs explaining.
 
 Scanning also carries the no-signal case for free: a scan is a local write to
 the device's own database and replicates whenever it can. Two devices that
-both scanned the same unit produce a conflict the resolver turns into an
-exception, which is exactly what a double-scan should be.
+both scanned the same unit write two movements with the same predecessor: a
+fork in the unit's custody chain that the ledger turns into an exception,
+which is exactly what a double-scan should be.
 
 **Recursive custody.** An allocation can have a parent. The store allocates to
 the box, the box allocates to tablet B, tablet B allocates to a phone. Each
@@ -287,7 +288,7 @@ allowance::<id>
   amount: 120.00,
   custodian: "box-07",
   parent: null,
-  trip: "trip-2026-10-18-maker-fair",
+  trip: "trip-2026-10-18-riverfest",
   expires: "2026-10-20T00:00Z",
   status: "active"
 }
@@ -404,22 +405,28 @@ removes its access to every channel; on next contact its documents are purged.
 
 ### 4.4 Conflict policy
 
-Default is last-write-wins for everything that is not inventory or money.
-For `allocation` and `transaction`, a **custom conflict resolver** runs on the
-box and in App Services:
+Custody is **conflict-free by construction** (decision 001). Every movement of
+a unit (pack, take, return, sale) is an immutable `transaction`, written once
+by one device and never edited, naming the movement before it in `prev_txn`.
+Counts are derived from the movements, never stored and edited, so no two
+devices ever write the same custody document.
 
-- Two decrements of the same allocation that together exceed qty do not pick a
-  winner. The resolver writes an `exception` of type `oversell` with both
-  transactions attached and a proposed resolution (backorder, substitute,
-  refund), and leaves the allocation at zero.
-- The same rule applies to `allowance`: two charges against split slices that
-  together exceed the amount produce an `exception` of type `overspend` with
-  both transactions, and the allowance goes to zero. The customer is never
-  silently overdrawn and the retailer never silently eats it; a human decides.
-- Conflicting edits to a transaction keep the version with the later tender
-  timestamp and attach the loser as `superseded`.
+- Two movements with the same predecessor are a **fork**: a double-scan, or
+  the last unit sold twice. One deterministic reducer, the same rules on every
+  tablet and at HQ and checked by the golden fixtures in
+  `contracts/fixtures/ledger/`, finds it whatever order the movements arrive in.
+- A fork becomes an `exception` (`oversell` or `double_scan`) with both
+  transactions attached, a `dispute_key` that groups every detector's copy,
+  and a proposed resolution. The unit is `disputed`, counted under no
+  custodian, until HQ chooses a branch; only HQ resolves. Allowances join the
+  ledger in Phase 1, where an overspend is a fork the same way.
+- Last-write-wins for everything that is not custody or money: policy,
+  permits, briefings.
+- Couchbase Lite's `ConflictResolver` is kept only for the rare same-document
+  case decision 001 names (an allocation closed twice).
 
-The resolver is application code, and the demo says so.
+The ledger is application code, and the demo says so. See
+[the conflict-free ledger](architecture/conflict-free-ledger.md).
 
 ### 4.5 Time
 
@@ -684,7 +691,7 @@ whoever made it, wherever they were.
 permit::<id>
 {
   type: "permit",
-  trip: "trip-2026-10-18-maker-fair",
+  trip: "trip-2026-10-18-riverfest",
   requirement: "transient vendor license",
   jurisdiction: "us-va-richmond-city",
   claim_ref: "compliance_check::<id>#claim-3",
@@ -778,9 +785,10 @@ demo.
    change in a few hundred KB.
 6. **Filtered replication.** Same product document, no cost or margin on the
    box. The copilot proving it does not have the data.
-7. **Custom conflict resolver as app code.** Oversell becomes an exception
-   with both sales, not a lost one. A double-scan becomes an exception, not a
-   phantom unit.
+7. **Conflict-free by construction.** Two sales of the last unit are a fork
+   in one unit's custody chain, found by the same reducer on every node; the
+   fork becomes an exception with both sales attached. A double-scan the same
+   way. No node ever has two versions of one document to choose between.
 8. **Revocation as purge.** Lost tablet drill.
 9. **Checkpointed resume over a terrible link.** Throttle, cut, restore, show
    the checkpoint document.
@@ -857,9 +865,9 @@ audience should see the cable come out.
   demo-acceptable latency, or does the box need to be a laptop for v1?
 - Is a tax-rate API available for the demo account, or is the rate table
   seeded and labeled as such?
-- Does the Edge Server to App Services path support the custom conflict
-  resolver running in both places, or does the resolver live only on CBL and
-  App Services? Confirm against current docs before Phase 0.
+- Closed 2026-10-07: neither does; see [decision 001](decisions/001-ledger-not-resolver.md)
+  and the [ledger note](architecture/conflict-free-ledger.md). (Whether Edge
+  Server and App Services each run a custom resolver.)
 - Does Agent Catalog cover the on-box agents, or only the cloud ones? If only
   cloud, the on-box tool definitions are mirrored by hand and the spec says so.
 - Which three or four jurisdictions seed the ordinance corpus? Pick ones with

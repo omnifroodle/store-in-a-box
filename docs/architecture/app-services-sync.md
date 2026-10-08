@@ -2,8 +2,8 @@
 
 Capella App Services is the sync tier between the box and the cloud. It speaks the Couchbase Lite replication
 protocol, runs a small JavaScript function on every write to validate it and decide who may see it, keeps the
-documents in the Capella cluster where SQL++ and the agents can reach them, and hands conflicts to the
-application's resolver instead of guessing.
+documents in the Capella cluster where SQL++ and the agents can reach them, and never has to guess between two
+versions of custody data, because the ledger never writes two.
 
 ```mermaid
 sequenceDiagram
@@ -13,7 +13,7 @@ sequenceDiagram
   participant HQ as HQ screen
 
   B->>AS: connect as user box-07
-  AS-->>B: pull: trip:maker-fair, catalog:va-central (filtered), customers:va-central, box:box-07
+  AS-->>B: pull: trip:trip-2026-10-18-riverfest, catalog:va-central (filtered), customers:va-central, box:box-07
   Note over B: Offline for the day. 50 transactions, 2 exceptions, 6 demand signals, 1 inspection
   B->>AS: push, resuming from checkpoint
   AS->>AS: sync function: trip required, custodian must match user, route to trip channel
@@ -53,18 +53,16 @@ demo achieves this with a venue-facing projection of the catalog (a `product_ven
 the packing step) routed to `catalog:<region>`, while the full `product` stays in a channel the box does not
 hold. The tablet's copilot saying it has no margin data is the visible result.
 
-**Conflicts hand off to the resolver.** Most documents in this model are written by one custodian, so conflicts
-are rare. The ones that happen are the ones that must become exceptions:
-
-- Two sales against the same last unit (one at the flagship through the cloud, one on the road) do not pick a
-  winner. The custom resolver writes an `exception` of type `oversell` with both transactions attached and a
-  proposed resolution, and zeroes the allocation.
-- Two charges against split slices of one `allowance` that together exceed it produce an `overspend` exception
-  the same way.
-- A unit scanned by two devices produces a `double_scan` exception, not a phantom unit.
-- Everything else is last-write-wins, which for policy, permits and briefings is correct.
-
-The resolver is application code and runs on the device, the box and in App Services. The demo says so.
+**Custody data does not conflict.** App Services offers no application conflict hook: when a client pushes a
+revision that conflicts with the server's, App Services rejects the push and leaves the resolution to Couchbase Lite
+on that client. The demo never relies on that path for custody. Every movement of a unit is an immutable
+`transaction`, written once by one device, and counts are derived from them, so two sales of the last unit (one at
+the flagship, one on the road) are two different documents, not two versions of one. They name the same
+predecessor, which makes them a fork, and the ledger on whichever node sees both turns the fork into an `oversell`
+exception with both sales attached; a unit scanned by two devices becomes a `double_scan` the same way. App
+Services only validates and routes the documents. Everything that is not custody or money (policy, permits,
+briefings) is last-write-wins, which is correct for those; allowances join the ledger in Phase 1. See
+[conflict-free-ledger](conflict-free-ledger.md).
 
 **Delta sync.** A price change edits one field on 10,000 documents. The box pulls the deltas, not the documents,
 and the byte counter on the box shows it. A day's transactions push in kilobytes.
@@ -82,7 +80,7 @@ Those writes flow down to the box and the tablets like anything else. See [permi
 
 - "Nine lines of JavaScript are the whole access model, and they live with the data."
 - "The other forty thousand SKUs are not hidden on the tablet. They were never sent."
-- "A conflict here is not a bug to resolve. It is an exception to review, with both sides attached."
+- "A fork here is not a conflict to resolve. It is an exception to review, with both sides attached."
 - "Ten thousand price changes came down as a few hundred kilobytes. The box moves what changed."
 - "Revoke the tablet and it empties itself. No wipe, no remote management agent."
 
@@ -101,7 +99,7 @@ Those writes flow down to the box and the tablets like anything else. See [permi
 | **Self-hosted Sync Gateway** | Same protocol, same sync functions, full control of the deployment and the admin API. You run, patch and scale it. |
 | **Custom REST plus a queue** | Total control, and you rebuild checkpoints, conflict handling, blob transfer, delta sync and per-device filtering. The custody model survives; the sync underneath it becomes your product. |
 | **Filtering in the app** | Not security. The data is already on the device. Channels decide before the bytes leave the server. |
-| **Server-side last-write-wins for everything** | Simple, and the last unit sold twice becomes one lost sale that nobody can see. The custom resolver is what turns that into an exception. |
+| **Server-side last-write-wins for everything** | Simple, and the last unit sold twice becomes one lost sale that nobody can see. The conflict-free ledger is what turns that into an exception: two sales are two documents, never one overwritten. |
 
 Related: [edge-server-box](edge-server-box.md) · [capella-reconcile](capella-reconcile.md) ·
 [couchbase-lite-custody](couchbase-lite-custody.md) · [permit-flow](permit-flow.md)
