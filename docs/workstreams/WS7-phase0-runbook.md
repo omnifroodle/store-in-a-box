@@ -85,6 +85,9 @@ none (reads `contracts/fixtures/seed/products.json`).
 - Labels print and scan: owner-present (printer, stage light).
 - Reset really resets: agent with `capella` and `box` runs `reset_rehearsal.sh` then WS5's conservation shows
   nothing packed and the box counter is zero.
+- The staged oversell (#61): HQ already holds the pack, so its own copy of the dispute appears before the cable goes back
+  in. At rehearsal, decide whether the HQ exception panel stays off the projector until the plug-in, and write the
+  decision into `docs/runbook/phase0.md`. Owner-present.
 
 ## Tasks
 
