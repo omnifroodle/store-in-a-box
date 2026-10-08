@@ -44,7 +44,9 @@ The rules (decision 001; `ports/ledger.md` restates them as an interface):
    except that a `check_in` with `prev_txn: null` never joins a root fork (rule 6 covers it). Two dangling roots with
    different missing predecessors are not a fork.
 3. An unresolved fork makes the unit `disputed`: `holder`, `allocation` and `last_txn` are null and it is counted
-   under `disputed`, not under any custodian or allocation. A resolution settles the fork of its `unit_id` whose
+   under `disputed`, not under any custodian or allocation. Only HQ resolves: a resolution counts only when
+   `resolution.by` is `hq`, and any other is ignored everywhere (tablet-to-tablet sync never runs the App Services
+   sync function, so the reducer must enforce this itself). A resolution settles the fork of its `unit_id` whose
    branches include `resolution.chosen_txn`; that branch becomes canonical, and the other branches and their
    descendants are ignored for holder and counts. The fork stays in `forks` with `resolved_by` set to the resolution's
    id.
@@ -60,7 +62,7 @@ The rules (decision 001; `ports/ledger.md` restates them as an interface):
    `unexpected_check_in` attaches the check-in and, when the input has it, its predecessor.
 7. `exceptions_for` only creates: a new branch at the same fork gives a new id (a different hash). It emits one
    exception per unresolved fork and one per unexpected check-in, and leaves out any whose `dispute_key` and
-   `transactions` match a resolution in the input.
+   `transactions` match a resolution in the input (an HQ resolution, per rule 3).
 
 What `expected` holds, and in what order (so two implementations produce identical output):
 
@@ -110,7 +112,8 @@ that it does.
 Channels are compared as a set. When a document breaks more than one rule, the first failing check in this order
 gives the error: a delete (`deletes are hq only`); `type mismatch`; `trip is required`, then `box is required` (a box
 may be null only on a document hq writes); the writer (`writer must be hq`, `a box writes only its own documents`);
-`access`; then the update rules (`immutable`, `only hq may resolve`, `only status and closed_at may change`,
+`access`; then `only hq may resolve` (a user other than hq creating an exception whose `status` is not `open`, or
+updating any exception); then the other update rules (`immutable`, `only status and closed_at may change`,
 `only status and resolution may change`).
 
 The error substrings are fixed (the functions use these words): `type mismatch`, `trip is required`,
