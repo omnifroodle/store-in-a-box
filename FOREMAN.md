@@ -198,16 +198,24 @@ If the owner agrees, admins may push foreman-owned docs (decisions, this file, b
 branch; code always goes through a branch and a PR.
 
 ## Environment
-No code yet; the stack is chosen in M0. The demo runs on three tiers (`docs/SPEC.md` sections 3 and 9.2):
+The stack is decision 002: one Swift/SwiftUI app on two iPads and an iPhone (Couchbase Lite Swift 4.x); Python 3.12
+(`uv`) for the box agent, the Capella tooling, the reference ledger and the HQ screen; a JavaScript sync function
+tested with `node --test`; GitHub Actions. The demo runs on three tiers (`docs/SPEC.md` sections 3 and 9.2):
 - **Capella**: one cluster with App Services, Search, Columnar, Eventing, AI Services and Agent Catalog. Credentials
-  come from the environment (`.env`, never committed); name the variables here once M0 defines them.
-- **The box**: Couchbase Edge Server and a small model runtime on a Raspberry Pi 5 (8 GB) or a laptop.
-- **Tablets and a phone**: two or three tablets and one phone running the Couchbase Lite POS app, plus a travel
-  router or hotspot for the terrible-link mode.
+  come from the environment (`.env`, never committed; `.env.example` lists the names): `CAPELLA_CONN_STRING`,
+  `CAPELLA_DB_USERNAME`, `CAPELLA_DB_PASSWORD`, `CAPELLA_API_KEY`, `CAPELLA_ORG_ID`, `CAPELLA_PROJECT_ID`,
+  `CAPELLA_CLUSTER_ID`, `CAPELLA_APP_SERVICE_ID`, `APP_SERVICES_PUBLIC_URL`, `APP_SERVICES_ADMIN_URL`, `SIAB_TRIP`,
+  `SIAB_REGION`, `BOX_APP_USER`, `BOX_APP_PASSWORD`, `HQ_APP_USER`, `HQ_APP_PASSWORD` (WS2 owns the list).
+- **The box**: Couchbase Edge Server and the box agent on a macOS laptop (decision 002). A Raspberry Pi on Debian
+  Trixie is optional and best-effort: Edge Server 1.1 supports ARM64 only on Ubuntu.
+- **Tablets and a phone**: two iPads and one iPhone running the Couchbase Lite POS app, plus a travel router whose WAN
+  cable is the uplink that gets pulled. The Apple developer account is a free one, so device installs expire after
+  seven days: re-install before each rehearsal.
 Code, schemas, fixtures and unit tests against fakes run anywhere (`any`). `gh` is available in every session.
 
 Environment tags used on tasks: `any` (any session), `<machine or device>` (only a session that has it), `owner-present`
-(needs the owner at the device). Single-instance environments and who may use them:
+(needs the owner at the device), `macos-xcode` (a Mac with Xcode and the iOS simulators; WS4 and WS6 build and test
+there). Single-instance environments and who may use them:
 - `box`: the one Edge Server box. One task at a time; only the foreman session, or a session the foreman names in the
   dispatch, may use it.
 - `capella`: the one Capella cluster and App Services endpoint. Same rule. Tasks that only read from it still take the
