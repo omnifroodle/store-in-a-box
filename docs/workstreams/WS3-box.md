@@ -50,8 +50,8 @@ Owned by this workstream:
 - `ports/box-agent.md` (new: the HTTP API below and the pairing payload)
 
 Named edits in neighbours' code:
-- `pyproject.toml`: add `siab_box` to packages, the `qrcode` (or equivalent pure-Python QR) dependency, and a
-  `siab-box = "siab_box.__main__:main"` script entry.
+- `pyproject.toml`: already declares `siab_box`, the `siab-box` script and `qrcode` (M0 setup PR). Edit it only to
+  add a dependency it lacks.
 - `ports/README.md`: append one line pointing at `ports/box-agent.md`.
 - `.env.example`: append the `EDGE_*` and `SIAB_BOX_*` names below (WS2 creates the file; if WS2 has not merged,
   create it with only these names).

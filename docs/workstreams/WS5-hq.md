@@ -27,7 +27,7 @@ Owned by this workstream:
 - `ports/hq.md` (new: the HTTP API below)
 
 Named edits in neighbours' code:
-- `pyproject.toml`: add `siab_hq` to packages, a `siab-hq = "siab_hq.__main__:main"` script entry, and the web
+- `pyproject.toml`: already declares `siab_hq` and the `siab-hq` script (M0 setup PR). Edit it only to add the web
   framework dependency if one is used (stdlib `http.server` plus `asyncio` is acceptable and preferred).
 - `ports/README.md`: append one line pointing at `ports/hq.md`.
 - `.env.example`: append `SIAB_HQ_PORT` (default `8788`), `SIAB_BOX_STATUS_URL` (optional, the box agent's
