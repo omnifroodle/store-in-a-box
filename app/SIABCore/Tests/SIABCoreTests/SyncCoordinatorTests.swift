@@ -2,8 +2,8 @@ import CouchbaseLiteSwift
 import XCTest
 @testable import SIABCore
 
-/// SyncCoordinator's configuration and listener state, with no box and no peers. The only replicator started points
-/// at a closed loopback port (no network); the live paths are the two-simulator and owner-present checks.
+/// SyncCoordinator's configuration and listener state, with no box and no peers: replicators are built, never started
+/// (no network); the live paths are the two-simulator and owner-present checks.
 final class SyncCoordinatorTests: XCTestCase {
     /// Counts calls; never produces an identity (Community Edition has none to produce).
     final class NoIdentity: TLSIdentityProvider {
@@ -106,11 +106,11 @@ final class SyncCoordinatorTests: XCTestCase {
 
     /// A movement written while the box is unreachable joins the unpushed tail, with its own hlc as the oldest.
     func testLocalWriteJoinsTheUnpushedTail() throws {
-        var pairing = Self.pairing
-        pairing.edgeURL = "ws://127.0.0.1:9/retail"  // discard port, nothing listens: offline, no network
+        let pairing = Self.pairing
         let clock = FakeClock()
         let identity = NoIdentity()
         let sync = SyncCoordinator(database: database, pairing: pairing, identity: identity, clock: clock)
+        sync.startsReplicators = false
         sync.start()
         defer { sync.stop() }
         let custody = try CustodyStore(database: database, identity: pairing.identity, clock: clock)

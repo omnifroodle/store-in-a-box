@@ -44,8 +44,10 @@ jobs:
       - name: Test SIABCore (LedgerFixtureTests over contracts/fixtures/ledger)
         run: |
           set -o pipefail
+          # A hung test fails after a minute instead of holding the job to its timeout.
           xcodebuild test -project app/StoreInABox.xcodeproj -scheme SIABCore \
-            -destination "platform=iOS Simulator,name=$SIM_NAME" | tee xcodebuild.log
+            -destination "platform=iOS Simulator,name=$SIM_NAME" \
+            -test-timeouts-enabled YES -default-test-execution-time-allowance 60 | tee xcodebuild.log
           grep -E "^(PASS|FAIL) " xcodebuild.log
       - name: Check the edition that was built
         # The test bundle and the resolved package must be the edition this job asked for.

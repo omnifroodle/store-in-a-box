@@ -142,6 +142,8 @@ public final class SyncCoordinator: ObservableObject {
     private var peerTable: [String: PeerLink] = [:]
     private var transports: [String: (active: Bool, error: String?)] = [:]
     private var generation = 0
+    /// Tests build the box replicator without starting it: its pending ids work, and nothing touches the network.
+    var startsReplicators = true
     #if COUCHBASE_ENTERPRISE
     private var multipeer: MultipeerReplicator?
     #endif
@@ -204,7 +206,7 @@ public final class SyncCoordinator: ObservableObject {
                 self?.documentsReplicated(push: replication.isPush, replication.documents.map { ($0.id, $0.error) })
             })
             self.replicator = replicator
-            replicator.start()
+            if startsReplicators { replicator.start() }
             refreshPending()
         } catch {
             box = .error(error.localizedDescription)
