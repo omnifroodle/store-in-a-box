@@ -89,16 +89,27 @@ What `expected` holds, and in what order (so two implementations produce identic
 
   - `status` `open`, `resolution` null, `detected_by` the detector, `box` the box (null when the detector is `hq`).
 - `conservation`: one row per SKU, sorted by sku. The venue-only rows cover the SKUs in the ledger; the
-  `with_inventory` rows cover the SKUs in the ledger or the inventory.
-  - `left_store`: units of the SKU that appear in the ledger (every one of them left the store at some point).
-  - `returned_to_store`: of those, units held by the store.
+  `with_inventory` rows cover the SKUs in the ledger or the inventory. Every unit in the ledger is in exactly one
+  of four states (held by the store, held by another custodian, sold, disputed), so a sum over those states is an
+  identity, not a check. What `holds` checks is that the ledger agrees with what the store released: no unit the
+  store never let go of (both modes), and no more units than the store had (with inventory).
+  - `untraced`: units of the SKU in the ledger whose every root (rule 1) is a `check_in` with `prev_txn` null: the
+    unit entered only by an unexpected check-in (rule 6), and nothing says it left the store.
+  - `left_store`: every other unit of the SKU in the ledger. The store's release is presumed for any unit with
+    another kind of root: a movement from the store, a dangling root (the predecessor has not arrived), or a
+    movement with `prev_txn` null from another custodian (its writer had no record yet, for example a tablet taking
+    a unit off the box before the pack replicated). So a unit mid-replication never turns a row false.
+    `left_store + untraced` is the number of distinct units of the SKU in the ledger.
+  - `returned_to_store`: of the `left_store` units, those held by the store.
   - `in_custody`: held units per holder other than the store, only holders with at least one.
   - `sold`, `disputed`: units in those states.
+  - True by construction, so not a check:
+    `left_store + untraced == returned_to_store + sum(in_custody) + sold + disputed`.
   - With inventory: `opening_on_hand` and `received` from the inventory document (0 when the SKU has none),
-    `store_on_hand = opening_on_hand + received - left_store + returned_to_store`, and
-    `holds = store_on_hand + sum(in_custody) + sold + disputed == opening_on_hand + received`.
-  - Venue-only: `opening_on_hand`, `received` and `store_on_hand` are null, and
-    `holds = left_store == sum(in_custody) + sold + disputed + returned_to_store`.
+    `store_on_hand = opening_on_hand + received - left_store + returned_to_store` (the units never scanned plus
+    those back on the shelf; negative when the ledger names more units than the store had), and
+    `holds = untraced == 0 and store_on_hand >= 0`.
+  - Venue-only: `opening_on_hand`, `received` and `store_on_hand` are null, and `holds = untraced == 0`.
 
 ## `sync/<case>.json`: the App Services sync functions
 

@@ -17,7 +17,9 @@ transactions and exceptions, runs the WS1 ledger, writes an `exception` for ever
 
 Left for later: Eventing for exception routing and reorder (Phase 2), the reconciliation explainer (Phase 2), the
 permit queue (Phase 2), the `_changes` feed instead of polling, authentication on the HQ app (it binds to loopback
-in Phase 0).
+in Phase 0), and an `exception` document for a conservation row that does not hold (the spec gives that to
+Eventing in Phase 2; the `exception` schema is per unit and has no kind for a per-SKU gap). In Phase 0 the screen
+shows the failing row; nothing is written.
 
 ## Files
 
@@ -50,8 +52,15 @@ the ledger fixtures' transactions. The ledger is `siab_ledger` (WS1), imported, 
 - `GET /` → the screen: three panels (conservation, tree, exceptions), the stage control, the optional box panel.
   Polls every 2 s. Plain HTML, one JS file, no build step.
 - `GET /api/conservation?trip=` → `{ "trip": ..., "as_of": iso8601, "rows": [ConservationRow...], "holds": bool }`
-  where `ConservationRow` is WS1's shape: `sku, opening_on_hand, received, left_store, returned_to_store,
-  store_on_hand, in_custody{custodian: n}, sold, disputed, holds` (`contracts/fixtures/README.md`).
+  where `ConservationRow` is WS1's shape: `sku, opening_on_hand, received, left_store, untraced,
+  returned_to_store, store_on_hand, in_custody{custodian: n}, sold, disputed, holds` (`contracts/fixtures/README.md`,
+  CC5 #29), always computed with the inventory, and the top-level `holds` is true only when every row's is. A
+  row fails for one of two reasons the row itself carries, and the screen says which: `store_on_hand < 0`
+  (overdrawn: the ledger names more units than the store had) or `untraced > 0` (units nothing traces to the
+  store). On screen a failing row is highlighted and gets a reason cell, byte for byte `overdrawn by N`
+  (`N = -store_on_hand`) or `N untraced` (both, comma-separated, when both apply); the "holds" indicator at the
+  top of the panel reads `HOLDS` when every row holds and `N SKUs do not hold` otherwise. A row that holds has an
+  empty reason cell. Nothing is written for a failing row (see "Left for later").
 - `GET /api/tree?trip=` → `{ "root": "store-richmond", "nodes": [ { "custodian", "parent", "allocations": [ { "id",
   "sku", "status", "count" } ] } ] }` built from `LedgerState.allocation_counts` and the allocation documents.
 - `GET /api/exceptions?trip=&status=open|resolved|all` → `{ "disputes": [ { "dispute_key", "kind", "unit_id", "sku",
@@ -79,7 +88,9 @@ what it would write with `--dry-run`).
 ## Contract changes
 
 - CC3 (#4): the `exception` `resolution` block and the `hq` detector are in the schema; `transaction.box` nullable
-  for `hq` writers. No new change.
+  for `hq` writers.
+- CC5 (#29, contracts 0.2.0): the conservation row gains `untraced` and `holds` can be false (`overpacked`,
+  `untraced-unit`). Owned by WS1's interface; this workstream only displays it. No new change of its own.
 
 ## Exit criteria
 
@@ -87,7 +98,10 @@ what it would write with `--dry-run`).
       `test_reconciler_writes_one_exception_per_open_fork` (the `oversell-hq` and `double-scan` fixtures),
       `test_reconciler_is_idempotent_across_runs` (virtual time, three ticks, no duplicate writes),
       `test_resolve_updates_every_detectors_copy`, `test_conservation_rows_equal_fixture_expected`
-      (`conservation-day`), `test_stage_hq_sale_writes_root_sale_and_reconciler_forks_it`,
+      (`conservation-day`), `test_conservation_reports_why_a_row_fails` (`FakeCapella` loaded from `overpacked`:
+      the response has `holds: false`, the `HAT-BRIM-OS` row has `store_on_hand: -1`, and the rendered screen
+      carries `overdrawn by 1`; loaded from `untraced-unit`: the `SOC-WOOL-M` row has `untraced: 1` and the screen
+      carries `1 untraced`), `test_stage_hq_sale_writes_root_sale_and_reconciler_forks_it`,
       `test_tree_matches_allocation_counts`.
 - [ ] `python -m siab_hq reconcile --once --dry-run` against `FakeCapella` (an env flag selects it) prints the
       planned exception ids for the `oversell-hq` fixture and exits 0.

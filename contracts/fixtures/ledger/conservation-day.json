@@ -1100,6 +1100,7 @@
           "opening_on_hand": 10,
           "received": 0,
           "left_store": 6,
+          "untraced": 0,
           "returned_to_store": 0,
           "store_on_hand": 4,
           "in_custody": {
@@ -1114,6 +1115,7 @@
           "opening_on_hand": 12,
           "received": 0,
           "left_store": 8,
+          "untraced": 0,
           "returned_to_store": 1,
           "store_on_hand": 5,
           "in_custody": {
@@ -1128,6 +1130,7 @@
           "opening_on_hand": 10,
           "received": 0,
           "left_store": 6,
+          "untraced": 0,
           "returned_to_store": 0,
           "store_on_hand": 4,
           "in_custody": {
@@ -1144,6 +1147,7 @@
           "opening_on_hand": null,
           "received": null,
           "left_store": 6,
+          "untraced": 0,
           "returned_to_store": 0,
           "store_on_hand": null,
           "in_custody": {
@@ -1158,6 +1162,7 @@
           "opening_on_hand": null,
           "received": null,
           "left_store": 8,
+          "untraced": 0,
           "returned_to_store": 1,
           "store_on_hand": null,
           "in_custody": {
@@ -1172,6 +1177,7 @@
           "opening_on_hand": null,
           "received": null,
           "left_store": 6,
+          "untraced": 0,
           "returned_to_store": 0,
           "store_on_hand": null,
           "in_custody": {
