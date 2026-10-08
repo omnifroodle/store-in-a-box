@@ -8,6 +8,7 @@ from collections.abc import Iterable, Mapping
 from .chain import LedgerState
 
 OVERSELL, DOUBLE_SCAN, UNEXPECTED_CHECK_IN = "oversell", "double_scan", "unexpected_check_in"
+FOREIGN = "foreign_movement"
 
 PROPOSED_RESOLUTION = {
     OVERSELL: {"action": "refund", "note": "Sold twice. Refund one sale, then choose the branch that stands."},
@@ -15,6 +16,7 @@ PROPOSED_RESOLUTION = {
                   "note": "Scanned out twice. Choose the movement that matches where the unit is."},
     UNEXPECTED_CHECK_IN: {"action": "review",
                           "note": "Checked in by a device that did not hold it. Confirm where the unit is."},
+    FOREIGN: {"action": "review", "note": "Moved by a device that did not hold it. Confirm where the unit is."},
 }
 
 
@@ -32,6 +34,25 @@ def is_unexpected_check_in(txn: Mapping) -> bool:
     if txn["kind"] != "check_in":
         return False
     return txn["prev_txn"] is None or txn["from_custodian"] not in (txn["device"], txn["box"])
+
+
+def acts_for(txn: Mapping, store: str) -> set:
+    """Rule 8: the custodians a writer acts for: itself, its box, and the store when it is hq."""
+    out = {txn["device"]}
+    if txn["box"] is not None:
+        out.add(txn["box"])
+    if txn["device"] == "hq":
+        out.add(store)
+    return out
+
+
+def is_foreign(txn: Mapping, store: str) -> bool:
+    """Rule 8: a check_out onto, or a sale from, a custodian the writer does not act for."""
+    if txn["kind"] == "check_out":
+        return txn["to_custodian"] not in acts_for(txn, store)
+    if txn["kind"] == "sale":
+        return txn["from_custodian"] not in acts_for(txn, store)
+    return False
 
 
 def _branch(txn: Mapping) -> dict:
@@ -85,10 +106,16 @@ def exceptions_for(state: LedgerState, detector: str, trip: str, box: str | None
         docs[doc["_id"]] = doc
     for tid in sorted(state.transactions):
         txn = state.transactions[tid]
-        if not is_unexpected_check_in(txn):
+        if tid in state.set_aside:
+            continue  # rule 3: set-aside movements raise nothing
+        if is_unexpected_check_in(txn):
+            kind = UNEXPECTED_CHECK_IN
+        elif is_foreign(txn, state.store):
+            kind = FOREIGN
+        else:
             continue
         ids = [tid] + ([txn["prev_txn"]] if txn["prev_txn"] in state.transactions else [])
-        doc = _document(state, detector=detector, trip=trip, box=box, kind=UNEXPECTED_CHECK_IN,
+        doc = _document(state, detector=detector, trip=trip, box=box, kind=kind,
                         unit_id=txn["unit_id"], dispute_key=f"{txn['unit_id']}|{tid}", fork_txn=None, txn_ids=ids,
                         detected_at=detected_at)
         docs[doc["_id"]] = doc

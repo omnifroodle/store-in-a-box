@@ -17,7 +17,7 @@ def test_port_doc_names_every_operation_and_rule():
                  "store_on_hand", "holds", "python -m siab_ledger check"):
         assert name in doc, name
     rules = re.findall(r"^(\d)\. \*\*", doc, re.MULTILINE)
-    assert rules == [str(n) for n in range(1, 8)]
+    assert rules == [str(n) for n in range(1, 9)]
     assert "ledger.md" in (REPO / "ports" / "README.md").read_text(encoding="utf-8")
 
 

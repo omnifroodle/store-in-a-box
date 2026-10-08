@@ -252,11 +252,11 @@ def test_the_latest_resolution_settles_a_fork(fixture):
     hq_copy, tablet_copy = fx["resolutions"]
     for order in ([hq_copy, tablet_copy], [tablet_copy, hq_copy]):
         state = state_of(fx, resolutions=order)
-        assert state.forks[0].resolved_by == tablet_copy["_id"]  # 13:35 beats 13:30 although its _id sorts later
+        assert state.forks[0].resolved_by == tablet_copy["_id"]  # later hlc wins though its _id sorts later
         assert state.units["JKT-RAIN-M-BLU#001"].holder == "tablet-b"
-    # Equal resolution.at: the greatest _id decides.
+    # Equal resolution.hlc: the greatest _id decides.
     tie = copy.deepcopy([hq_copy, tablet_copy])
-    tie[1]["resolution"]["at"] = tie[0]["resolution"]["at"]
+    tie[1]["resolution"]["hlc"] = tie[0]["resolution"]["hlc"]
     tie[0]["resolution"]["chosen_txn"], tie[1]["resolution"]["chosen_txn"] = TAKE_B, TAKE_A
     state = state_of(fx, resolutions=tie)
     assert state.forks[0].resolved_by == tablet_copy["_id"]
@@ -278,3 +278,32 @@ def test_two_blind_takes_with_no_pack_fixture(fixture):
     state = state_of(fixture("null-root-double-take-no-pack"))
     assert state.forks == ()
     assert state.units["JKT-RAIN-M-BLU#001"].holder == "tablet-b"
+
+
+# ---------------------------------------------------------------- contracts 0.5.0 (CC9, decision 008)
+
+
+def test_latest_resolution_chooses_nothing_reopens_fork(fixture):
+    fx = fixture("latest-resolution-chooses-nothing")
+    hq_copy, tablet_copy = fx["resolutions"]
+    for order in ([hq_copy, tablet_copy], [tablet_copy, hq_copy]):
+        state = state_of(fx, resolutions=order)
+        assert state.forks[0].resolved_by is None  # the earlier choice is not revived
+        assert state.units["JKT-RAIN-M-BLU#001"].state == "disputed"
+        assert exceptions_for(state, "tablet-a", fx["trip"], fx["box"]) == []  # both copies match the fork
+
+
+def test_resolutions_order_by_hlc_not_at(fixture):
+    fx = fixture("resolution-order-by-hlc")
+    hq_copy, tablet_copy = fx["resolutions"]
+    assert hq_copy["resolution"]["at"] > tablet_copy["resolution"]["at"]  # the labels disagree with the clock
+    for order in ([hq_copy, tablet_copy], [tablet_copy, hq_copy]):
+        state = state_of(fx, resolutions=order)
+        assert state.forks[0].resolved_by == tablet_copy["_id"]
+        assert state.units["JKT-RAIN-M-BLU#001"].holder == "tablet-b"
+
+
+def test_set_aside_holds_the_ids_a_resolution_set_aside(fixture):
+    fx = fixture("unexpected-check-in-inside-set-aside-branch")
+    assert state_of(fx).set_aside == frozenset({TAKE_B, "txn::1792330400000-0000-phone-1"})
+    assert state_of(fx, resolutions=[]).set_aside == frozenset()
