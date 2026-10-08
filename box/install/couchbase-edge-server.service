@@ -1,0 +1,16 @@
+# Linux only, best-effort (the Pi). install.sh fills in @EDGE_BIN@, @REPO@ and @USER@ and installs this to
+# /etc/systemd/system, where it takes precedence over the unit the .deb ships under the same name.
+[Unit]
+Description=Couchbase Edge Server for Store in a Box
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=@USER@
+WorkingDirectory=@REPO@/box/.edge-server
+ExecStart=@EDGE_BIN@ @REPO@/box/.edge-server/config.json
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

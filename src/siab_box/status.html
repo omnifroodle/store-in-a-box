@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Box status</title>
+<style>
+:root { --bg: #0f1115; --fg: #f2f2f2; --dim: #8a8f98; --ok: #3ccf7a; --bad: #ff5c5c; --warn: #ffb547; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px 16px; background: var(--bg); color: var(--fg);
+  font-family: -apple-system, system-ui, sans-serif; }
+main { max-width: 960px; margin: 0 auto; }
+header { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; color: var(--dim); }
+#banner { display: none; margin: 16px 0; padding: 12px 16px; border-radius: 8px; background: var(--bad);
+  color: #000; font-weight: 700; font-size: 1.4rem; }
+#banner small { display: block; font-weight: 400; font-size: 1rem; }
+.bytes { margin: 32px 0 8px; font-variant-numeric: tabular-nums; }
+.bytes .n { font-size: clamp(3rem, 14vw, 9rem); font-weight: 800; line-height: 1; }
+.bytes .label { color: var(--dim); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 24px; }
+.card { background: #191c22; border-radius: 8px; padding: 12px 16px; }
+.card h2 { margin: 0 0 6px; font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); }
+.card .v { font-size: 1.4rem; font-weight: 700; }
+.ok { color: var(--ok); } .bad { color: var(--bad); } .warn { color: var(--warn); }
+.card p { margin: 4px 0 0; color: var(--dim); font-size: .9rem; word-break: break-word; }
+nav { margin-top: 24px; color: var(--dim); }
+nav a { color: var(--fg); margin-right: 16px; }
+</style>
+</head>
+<body>
+<main>
+  <header><span id="box">box</span><span id="trip"></span></header>
+  <div id="banner">UPLINK CUT<small id="banner-why"></small></div>
+  <section class="bytes">
+    <div class="n" id="bytes">-</div>
+    <div class="label">to and from Capella since <span id="since">-</span>
+      (<span id="split">in - / out -</span>, <span id="source">proxy</span>)</div>
+  </section>
+  <section class="grid">
+    <div class="card"><h2>Uplink</h2><div class="v" id="uplink">-</div><p id="uplink-detail"></p></div>
+    <div class="card"><h2>Replication</h2><div class="v" id="replication">-</div><p id="replication-detail"></p></div>
+    <div class="card"><h2>Edge Server</h2><div class="v" id="edge">-</div><p id="edge-detail"></p></div>
+  </section>
+  <nav id="pairing">Pair:</nav>
+</main>
+<script>
+function kb(n) {
+  if (n < 1000) return n + " B";
+  if (n < 1000000) return (n / 1000).toFixed(1) + " KB";
+  return (n / 1000000).toFixed(2) + " MB";
+}
+function set(id, text, cls) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  if (cls !== undefined) el.className = "v " + cls;
+}
+let paired = false;
+async function tick() {
+  let s;
+  try {
+    const r = await fetch("/status", {cache: "no-store"});
+    s = await r.json();
+  } catch (e) {
+    set("edge", "agent unreachable", "bad");
+    return;
+  }
+  set("box", s.box);
+  set("trip", s.trip);
+  set("bytes", kb(s.bytes.in + s.bytes.out));
+  set("since", new Date(s.bytes.since).toLocaleTimeString());
+  set("split", "in " + kb(s.bytes.in) + " / out " + kb(s.bytes.out));
+  set("source", s.bytes.source);
+  const u = s.uplink;
+  const down = u.cut || !u.reachable;
+  document.getElementById("banner").style.display = down ? "block" : "none";
+  const why = [];
+  if (u.cut) why.push("software cut (uplink.sh cut)");
+  if (!u.reachable) why.push("App Services unreachable (WAN cable or network)");
+  set("banner-why", why.join(" and "));
+  set("uplink", down ? "cut" : "up", down ? "bad" : "ok");
+  set("uplink-detail", (u.cut ? "software cut" : "relaying") + ", host " + (u.reachable ? "reachable" : "unreachable")
+    + " since " + new Date(u.since).toLocaleTimeString());
+  const rs = s.replication.state;
+  set("replication", rs, rs === "idle" || rs === "busy" ? "ok" : rs === "offline" ? "warn" : "bad");
+  set("replication-detail", s.replication.last_error || "checked " + new Date(s.replication.checked_at).toLocaleTimeString());
+  set("edge", s.edge_server.up ? "up" : "down", s.edge_server.up ? "ok" : "bad");
+  set("edge-detail", (s.edge_server.version ? "v" + s.edge_server.version + " at " : "") + s.edge_server.url);
+  if (!paired) {
+    const nav = document.getElementById("pairing");
+    for (const d of s.pairing) {
+      const a = document.createElement("a");
+      a.href = "/pair/" + encodeURIComponent(d);
+      a.textContent = d;
+      nav.append(" ", a);
+    }
+    paired = true;
+  }
+}
+tick();
+setInterval(tick, 2000);
+</script>
+</body>
+</html>

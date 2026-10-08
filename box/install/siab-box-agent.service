@@ -1,0 +1,16 @@
+# Linux only, best-effort (the Pi). install.sh fills in @REPO@ and @USER@; run `uv sync` in the checkout first.
+[Unit]
+Description=Store in a Box agent (uplink proxy, status page, pairing)
+After=couchbase-edge-server.service network-online.target
+Wants=network-online.target
+
+[Service]
+User=@USER@
+WorkingDirectory=@REPO@
+EnvironmentFile=@REPO@/.env
+ExecStart=@REPO@/.venv/bin/python -m siab_box agent
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
