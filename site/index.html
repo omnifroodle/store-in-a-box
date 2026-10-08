@@ -34,7 +34,7 @@
       <p class="tagline">The store that divides and merges without stopping.</p>
       <p class="lede">Pack a store by scanning it into a box. Sell at a venue with no signal. Hand eight jackets to a tablet that walks away and keeps selling. Merge back in any order. Plug in, and every unit and every dollar is accounted for. Agents planned the trip; the tablets ran the day.</p>
       <div class="ctas">
-        <a class="btn primary" href="deck/">Watch the deck</a>
+        <a class="btn primary" href="#ledger">See why it never conflicts</a>
         <a class="btn outline" href="https://github.com/omnifroodle/store-in-a-box">Get the code</a>
       </div>
     </div>
@@ -90,7 +90,7 @@
     <p>Inventory is modelled as units in custody, not numbers to be merged. Scan a unit onto the box and the store's allocation hands it over. Scan it onto a tablet and the box hands it over. Sell it, and the tablet hands it to a customer with a tender attached. Pack, split, merge and sell are one gesture and one document shape.</p>
     <div class="bignum"><span>1</span> query proves the whole trip: the sum over every custodian never changes.<sup><a href="#fn1">1</a></sup></div>
     <ul class="facts">
-      <li><b>One batch per sale.</b> The transaction, the stock decrement and the credit decrement land together or not at all.</li>
+      <li><b>Nothing to decrement.</b> A sale is one more movement, written once. Counts are worked out from the movements, never stored and edited.</li>
       <li><b>Scans outrank records.</b> Check in a unit the record says is elsewhere and you get an exception, not an error.</li>
     </ul>
     <a class="more" href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/couchbase-lite-custody.md">How custody works in Couchbase Lite →</a>
@@ -113,6 +113,46 @@
   </figure>
 </section>
 
+<section class="feature flip" id="ledger">
+  <div class="copy">
+    <p class="kicker">Conflict-free by construction</p>
+    <h2>Two sales of the last unit become one exception. No node ever has two versions to choose between.</h2>
+    <p>Every movement of a unit is a document written once and never edited, and each one names the movement before it. Counts are worked out from the movements, so there is no shared number for two tablets to fight over. When the flagship and a tablet both sell the last rain shell, the ledger holds two movements where there should be one: a fork in that jacket's history. Every tablet and HQ run the same rules over the same movements, find the same fork, and file it as one exception with both sales attached. A person decides.</p>
+    <div class="bignum"><span>2</span> branches kept, 0 winners picked. Disputed, not lost and not sold twice, until HQ chooses.<sup><a href="#fn2">2</a></sup></div>
+    <ul class="facts">
+      <li><b>Immutable movements.</b> Pack, take, return and sale are each one document, written once by one device.</li>
+      <li><b>Each names its predecessor.</b> <code>prev_txn</code> makes a unit's history a chain; two movements that follow the same one are a fork.</li>
+      <li><b>The same reducer everywhere.</b> Tablets and HQ run the same rules, held to the same golden fixtures. The box just carries the documents.</li>
+    </ul>
+    <a class="more" href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/conflict-free-ledger.md">How the conflict-free ledger works →</a>
+  </div>
+  <figure class="card">
+    <svg viewBox="0 0 420 260" role="img" aria-label="One rain shell's history as a fork. From the store, one branch packs it onto the box and tablet A sells it; the other branch is HQ's sale of the same unit. Both branches lead into one oversell exception, and the unit is disputed.">
+      <defs><marker id="arrL" viewBox="0 0 8 8" markerWidth="4" markerHeight="4" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#1C1A17"/></marker></defs>
+      <g font-family="Barlow Condensed, sans-serif" font-weight="600" font-size="15" fill="#1C1A17">
+        <rect x="14" y="82" width="84" height="48" fill="#F5EEDF" stroke="#1C1A17" stroke-width="3"/>
+        <text x="56" y="102" text-anchor="middle">JACKET #001</text><text x="56" y="121" text-anchor="middle">AT THE STORE</text>
+        <rect x="128" y="22" width="112" height="40" fill="#F5EEDF" stroke="#1C1A17" stroke-width="3"/><text x="184" y="47" text-anchor="middle">PACK → BOX-07</text>
+        <rect x="262" y="22" width="144" height="40" fill="#F5EEDF" stroke="#1C1A17" stroke-width="3"/><text x="334" y="47" text-anchor="middle">SALE · TABLET A</text>
+        <rect x="128" y="112" width="112" height="40" fill="#F5EEDF" stroke="#1C1A17" stroke-width="3"/><text x="184" y="137" text-anchor="middle">SALE · HQ</text>
+      </g>
+      <g stroke="#1C1A17" stroke-width="3" fill="none" marker-end="url(#arrL)">
+        <path d="M98 96 C 112 80, 112 46, 124 43"/><path d="M98 116 C 112 122, 112 132, 124 132"/><path d="M240 42 L 258 42"/>
+      </g>
+      <text x="14" y="72" font-family="Stardos Stencil, Impact, sans-serif" font-size="16" fill="#B5321F">FORK</text>
+      <g stroke="#B5321F" stroke-width="3" stroke-dasharray="8 7" fill="none">
+        <path d="M334 62 L 334 184"/><path d="M184 152 L 184 184"/>
+      </g>
+      <rect x="128" y="184" width="278" height="62" fill="#EADFC8" stroke="#B5321F" stroke-width="4"/>
+      <text x="142" y="210" font-family="Stardos Stencil, Impact, sans-serif" font-size="18" fill="#B5321F">EXCEPTION · OVERSELL</text>
+      <text x="142" y="232" font-family="IBM Plex Mono, monospace" font-size="12" fill="#1C1A17">both branches kept · unit disputed</text>
+      <text x="14" y="168" font-family="IBM Plex Mono, monospace" font-size="11" fill="#4A443C">no winner</text>
+      <text x="14" y="184" font-family="IBM Plex Mono, monospace" font-size="11" fill="#4A443C">picked</text>
+    </svg>
+    <figcaption>One jacket, two branches, one exception</figcaption>
+  </figure>
+</section>
+
 <hr class="tape">
 
 <section class="feature flip">
@@ -120,7 +160,7 @@
     <p class="kicker">Device-to-device sync</p>
     <h2>Split the store. Merge in any order.</h2>
     <p>Tablets replicate to each other directly. Three at one booth are three replicas of the same store with no primary. Walk one out of range with eight jackets on it and it keeps selling. Split three of those onto a phone. Bring the phone back to the tablet and the tablet back to the box, or the other way round; the answer is the same.</p>
-    <div class="bignum"><span>0</span> coordinators. Two custodians that meet reconcile with each other and are done.<sup><a href="#fn2">2</a></sup></div>
+    <div class="bignum"><span>0</span> coordinators. Two custodians that meet reconcile with each other and are done.<sup><a href="#fn3">3</a></sup></div>
     <p>The cloud finds out later and has nothing to adjudicate.</p>
     <a class="more" href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/device-to-device-sync.md">How splitting and merging work →</a>
   </div>
@@ -146,7 +186,7 @@
     <p class="kicker">Pull the cable</p>
     <h2>Nothing on this side of the room noticed.</h2>
     <p>The box is a Couchbase Edge Server in a backpack. It holds the whole packed dataset, serves the tablets, runs the small model for the clerk, and phones home when it can. Cut its uplink and the venue carries on. Power it off and the tablets keep each other current. Throttle it to 2G and only the cloud's view gets slower.</p>
-    <div class="bignum"><span>KB</span> not MB. A day of sales reconciles in kilobytes; a 10,000-SKU price change arrives as a few hundred.<sup><a href="#fn3">3</a></sup></div>
+    <div class="bignum"><span>KB</span> not MB. A day of sales reconciles in kilobytes; a 10,000-SKU price change arrives as a few hundred.<sup><a href="#fn4">4</a></sup></div>
     <p>Every write is local and correct the moment it lands. Replication is continuous and opportunistic and never blocks the thing that produced the data. The cloud is informed, not consulted.</p>
     <a class="more" href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/edge-server-box.md">How the box phones home →</a>
   </div>
@@ -169,7 +209,7 @@
     <p class="kicker">Hybrid search on the tablet</p>
     <h2>Goes with this. Makes sense here.</h2>
     <p>Scan the second item and the tablet proposes an add-on. Vector similarity to the basket, fused with a full-text match on tags and structured filters for category, price band and the weather, in one SQL++ statement on the device. A custody join means it only ever offers what is in the box.</p>
-    <div class="bignum"><span>&lt;1 s</span> on the tablet, radio off. The small model on the box adds the reason; kill the box and the suggestions still come.<sup><a href="#fn4">4</a></sup></div>
+    <div class="bignum"><span>&lt;1 s</span> on the tablet, radio off. The small model on the box adds the reason; kill the box and the suggestions still come.<sup><a href="#fn5">5</a></sup></div>
     <pre class="query"><span class="c">-- vector half, on the tablet</span>
 SELECT META(p).id, p.name,
        <span class="k">APPROX_VECTOR_DISTANCE</span>(p.embedding, $basket) AS d
@@ -202,7 +242,7 @@ ORDER BY d LIMIT 20;
     <p class="kicker">Offline loyalty</p>
     <h2>Credit travels like inventory.</h2>
     <p>A member's offline allowance is reserved in Capella, allocated to the box and split to tablets, then enforced on the device with no lookup. The QR is signed with a key the tablet already holds; the second factor is four digits checked against a salted hash. Pessimistic by policy, encrypted at rest, and still a real sale.</p>
-    <div class="bignum"><span>$0</span> of card risk. It is the retailer's own credit to its own customers, capped by a number on a policy document.<sup><a href="#fn5">5</a></sup></div>
+    <div class="bignum"><span>$0</span> of card risk. It is the retailer's own credit to its own customers, capped by a number on a policy document.<sup><a href="#fn6">6</a></sup></div>
     <p>Spend past the allowance at a second tablet and it declines, offline, and says why. Two slices overspent across tablets become an exception with both sales attached, never an overdraft.</p>
     <a class="more" href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/offline-loyalty.md">How offline loyalty works →</a>
   </div>
@@ -231,7 +271,7 @@ ORDER BY d LIMIT 20;
     <p class="kicker">Compliance agent</p>
     <h2>Every claim carries its passage.</h2>
     <p>Before the trip, an agent finds what the venue requires: licence, tax registration, tent inspection, organiser permit. Each claim is retrieved with the jurisdiction as a hard filter, drafted with the passage it came from, ground-checked by a second model, and tested for freshness and jurisdiction match by code that is not a model at all.</p>
-    <div class="bignum"><span>3</span> checks, three states. Verified, needs confirmation, not found. Never a bare percentage.<sup><a href="#fn6">6</a></sup></div>
+    <div class="bignum"><span>3</span> checks, three states. Verified, needs confirmation, not found. Never a bare percentage.<sup><a href="#fn7">7</a></sup></div>
     <p>We poison one source before the demo. Watch the agent catch it. Then the clerk calls the county from the parking lot, and that phone call becomes a source for next time.</p>
     <a class="more" href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/agents-and-evaluation.md">How the agent proves its work →</a>
   </div>
@@ -239,7 +279,7 @@ ORDER BY d LIMIT 20;
     <svg viewBox="0 0 420 240" role="img" aria-label="A compliance checklist with four verified items and one needing confirmation, with a passage quoted below.">
       <rect x="20" y="16" width="380" height="208" fill="#F5EEDF" stroke="#1C1A17" stroke-width="3"/>
       <g font-family="Barlow Condensed, sans-serif" font-weight="600" font-size="15" fill="#1C1A17">
-        <text x="36" y="44">RICHMOND, VA · MAKER FAIR · 18 OCT</text>
+        <text x="36" y="44">RICHMOND, VA · RIVERFEST · 18 OCT</text>
         <text x="36" y="74" fill="#3F6B4A">✓ VERIFIED</text><text x="130" y="74">Transient vendor licence · $75 · 10 days</text>
         <text x="36" y="98" fill="#3F6B4A">✓ VERIFIED</text><text x="130" y="98">Temporary sales tax registration</text>
         <text x="36" y="122" fill="#3F6B4A">✓ VERIFIED</text><text x="130" y="122">Organiser vendor permit</text>
@@ -258,7 +298,7 @@ ORDER BY d LIMIT 20;
     <p class="kicker">Permit flow</p>
     <h2>The agent drafts. The office vets. The field confirms.</h2>
     <p>Each permit is one document with a state machine. The agent writes it as <code>drafted</code> and can go no further. The back office vets, files, and attaches the approval. The box carries it to the venue. The clerk shows it to the inspector, records the visit with a photo, or flags that the booth moved into a different fire zone. All offline. The office sees it when the box phones home.</p>
-    <div class="bignum"><span>2</span> directions. Approvals flow down; inspections, confirmations and flags flow up.<sup><a href="#fn7">7</a></sup></div>
+    <div class="bignum"><span>2</span> directions. Approvals flow down; inspections, confirmations and flags flow up.<sup><a href="#fn8">8</a></sup></div>
     <p>Policy gates what the box may do per state: no account tender until tax registration is approved. Flip it from HQ; the tablet honours it after the next sync and names the permit that caused it.</p>
     <a class="more" href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/permit-flow.md">How the permit flow works →</a>
   </div>
@@ -290,9 +330,9 @@ ORDER BY d LIMIT 20;
     <p class="kicker">Sync with Capella App Services</p>
     <h2>Nine lines decide what reaches the venue.</h2>
     <p>A sync function validates each document, checks the writer holds the trip, and routes it to the trip's channel. The box receives its trip, its region's catalog without cost or margin, its region's members, and nothing else. The other forty thousand SKUs are not hidden on the tablet. They were never sent.</p>
-    <div class="bignum"><span>0</span> silent losses. Two sales of the last unit become one exception with both sides attached.<sup><a href="#fn8">8</a></sup></div>
-    <p>The custom conflict resolver is application code and runs on the device, the box and in App Services. Lose access to a channel and the documents leave the device on their own. No admin credential anywhere.</p>
-    <a class="more" href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/app-services-sync.md">How channels and conflicts work →</a>
+    <div class="bignum"><span>0</span> silent losses. Two sales of the last unit become one exception with both sides attached.<sup><a href="#fn9">9</a></sup></div>
+    <p>Custody never reaches App Services as a conflict: every sale is its own document, and forks are found by the same ledger on every node. Lose access to a channel and the documents leave the device on their own. No admin credential anywhere.</p>
+    <a class="more" href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/app-services-sync.md">How channels and sync work →</a>
   </div>
   <figure class="card">
     <pre class="query" style="margin:0"><span class="c">// the whole access model</span>
@@ -315,7 +355,7 @@ function (doc, oldDoc, meta) {
     <p class="kicker">Capella</p>
     <h2>Once it syncs, it is just data. Then it is the next trip.</h2>
     <p>Data a tablet wrote in a field with no signal is ordinary Capella data when it lands: SQL++ for the conservation query and the exception queue, Columnar for the venue scorer, Search for the compliance agent's retrieval, Eventing for reorders, AI Services and Agent Catalog for the agents. The explainer writes the end-of-day narrative. The retrospective is evidence for the scorer's next run.</p>
-    <div class="bignum"><span>5</span> agents before the trip, three on the box, two after. None calls another. They read and write documents.<sup><a href="#fn9">9</a></sup></div>
+    <div class="bignum"><span>5</span> agents before the trip, three on the box, two after. None calls another. They read and write documents.<sup><a href="#fn10">10</a></sup></div>
     <a class="more" href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/capella-reconcile.md">How Capella reconciles and plans →</a>
   </div>
 </section>
@@ -355,7 +395,7 @@ function (doc, oldDoc, meta) {
   </table>
   <div class="split">
     <div><h3>ON THE TABLET</h3><p>Every scan, sale, split and merge. Hybrid search for the upsell. Loyalty verification. The permit and the policy. Encrypted, conserved, peer to peer.</p></div>
-    <div><h3>ON THE BOX</h3><p>The whole trip's dataset. The small model for the clerk and the briefing. The conflict resolver. The link to the cloud, used when it exists.</p></div>
+    <div><h3>ON THE BOX</h3><p>The whole trip's dataset. The small model for the clerk and the briefing. No custody logic: it carries the documents, and the tablets and HQ run the ledger. The link to the cloud, used when it exists.</p></div>
     <div><h3>IN CAPELLA</h3><p>The system of record. Channels and the sync function. The agents that plan, the agent that explains, and the eval harness that keeps them honest.</p></div>
   </div>
 </section>
@@ -368,10 +408,10 @@ function (doc, oldDoc, meta) {
     <dl>
       <div><dt>On the device</dt><dd>Couchbase Lite with the Vector Search extension and database encryption. Scopes <code>store</code>, <code>agents</code>, <code>ref</code>; same names as the cluster.</dd></div>
       <div><dt>Device-to-device</dt><dd>Couchbase Lite peer-to-peer replication between tablets and phones, and to the box. No server in the path.</dd></div>
-      <div><dt>The box</dt><dd>Couchbase Edge Server on a Raspberry Pi 5 (8 GB) or a laptop, plus a small model runtime for the on-box agents.<sup><a href="#fn10">10</a></sup></dd></div>
-      <div><dt>Sync</dt><dd>Capella App Services over a WebSocket. Channels per trip, region and box. One sync function, nine lines. Custom conflict resolver in app code.</dd></div>
+      <div><dt>The box</dt><dd>Couchbase Edge Server on a macOS laptop in Phase 0, or a Raspberry Pi where Edge Server supports its OS, plus a small model runtime for the on-box agents.<sup><a href="#fn11">11</a></sup></dd></div>
+      <div><dt>Sync</dt><dd>Capella App Services over a WebSocket. Channels per trip, region and box. One sync function, nine lines. Custody never conflicts: movements are immutable and the ledger finds forks on every node.</dd></div>
       <div><dt>Cloud</dt><dd>Capella: Data Service, Search (hybrid and geo), Columnar, Eventing, AI Services, Agent Catalog.</dd></div>
-      <div><dt>Custody</dt><dd>Allocation tree with parents. Conservation invariant checked live. Scan to check out, scan to check in; unit-level QR for the demo.</dd></div>
+      <div><dt>Custody</dt><dd>Allocation tree with parents; immutable movements, each naming its predecessor; counts derived, never stored. Conservation checked live. Scan to check out, scan to check in; unit-level QR for the demo.</dd></div>
       <div><dt>Upsell</dt><dd>Hybrid SQL++ on the tablet: <code>APPROX_VECTOR_DISTANCE</code> plus full-text <code>MATCH</code>, rank fusion, custody join. Weight is a policy value.</dd></div>
       <div><dt>Loyalty</dt><dd>Signed QR (retailer key, validity window), salted phone hash, per-member allowance reserved in Capella and split like inventory.</dd></div>
       <div><dt>Compliance</dt><dd>Hybrid retrieval with jurisdiction filter, second-model ground check, deterministic freshness and jurisdiction checks, 20-site gold set, zero false verifieds to ship.</dd></div>
@@ -386,18 +426,18 @@ function (doc, oldDoc, meta) {
 <section class="get" id="get-it">
   <h2>Get Store in a Box.</h2>
   <p class="price">Free. Open source. MIT licensed.</p>
-  <p>The spec, the architecture notes, the sync function, the conflict resolver, the seed data and the demo runbook. Fork it, point it at your own Capella, and pull the cable on your own tablets.</p>
+  <p>The spec, the architecture notes, the sync function, the ledger and its golden fixtures, the seed data and the demo runbook. Fork it, point it at your own Capella, and pull the cable on your own tablets.</p>
   <div class="ctas">
     <a class="btn primary" href="https://github.com/omnifroodle/store-in-a-box">Get the code</a>
-    <a class="btn outline" href="deck/">Watch the deck</a>
     <a class="btn outline" href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/SPEC.md">Read the spec</a>
   </div>
   <ul class="doclinks">
     <li><a href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/overview.md">Architecture overview</a></li>
     <li><a href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/couchbase-lite-custody.md">Couchbase Lite and custody</a></li>
+    <li><a href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/conflict-free-ledger.md">The conflict-free ledger</a></li>
     <li><a href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/device-to-device-sync.md">Device-to-device sync</a></li>
     <li><a href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/edge-server-box.md">Edge Server, the box</a></li>
-    <li><a href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/app-services-sync.md">App Services and conflicts</a></li>
+    <li><a href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/app-services-sync.md">App Services and sync</a></li>
     <li><a href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/capella-reconcile.md">Capella: reconcile and plan</a></li>
     <li><a href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/hybrid-upsell.md">Hybrid upsell</a></li>
     <li><a href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/offline-loyalty.md">Offline loyalty</a></li>
@@ -409,16 +449,17 @@ function (doc, oldDoc, meta) {
 <!-- ============================ FINE PRINT ========================== -->
 <footer class="fineprint">
   <ol>
-    <li id="fn1">The conservation query sums store on-hand, every active allocation at every level of the custody tree, units sold and units returned to stock, per SKU, and compares to opening on-hand plus received. It is a design invariant, not yet a measured result; Phase 0 acceptance is that it holds through a staged split with two custodians out of range.</li>
-    <li id="fn2">Order-independence of merges is a property of custody moves being additive records rather than edits to a shared quantity. Phase 1 acceptance runs the same split and merges it in both orders and checks the final state is identical.</li>
-    <li id="fn3">"Kilobytes" is the design target for delta sync: Phase 0 acceptance is under 100 KB for a day of fifty transactions. The 41 KB on the illustrated counter is an illustration. The 10,000-SKU figure assumes a one-field price change shipped as deltas; measure before quoting.</li>
-    <li id="fn4">Under one second is the Phase 1 acceptance target on the demo tablets with 300 to 500 SKUs and a precomputed embedding per product. The reason line needs the box's small model; the ranking does not.</li>
-    <li id="fn5">No card is ever authorised offline and no payment instrument reaches the venue. The exposure is the sum of active allowances, each reserved against the member's real balance in Capella before the trip and capped by the trip's policy document.</li>
-    <li id="fn6">The ground check uses a second prompt and, where available, a second model. Freshness compares the chunk's retrieval date against the ordinance's last-amended date where that date is known; where it is not, the check reports unknown rather than pass. Jurisdiction match compares ids, not names. Phase 3 acceptance is at least 90% claim-level accuracy on the 20-site gold set and zero false verifieds on a poisoned chunk.</li>
-    <li id="fn7">The agent writes permits in state <code>drafted</code> only; there is no code path for an agent to advance one. Outbound contact with any authority is a human act recorded in the document, not performed by the system.</li>
-    <li id="fn8">The custom resolver handles <code>allocation</code>, <code>allowance</code> and <code>transaction</code>; everything else is last-write-wins. Where the resolver runs on Edge Server as well as on devices and in App Services is a spec open question to confirm against current docs.</li>
-    <li id="fn9">Before: venue scorer, compliance checker, research agent, packing planner, plus the explainer and retrospective after; on the box: clerk copilot, upsell reason line, briefing. Counted from the spec's agent roster; the v1 cut is smaller and listed there.</li>
-    <li id="fn10">Whether a Raspberry Pi 5 carries the small model at demo-acceptable latency is an open question in the spec; the fallback box is a laptop. Everything in the demo except the model runtime is sized for the Pi.</li>
+    <li id="fn1">Per SKU, the conservation check places every unit the ledger knows in exactly one state (back at the store, with another custodian, sold, or disputed) and holds when no unit appeared that never left the store and, with the store's inventory, the store released no more than it had. It is a design property checked by golden fixtures, not yet a measured result; Phase 0 acceptance is that it holds through a staged split with two custodians out of range.</li>
+    <li id="fn2">From the golden fixtures every implementation must pass: in <code>oversell-hq</code>, the flagship's sale and the box's chain for the same jacket are the two branches of one fork, and the expected result keeps both in one <code>oversell</code> exception, counts the jacket once as disputed, and still balances the conservation row. HQ chooses the branch that stands; no rule picks a winner.</li>
+    <li id="fn3">Order-independence of merges is a property of custody moves being additive records rather than edits to a shared quantity. Phase 1 acceptance runs the same split and merges it in both orders and checks the final state is identical.</li>
+    <li id="fn4">"Kilobytes" is the design target for delta sync: Phase 0 acceptance is under 100 KB for a day of fifty transactions. The 41 KB on the illustrated counter is an illustration. The 10,000-SKU figure assumes a one-field price change shipped as deltas; measure before quoting.</li>
+    <li id="fn5">Under one second is the Phase 1 acceptance target on the demo tablets with 300 to 500 SKUs and a precomputed embedding per product. The reason line needs the box's small model; the ranking does not.</li>
+    <li id="fn6">No card is ever authorised offline and no payment instrument reaches the venue. The exposure is the sum of active allowances, each reserved against the member's real balance in Capella before the trip and capped by the trip's policy document.</li>
+    <li id="fn7">The ground check uses a second prompt and, where available, a second model. Freshness compares the chunk's retrieval date against the ordinance's last-amended date where that date is known; where it is not, the check reports unknown rather than pass. Jurisdiction match compares ids, not names. Phase 3 acceptance is at least 90% claim-level accuracy on the 20-site gold set and zero false verifieds on a poisoned chunk.</li>
+    <li id="fn8">The agent writes permits in state <code>drafted</code> only; there is no code path for an agent to advance one. Outbound contact with any authority is a human act recorded in the document, not performed by the system.</li>
+    <li id="fn9">Checked on 2026-10-07: Couchbase Edge Server 1.1 has no application hook for conflict resolution, and Capella App Services rejects a conflicting push from a client and leaves the resolution to Couchbase Lite on that client. So custody is never left to a resolver: movements are immutable and forks are found by the ledger on every node (decision 001). Everything that is not custody or money is last-write-wins.</li>
+    <li id="fn10">Before: venue scorer, compliance checker, research agent, packing planner, plus the explainer and retrospective after; on the box: clerk copilot, upsell reason line, briefing. Counted from the spec's agent roster; the v1 cut is smaller and listed there.</li>
+    <li id="fn11">The Phase 0 box is a macOS laptop (decision 002). Edge Server 1.1 supports ARM64 Linux on Ubuntu 22.04 and later, and the demo's Raspberry Pi runs Debian Trixie, so the Pi is best-effort until one of those changes. Whether a Pi carries the small model at demo-acceptable latency is settled before Phase 1.</li>
   </ol>
   <p>Store in a Box is a demo built to show Couchbase Lite, device-to-device sync, Couchbase Edge Server, Capella App Services and Capella working together. Couchbase, Capella and Couchbase Lite are trademarks of Couchbase, Inc. The retailer, the venues and the ordinance figures on this page are illustrative. Sample product data is synthetic.</p>
 </footer>
