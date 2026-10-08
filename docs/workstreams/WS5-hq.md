@@ -64,7 +64,10 @@ the ledger fixtures' transactions. The ledger is `siab_ledger` (WS1), imported, 
 - `GET /api/tree?trip=` → `{ "root": "store-richmond", "nodes": [ { "custodian", "parent", "allocations": [ { "id",
   "sku", "status", "count" } ] } ] }` built from `LedgerState.allocation_counts` and the allocation documents.
 - `GET /api/exceptions?trip=&status=open|resolved|all` → `{ "disputes": [ { "dispute_key", "kind", "unit_id", "sku",
-  "detectors": [ids], "transactions": [full transaction docs], "status" } ] }` grouped by `dispute_key`.
+  "detectors": [ids], "transactions": [full transaction docs], "branches": [ { "txn", "leaf": full transaction doc of the
+  branch's last movement } ], "status" } ] }` grouped by `dispute_key`. The dispute view shows each branch's leaf as well as the
+  branch movement: in the staged oversell the branches are the pack and HQ's sale, and the tablet's sale is the pack
+  branch's leaf, so the audience sees both sales only if the leaf is shown (found by WS8, #61).
 - `POST /api/exceptions/resolve` body `{ "trip", "dispute_key", "chosen_txn", "note" }` → updates every exception
   document with that `dispute_key` (all detectors' copies) to `status: "resolved"`,
   `resolution: { by: "hq", at: iso8601, chosen_txn, note }`, as the `hq` app user (the sync function allows only

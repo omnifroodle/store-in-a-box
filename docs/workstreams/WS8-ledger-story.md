@@ -82,7 +82,7 @@ Named edits in neighbours' files (each is the paragraph, row or line named, noth
     resolver..." becomes "Closed 2026-10-07: neither does; see decision 001 and the ledger note." (one line, kept
     in place so the list's history reads).
 - `docs/architecture/overview.md`: the beats table row "Oversell becomes an exception | Custom conflict resolver"
-  → "Conflict-free ledger | [conflict-free-ledger](conflict-free-ledger.md)"; the mermaid label "conflict handoff"
+  → "Conflict-free ledger | `[conflict-free-ledger](conflict-free-ledger.md)`"; the mermaid label "conflict handoff"
   → "exception handoff"; the "Why custody and not counts" paragraph gains one sentence and the link; the component
   list at the foot gains the note.
 - `docs/architecture/app-services-sync.md`: the "Conflicts hand off to the resolver" paragraph and its bullets →
@@ -149,7 +149,7 @@ trade-offs", "Related") and must have these `##` sections, in this order, with t
 8. **On stage: Conflict-free by construction**: the beat, written to be read aloud and copied by WS7: pre-condition
    (a unit the box holds; the HQ sale staged with WS5's control), the three actions (fire the staged HQ sale; plug
    the cable in; open the exception on the HQ screen and show both branches), what the audience sees (the
-   exception's two `branches`, the unit `disputed` on the Shelf, conservation still `holds`), the one sentence to
+   exception's two `branches`, the unit `disputed` in the tablet's Exceptions tab (the Shelf has no disputed figure), conservation still `holds`), the one sentence to
    say (D8), and the two follow-ups if asked ("where did the resolver run?" and "what if the tablet is still out
    of range?"). Sixty to ninety seconds.
 9. **Talking points**, **Possible enhancements**, **Alternatives and trade-offs**, **Related** as in the other notes.
@@ -191,7 +191,8 @@ none. The note cites `contracts/` as applied by CC3; it changes nothing there.
 
 Part A:
 - [ ] `node scripts/build-site.mjs` prints `Built _site/` and exits 0.
-- [ ] `grep -rni "maker.fair" README.md docs site` prints nothing (exit 1).
+- [ ] `grep -rni "maker.fair" README.md docs site --exclude-dir=workstreams` prints nothing (exit 1); the blueprints quote the old name when
+      they say what to rename.
 - [ ] `grep -rn "conflict resolver" README.md site docs/SPEC.md docs/architecture docs/runbook 2>/dev/null` prints
       only lines in `docs/architecture/conflict-free-ledger.md` (the note may name the rejected alternative; no
       other audience-facing file may still describe one).
