@@ -11,7 +11,7 @@ from siab_capella.gateway import Keyspace, ManualStepRequired
 from siab_capella.live import LiveCapella, http_base, session_channels
 
 ENV = {"CAPELLA_ORG_ID": "org", "CAPELLA_PROJECT_ID": "proj", "CAPELLA_CLUSTER_ID": "clu",
-       "CAPELLA_APP_SERVICE_ID": "app", "CAPELLA_API_KEY": "test-key",
+       "CAPELLA_APP_SERVICE_ID": "app", "CAPELLA_API_KEY": "test-key", "CAPELLA_API_BASE": "http://api.test",
        "APP_SERVICES_PUBLIC_URL": "wss://app-services.test:4984/store"}
 CP = "/v4/organizations/org/projects/proj/clusters/clu"
 EP = f"{CP}/appservices/app/appEndpoints"

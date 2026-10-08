@@ -18,7 +18,6 @@ import httpx
 from .config import Config
 from .gateway import Channels, EndpointState, Keyspace, ManualStepRequired
 
-API_BASE = "https://cloudapi.cloud.couchbase.com"  # the public Capella Management API (not an account host)
 BUCKET_SETTINGS = {"type": "couchbase", "memoryAllocationInMb": 100}  # the API's defaults for everything else
 NOT_THERE = (404, 405, 501)
 
@@ -61,7 +60,8 @@ class LiveCapella:
     def api(self) -> httpx.Client:
         if self._http is None:
             key = self.config.get("CAPELLA_API_KEY")
-            self._http = httpx.Client(base_url=API_BASE, headers={"Authorization": f"Bearer {key}"}, timeout=60,
+            self._http = httpx.Client(base_url=self.config.get("CAPELLA_API_BASE"),
+                                      headers={"Authorization": f"Bearer {key}"}, timeout=60,
                                       transport=self._transport)
         return self._http
 

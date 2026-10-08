@@ -17,6 +17,7 @@ ENV_VARS = (
     "CAPELLA_DB_USERNAME",
     "CAPELLA_DB_PASSWORD",
     "CAPELLA_API_KEY",
+    "CAPELLA_API_BASE",
     "CAPELLA_ORG_ID",
     "CAPELLA_PROJECT_ID",
     "CAPELLA_CLUSTER_ID",
@@ -34,7 +35,7 @@ ENV_VARS = (
 # What the SDK needs (documents, queries, indexes) and what the Management API needs (bucket, scopes, collections,
 # App Services). A dry run without them plans offline.
 SDK_VARS = ("CAPELLA_CONN_STRING", "CAPELLA_DB_USERNAME", "CAPELLA_DB_PASSWORD")
-API_VARS = ("CAPELLA_API_KEY", "CAPELLA_ORG_ID", "CAPELLA_PROJECT_ID", "CAPELLA_CLUSTER_ID")
+API_VARS = ("CAPELLA_API_KEY", "CAPELLA_API_BASE", "CAPELLA_ORG_ID", "CAPELLA_PROJECT_ID", "CAPELLA_CLUSTER_ID")
 
 
 def read_dotenv(path: Path) -> dict[str, str]:
