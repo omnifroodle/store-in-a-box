@@ -59,19 +59,19 @@ case is narrow and either answer is safe. Custody and money never reach it.
 
 Three collections carry the ledger. Their schemas are `contracts/schemas/store/transaction.schema.json`,
 `contracts/schemas/store/allocation.schema.json` and `contracts/schemas/store/exception.schema.json` (contracts
-0.3.1), and `scripts/check_contracts.py` checks every fixture against them on every PR.
+0.5.0), and `scripts/check_contracts.py` checks every fixture against them on every PR.
 
 | Document | Id | What it holds |
 |---|---|---|
 | `transaction` | `txn::<hlc>` | One movement of one unit, written once and never updated. `kind` is `check_out`, `check_in` or `sale`. `unit_id` is the QR payload (`<SKU>#<serial>`); `from_custodian` and `to_custodian` say where it went; `prev_txn` names the movement that gave the writer's record its current holder (null for a pack, an HQ sale from the store, or a scan by a device with no record of the unit); `hlc` orders it; `device` is the writer. A sale also carries `price`, `tender` and `basket`, and goes to `customer`. |
 | `allocation` | `alloc::<hlc>` | A slice of one SKU held by one custodian, with its `parent`. It has **no quantity**: how many units an allocation holds is derived by the reducer from the movements that name it in `to_allocation`. |
-| `exception` | `exc::<detector>::<unit_id>::<hash8>` | One dispute about one unit, as one detector saw it: `kind` (`oversell`, `double_scan`, `unexpected_check_in`), `dispute_key`, `fork_txn` (the shared predecessor, null for a root fork), `transactions` (the branch ids, sorted) and `branches` (each one's device, kind, destination and `hlc`), a `proposed_resolution`, `status` (`open` or `resolved`) and HQ's `resolution` (`by`, `at`, `chosen_txn`, `note`). |
+| `exception` | `exc::<detector>::<unit_id>::<hash8>` | One dispute about one unit, as one detector saw it: `kind` (`oversell`, `double_scan`, `unexpected_check_in`, `foreign_movement`), `dispute_key`, `fork_txn` (the shared predecessor, null for a root fork), `transactions` (the branch ids, sorted) and `branches` (each one's device, kind, destination and `hlc`), a `proposed_resolution`, `status` (`open` or `resolved`) and HQ's `resolution` (`by`, `at`, `hlc`, `chosen_txn`, `note`). |
 
 An `hlc` is a hybrid logical clock, `<unix ms>-<counter>-<device>`, whose string order is causal order. `hash8` is
 the first eight hex characters of the SHA-256 of the exception's `transactions`, sorted and joined by `|`, so two
 detectors that see the same fork write the same id suffix, and a new branch at the same fork gives a new id. The
 `dispute_key` is `<unit_id>|<predecessor>` for a fork (`<unit_id>|root` for a root fork) and
-`<unit_id>|<check-in id>` for an unexpected check-in: several detectors may each write their own copy of one
+`<unit_id>|<movement id>` for an unexpected check-in or a foreign movement: several detectors may each write their own copy of one
 dispute, and HQ groups them by this key.
 
 The sync function backs the immutability: an update to a transaction is rejected
@@ -83,7 +83,7 @@ The sync function backs the immutability: an update to a transaction is rejected
 
 The reducer is three pure functions: `reduce(transactions, resolutions)` gives each unit's holder, allocation,
 state and last movement, the counts and the forks; `exceptions_for(state, detector, trip, box)` gives the exception
-documents that detector must write; and `conservation(state, store, inventory)` gives one row per SKU. The rules are
+documents that detector must write; and `conservation(state, store, inventory)` gives one row per SKU. The eight rules are
 stated in `contracts/fixtures/README.md`, the contract every implementation is judged by. In words:
 
 1. **A unit's movements form a forest by predecessor.** A movement's predecessor is the transaction its `prev_txn`
@@ -104,7 +104,9 @@ stated in `contracts/fixtures/README.md`, the contract every implementation is j
    else. Only HQ resolves. A resolution counts only when `resolution.by` is `hq`, and the reducer enforces that
    itself, because tablet-to-tablet sync never runs the App Services sync function. A resolution chooses one branch;
    the other branches and everything after them are set aside, and the fork stays on record with the resolution's
-   id.
+   id. When several resolutions match one fork, HQ's own clock orders them: the greatest `resolution.hlc` decides
+   (`resolution.at` is a label for people and is never compared), and a latest word of "no choice" reopens the fork
+   rather than reviving an older answer (decision [008](../decisions/008-hq-clock-orders-decisions-foreign-movements-flagged.md)).
 4. **Otherwise the leaf holds.** The unit's holder is the `to_custodian` of the last movement in its chain. When a
    node has several chains for one unit (a dangling root beside a pack, say), the leaf with the greatest `hlc` wins.
    A unit whose leaf is a sale is `sold`; otherwise it is `held`.
@@ -113,10 +115,16 @@ stated in `contracts/fixtures/README.md`, the contract every implementation is j
 6. **An unexpected check-in stands.** A check-in by a device that did not hold the unit, or one with `prev_txn`
    null, still moves the unit (the physical scan is the stronger evidence) and raises its own
    `unexpected_check_in` exception.
-7. **Detectors create, HQ resolves.** `exceptions_for` writes one exception per unresolved fork and one per
-   unexpected check-in, and never edits one. A new branch at a fork already reported is a new document with a new
+7. **Detectors create, HQ resolves.** `exceptions_for` writes one exception per unresolved fork, one per
+   unexpected check-in and one per foreign movement, and never edits one. A new branch at a fork already reported is a new document with a new
    id. A dispute HQ has already resolved, with the same `dispute_key` and the same transactions, is not written
    again.
+8. **A foreign movement stands and is flagged, never blocked.** A movement is foreign when its writer acted for
+   neither custodian it names on its own side: a writer acts for itself, for its box and, when it is `hq`, for the
+   store. A `check_out` onto, or a `sale` from, a custodian the writer does not act for (a tablet taking a unit
+   onto another tablet, a tablet selling what another tablet holds) still moves the unit, because a scan is never
+   refused, and raises its own `foreign_movement` exception. HQ's sale from the store is not foreign, so the staged
+   oversell raises exactly one exception.
 
 Conservation is a check on top of the reduction (decision
 [004](../decisions/004-conservation-holds-is-a-check.md)). Every unit the ledger knows is in exactly one of four
@@ -240,7 +248,9 @@ language it is in.
 | Golden scenarios | `contracts/fixtures/ledger/` | `scripts/check_contracts.py` validates their documents; every reducer must reproduce their `expected` |
 | Fixture format | `contracts/schemas/fixtures/ledger.schema.json` | `scripts/check_contracts.py` |
 | Immutability and HQ-only resolution in sync | `contracts/fixtures/sync/` (cases), `sync/functions/` (WS2) | `node --test sync/tests/`, in CI |
-| Python reference reducer | WS1 (path added when it merges) | The ledger fixtures |
+| Python reference reducer | `src/siab_ledger/` (`chain.py`, `exceptions.py`, `conservation.py`, `hlc.py`) | `python -m siab_ledger check`, which runs every fixture and prints `PASS <name>` or `FAIL <name>` |
+| The reducer as an interface | `ports/ledger.md` | The Python reference and, later, the Swift port |
+| Fixture runner and its command line | `src/siab_ledger/fixtures.py`, `src/siab_ledger/__main__.py` | `tests/ledger/` |
 | Swift reducer on the tablets | WS4 (path added when it merges) | The ledger fixtures |
 | HQ reconciler | WS5 (path added when it merges) | The ledger fixtures |
 
@@ -292,6 +302,11 @@ each writes the same dispute under the same key. The box just carried the docume
 its own sale forks with it, so the dispute is on this screen before the tablet comes back. The tablet keeps selling
 everything else, and when it meets the box it finds the same fork and files the same dispute. Whichever side sees
 it first, nobody waits for the other."
+
+**Live, not settled.** What the HQ screen shows during the trip is live: HQ's reduced view of the movements it has
+received so far, which a device that is out of range can still add to. A trip is settled only when HQ closes it
+(decision [007](../decisions/007-hq-settles-tentative-until-close.md)), and closes arrive in Phase 2. So the
+conservation row says `holds` for now, and the beat does not call the trip done.
 
 HQ's reconciler may list the dispute before the cable goes in, because the pack reached Capella before the cable
 came out. Keep the exception panel off the projector until step 3, or use it: "HQ found it from its side; the
