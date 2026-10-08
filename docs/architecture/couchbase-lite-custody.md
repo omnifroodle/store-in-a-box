@@ -25,7 +25,8 @@ a phone. A sale is one more immutable movement, to the customer; nothing is decr
 from the movements. Every unit is in exactly one place, so the proof of a correct day is one check, not an argument.
 
 Conservation is per SKU and derived from the ledger, not summed from allocation quantities (allocations have none):
-see [the reducer and conservation](conflict-free-ledger.md#the-reducer) in the conflict-free ledger note.
+it is the `conservation(state, store, inventory)` operation in `ports/ledger.md`, one row per SKU, and the rules are
+in [the reducer](conflict-free-ledger.md#the-reducer) section of the conflict-free ledger note.
 
 **Scan to check out, scan to check in.** Every unit, or every case, carries a QR. A device holding a Couchbase
 Lite database is a custodian and has two gestures. Scanning while the device is the destination moves custody to
