@@ -161,8 +161,7 @@ become one exception and no node ever has two versions to choose between, a `.bi
 reducer everywhere), a `.more` link to the note on GitHub, and a `figure.card` SVG in the page's existing style
 (the crate palette and fonts): one unit's chain `pack → sale (tablet A)` and `pack → sale (HQ)` drawn as a fork,
 with an `exception` box holding both. A new footnote replaces footnote 8's open question with what was checked.
-Every GitHub link on the page uses the repository that exists (`omnifroodle/storeinabox`, or the name the owner
-gives in D9).
+Every GitHub link on the page uses `omnifroodle/store-in-a-box` (D9: the repository was renamed to it).
 
 **`scripts/check_links.py`** (stdlib only, no network; Python 3.12):
 ```
@@ -221,13 +220,14 @@ Part B (its own PR, after WS1 merges):
 **Answered 2026-10-07** (closing comments on #6–#11): D1 yes (all Apple devices, free Apple account, repo public, macOS CI on every PR; decision 002); D2 yes, and featured in the demo (decision 001, WS8); D3 yes; D4: the box is a macOS laptop, the Pi on Debian Trixie is best-effort (decision 002); D5 yes; D6 yes, with the event renamed Richmond Riverfest (`trip-2026-10-18-riverfest`). Money is integer cents (decision 003). The lines below are the questions as asked; anything still open is marked.
 
 
-- D8 (#20): the pattern's name on stage and whether to quote a code size. Recommend: the name
+- D8 (#20): answered: approved as recommended. The question as asked: the pattern's name on stage and whether to quote a code size. Recommend: the name
   is **"Conflict-free by construction"** (decision 001 already uses it; it is the section-8 heading, the page
   kicker and the runbook beat), the one sentence is "Two sales of the last unit are not a conflict. They are a fork
   in one unit's history, and the fork is the exception, with both sales attached.", and **no line count** is quoted
   on stage or on the page (line counts rot; "the same rules, checked by the same fixtures, on every node" does
   not). Blocks dispatch: no; the recommendation applies if unanswered.
-- D9 (#21): the product page links to `github.com/omnifroodle/store-in-a-box`, but the
+- D9 (#21): answered: the repository was renamed to `omnifroodle/store-in-a-box`, so the page's links stand. The
+  question as asked: the product page links to `github.com/omnifroodle/store-in-a-box`, but the
   repository is `omnifroodle/storeinabox`, so every "How it works" link on the page is dead. Recommend: point the
   page at `omnifroodle/storeinabox` now; if the owner intends to rename the repository, say so and the page uses
   the new name instead. Blocks dispatch: no; the recommendation applies if unanswered.

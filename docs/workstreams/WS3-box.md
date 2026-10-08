@@ -22,9 +22,10 @@ and the `uplink.sh` helper.
 **What the cable pull means on a laptop.** The laptop and the tablets share the travel router's LAN; the box's
 uplink is the router's WAN. There is no cable on the laptop to pull, and turning the laptop's Wi-Fi off would cut
 the tablets too. So there are two cuts, and Edge Server cannot tell them apart (a connection drops, a retry fails,
-a resume from checkpoint when it is back): the **physical** one on stage is the router's WAN cable (D7 below), and
-the **software** one for rehearsals and the one-laptop setup is `uplink.sh cut`, which makes the agent's proxy stop
-relaying. The status page shows which it is.
+a resume from checkpoint when it is back). D7 (#19) keeps both: the **default** is one laptop and the **software**
+cut, `uplink.sh cut`, which makes the agent's proxy stop relaying (the laptop keeps its internet, so an HQ screen on
+the same laptop stays live and shows Capella receiving nothing); the **alternative** is the **physical** cut, the
+router's WAN cable, with the HQ screen on a second machine. The status page shows which it is.
 
 **The Pi is optional.** The owner's Raspberry Pi runs Debian Trixie, which Edge Server 1.1 does not list for ARM64
 (Ubuntu 22.04+ only). The Linux path survives only as a bounded branch of `install.sh` plus two systemd units, no
@@ -174,7 +175,9 @@ WAN cable, and the status page shows `reachable: false` within 10 s.
 - D4 (#9): answered 2026-10-07: the macOS laptop is the supported Phase 0 box; the Pi (Debian Trixie) is optional
   and best-effort. Applied above.
 - D1 (#6): answered: Python agent. Applied.
-- D7 (#19): what the audience sees pulled, and where the HQ screen runs. Recommend: the travel
+- D7 (#19): answered: keep both, one laptop with `uplink.sh cut` as the default, the router's WAN cable with HQ on a
+  second machine as the alternative. The question as asked: what the audience sees pulled, and where the HQ screen
+  runs. Recommend: the travel
   router's WAN cable is the visible cut (the box laptop and the tablets stay on the router's LAN); the HQ screen
   (WS5) runs on a **second** machine with its own internet, because when the router loses its WAN so does
   everything else on the box laptop, including a browser pointed at Capella. `uplink.sh cut` is the stand-in for

@@ -38,10 +38,12 @@ Named edits in neighbours' code:
   left (on each tablet: Diagnostics → Rebuild derived state, or reinstall). Refuses without `--yes`.
 - `scripts/demo/stage_oversell.sh <unit-id>`: `POST /api/stage/hq-sale` on the HQ app (WS5) and prints the
   transaction id and the dispute to expect.
-- `docs/runbook/phase0.md`: pre-flight (box laptop on the travel router's LAN and `box/run.sh` up, HQ screen up on
-  its own machine per D7 (#19), tablets paired, byte counter reset, labels on the table), then the beats in order with
-  the exact command or gesture per step, what the audience should see, and which acceptance line it proves. The
-  visible cut is the router's WAN cable (WS3, D7); `box/install/uplink.sh cut` is the rehearsal stand-in. One beat
+- `docs/runbook/phase0.md`: pre-flight (box laptop on the travel router's LAN and `box/run.sh` up, HQ screen up,
+  tablets paired, byte counter reset, labels on the table), then the beats in order with the exact command or gesture
+  per step, what the audience should see, and which acceptance line it proves. Two setups (D7, #19), one laptop first:
+  the **default** runs the HQ screen on the box laptop and cuts with `box/install/uplink.sh cut`; the **alternative**
+  pulls the router's WAN cable and runs the HQ screen on a second machine with its own internet. Each beat that cuts
+  says what to do in both. One beat
   is headed **Conflict-free by construction** (the staged oversell, `stage_oversell.sh` then the cable): its words
   are section 8, "On stage", of `docs/architecture/conflict-free-ledger.md` (WS8), copied in, not rewritten; a
   change the rehearsal forces goes back to the note as a `for-foreman` issue so the two stay one text.
