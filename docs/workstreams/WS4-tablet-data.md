@@ -58,7 +58,9 @@ public struct Product: Codable, Identifiable { ... }
 public struct Trip: Codable, Identifiable { ... }
 
 public enum Ledger {
-  public static func reduce(transactions: [Transaction], resolutions: [ExceptionDoc]) -> LedgerState
+  public static func reduce(transactions: [Transaction], resolutions: [ExceptionDoc], store: String) -> LedgerState
+  // store: the store custodian id (Custodian.store in Phase 0; each fixture carries it as `store`). Rule 1 needs it
+  // to tell a store root from a blind movement; the reducer is pure and reads no registry (#59, ports/ledger.md).
   public static func exceptions(for state: LedgerState, detector: String, trip: String, box: String?) -> [ExceptionDoc]
   public static func conservation(state: LedgerState, store: String, inventory: [Inventory]?) -> [ConservationRow]
   // ConservationRow mirrors WS1's row (sku, opening_on_hand, received, left_store, untraced, returned_to_store,

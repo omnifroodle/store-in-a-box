@@ -66,9 +66,12 @@ two or more movements with the same `(unit_id, predecessor)` (rule 2).
 **`ports/ledger.md` fixes these operations**, which every implementation (Python here, Swift in WS4) provides:
 
 ```
-reduce(transactions, resolutions) -> LedgerState
+reduce(transactions, resolutions, store) -> LedgerState
   transactions: every transaction document this node knows (any order, duplicates allowed by id)
   resolutions:  exception documents with status == "resolved" (their chosen_txn settles a fork)
+  store:        the store custodian id ("store-richmond" in Phase 0; the fixtures carry it as `store`), which is
+                what tells a store root from a blind movement (rule 1). Required; the reducer is pure and reads
+                no registry (#59). Python: a required keyword argument, `reduce(transactions, resolutions, *, store)`.
 
 LedgerState
   units[unit_id] -> { sku, holder: custodian | "customer" | null, allocation: id | null,
