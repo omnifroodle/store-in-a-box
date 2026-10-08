@@ -239,7 +239,7 @@ language it is in.
 | Document schemas | `contracts/schemas/store/` | `scripts/check_contracts.py`, in CI on every PR |
 | Golden scenarios | `contracts/fixtures/ledger/` | `scripts/check_contracts.py` validates their documents; every reducer must reproduce their `expected` |
 | Fixture format | `contracts/schemas/fixtures/ledger.schema.json` | `scripts/check_contracts.py` |
-| Immutability and HQ-only resolution in sync | `contracts/fixtures/sync/` | WS2's sync function tests |
+| Immutability and HQ-only resolution in sync | `contracts/fixtures/sync/` (cases), `sync/functions/` (WS2) | `node --test sync/tests/`, in CI |
 | Python reference reducer | WS1 (path added when it merges) | The ledger fixtures |
 | Swift reducer on the tablets | WS4 (path added when it merges) | The ledger fixtures |
 | HQ reconciler | WS5 (path added when it merges) | The ledger fixtures |
