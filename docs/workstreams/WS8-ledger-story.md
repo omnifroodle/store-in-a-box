@@ -115,7 +115,8 @@ lede, a mermaid diagram, "How Store in a Box uses it", "Talking points", "Possib
 trade-offs", "Related") and must have these `##` sections, in this order, with these headings:
 1. **The pattern in one paragraph**: a unit's custody is a chain of immutable movements; a sale is a movement to
    `customer`; a count is the number of chains that currently end at a custodian; a fork is two movements with the
-   same `prev_txn`; the reducer is the same on every node; a fork is an `exception`, never a lost or phantom unit.
+   same predecessor (normally the same `prev_txn`); the reducer is the same on every node; a fork is an
+   `exception`, never a lost or phantom unit.
 2. **Why not a conflict resolver**: what the spec assumed (section 4.4 as it was); what was checked on 2026-10-07
    (Edge Server 1.1 has no application conflict hook; App Services rejects a conflicting push and leaves
    resolution to Couchbase Lite on the client); why a resolver that runs on some nodes makes "same answer in any
@@ -125,12 +126,14 @@ trade-offs", "Related") and must have these `##` sections, in this order, with t
    `to_custodian`, `prev_txn`, `hlc`, `device`), `allocation` (no `qty`; counts are derived), `exception` (`kind`,
    `dispute_key`, `fork_txn`, `transactions`, `branches`, `status`, `resolution`). Cites the three schemas under
    `contracts/schemas/store/` and the id conventions (`txn::<hlc>`, `exc::<detector>::<unit_id>::<hash8>`).
-4. **The reducer**: the seven rules as the contract states them (forest by `prev_txn`; dangling roots are not
-   errors; a fork is two or more movements sharing a `prev_txn`, `null` included, except a null-`prev` check-in;
-   an unresolved fork makes the unit `disputed`; otherwise the leaf with the greatest `hlc` holds; reduction is a
-   pure function, order of arrival never changes the result; an unexpected check-in stands and raises its own
-   exception; detectors create, HQ resolves). Written from `docs/decisions/001-ledger-not-resolver.md` and the
-   fixtures, in prose, not copied from `docs/workstreams/WS1-ledger.md` (blueprints are not citations).
+4. **The reducer**: the seven rules as the contract states them (forest by predecessor: `prev_txn`, or for a blind
+   movement, one written with no record of the unit, the movement that gave its source custody; dangling roots
+   are not errors; a fork is two or more movements sharing a predecessor, a root fork is two store roots, and a
+   null-`prev` check-in joins none; an unresolved fork makes the unit `disputed`; otherwise the leaf with the
+   greatest `hlc` holds; reduction is a pure function, order of arrival never changes the result; an unexpected
+   check-in stands and raises its own exception; detectors create, HQ resolves). Written from
+   `docs/decisions/001-ledger-not-resolver.md`, the decision note for CC6 (#33) and the fixtures, in prose, not
+   copied from `docs/workstreams/WS1-ledger.md` (blueprints are not citations).
 5. **Worked example**: `contracts/fixtures/ledger/double-scan.json` and `contracts/fixtures/ledger/oversell-hq.json`
    walked by hand: the transactions, the chain, the fork, the exception id and `dispute_key`, the counts, and why
    `conservation` still holds with `disputed: 1`. A third short walk of `merge-order-independent.json` says what

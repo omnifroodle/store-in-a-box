@@ -1,6 +1,6 @@
 # WS4: Tablet data layer: Couchbase Lite, the Swift ledger, replication to the box and device-to-device sync
 
-**Milestone:** M1  **Depends on:** WS1 (reducer rules and fixtures), contracts v0.1 (CC3, CC4); WS3 for the live tasks  **Label:** `ws:4-tablet-data`  **Agent type:** ws-design
+**Milestone:** M1  **Depends on:** WS1 (reducer rules and fixtures), contracts v0.3.0 (CC3, CC4, CC5, CC6); WS3 for the live tasks  **Label:** `ws:4-tablet-data`  **Agent type:** ws-design
 **Issue:** #15
 
 The blueprint. The architect (`ws-architect`) writes it before any code is dispatched; the PR is judged against it.
@@ -60,7 +60,9 @@ public struct Trip: Codable, Identifiable { ... }
 public enum Ledger {
   public static func reduce(transactions: [Transaction], resolutions: [ExceptionDoc]) -> LedgerState
   public static func exceptions(for state: LedgerState, detector: String, trip: String, box: String?) -> [ExceptionDoc]
-  public static func conservation(state: LedgerState, packed: Set<String>, inventory: [Inventory]?) -> [ConservationRow]
+  public static func conservation(state: LedgerState, store: String, inventory: [Inventory]?) -> [ConservationRow]
+  // ConservationRow mirrors WS1's row (sku, opening_on_hand, received, left_store, untraced, returned_to_store,
+  // store_on_hand, in_custody, sold, disputed, holds); venue-side callers pass inventory nil. CC5 (#29).
 }
 public struct LedgerState { units: [String: UnitState]; counts: [CustodianSKU: Int]; allocationCounts: [String: Int]; forks: [Fork] }
 
@@ -86,7 +88,12 @@ public final class SyncCoordinator: ObservableObject {
 - Every write is one `inBatch`: the `transaction`, the `allocation` it opens or closes (if any), and nothing else.
 - `checkOut(unit:from:to:actingFor:)`: `to` is this device, or this device's box when `actingFor` is set (pack mode:
   the tablet scans units out of the store onto the box). `prev_txn` is the id of the latest movement this device
-  knows for the unit (from `local.unit_state`), or `null` if the unit is unknown (first scan out of the store).
+  knows for the unit (from `local.unit_state`), or `null` when this device has no record of the unit: the first
+  scan out of the store (pack mode, `from` the store), or a *blind take* off the box before the pack replicated
+  (`from` the custodian being scanned from, the box in Phase 0; never `unknown`, which is a check-in's source
+  only). A blind take is an ordinary write with `from_allocation: null`: `checkOut` never waits for replication
+  and never refuses for lack of a record. The ledger (WS1 rule 1, CC6 #33) links it under the pack once the pack
+  arrives, and a double take forks there; nothing on the device special-cases it.
   Opens an `allocation` for `(to, sku, parent)` if none is `active`, else reuses it; sets `to_allocation`.
 - `checkIn(unit:)`: `from` is the unit's holder as this device knows it from `local.unit_state` (normally this
   device; it may be another custodian), `to` is the custodian of the parent of that holder's allocation and
@@ -96,7 +103,9 @@ public final class SyncCoordinator: ObservableObject {
   `to: this device's box`, `to_allocation: null` (WS1 rule 6 turns both cases into an `unexpected_check_in`
   exception; the movement itself stands). Closes this device's allocation when its derived count reaches zero.
 - `sell(unit:tender:price:)`: `from` is the unit's current holder as this device knows it (this device, or the
-  box when selling off the table), `to` is `customer`, `to_allocation` null, `tender` and `price` set.
+  box when selling off the table), `to` is `customer`, `to_allocation` null, `tender` and `price` set. With no
+  record of the unit: `from` the box, `prev_txn: null`, `from_allocation: null` (a blind sale; the same ledger
+  rule links it under the pack).
 - `detectAndWriteExceptions()` writes only documents whose id does not already exist locally.
 - HLC: `hlc_now` on every write; `hlc_receive` on every pulled transaction (keeps the local clock ahead of what it
   has seen). `device_clock` is the wall clock; `box_clock` is `null` in Phase 0.
@@ -123,8 +132,10 @@ box's pairing QR (camera; WS6 reuses the scanner view) and a "Rebuild derived st
 
 ## Contract changes
 
-- CC3 (#4), CC4 (#5). No new change. If the Swift port needs a fixture the Python one did not (an edge case the
-  port hits), file a `contract-change` for the fixture rather than diverging.
+- CC3 (#4), CC4 (#5), CC5 (#29, the conservation row), CC6 (#33, blind movements: rules 1 and 2 and three
+  fixtures, which the Swift port must pass like every other). No new change of its own. If the Swift port needs a
+  fixture the Python one did not (an edge case the port hits), file a `contract-change` for the fixture rather
+  than diverging.
 
 ## Exit criteria
 
@@ -134,7 +145,11 @@ box's pairing QR (camera; WS6 reuses the scanner view) and a "Rebuild derived st
 - [ ] `SIABCoreTests` includes `testEverySaleIsOneBatch` (a failure injected after the transaction write leaves no
       transaction and no allocation change), `testCheckInNeverFailsOnDisagreement`, `testHLCAdvancesOnReceive`,
       `testLocalScopeIsNotInAnyReplicatorConfig`, `testPairingPayloadDecodesPortExample` (the JSON example in
-      `ports/box-agent.md`), `testDetectAndWriteExceptionsIsIdempotent`.
+      `ports/box-agent.md`), `testDetectAndWriteExceptionsIsIdempotent`, `testCheckOutWithoutRecordIsABlindTake`
+      (a `checkOut` from the box of a unit with no `local.unit_state` document returns without waiting and writes
+      `prev_txn: null`, `from_custodian` the box, `from_allocation: null`; after the pack transaction is inserted
+      as if pulled, `state` shows the unit held by this device, `forks` empty and `detectAndWriteExceptions()`
+      writes nothing).
 - [ ] `.github/workflows/ios.yml` runs the command above on `macos-latest` and is green on the PR.
 - [ ] `[macos-xcode]` Two simulators (iPad and iPhone) running the app with the same pairing payload see each other
       in Diagnostics within 15 s and a `checkOut` on one appears in the other's `counts` within 5 s, with no box

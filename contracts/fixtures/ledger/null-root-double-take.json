@@ -1,6 +1,6 @@
 {
-  "name": "double-scan",
-  "description": "Both tablets take #001 from the box while apart: a fork at the pack. The unit is disputed and one double_scan exception attaches both movements.",
+  "name": "null-root-double-take",
+  "description": "A genuine double take, one side blind: tablet-a packed #005 and takes it (a child of the pack); tablet-b, which has not seen the pack, takes the same unit with no record. The blind take continues the pack too, so the two takes fork at the pack, not at the root. The unit is disputed and one double_scan exception attaches both takes.",
   "order_independent": true,
   "trip": "trip-2026-10-18-riverfest",
   "box": "box-07",
@@ -8,13 +8,13 @@
   "inventory": null,
   "transactions": [
     {
-      "_id": "txn::1792328410000-0000-tablet-a",
+      "_id": "txn::1792328450000-0000-tablet-a",
       "v": 1,
       "type": "transaction",
       "trip": "trip-2026-10-18-riverfest",
       "box": "box-07",
       "kind": "check_out",
-      "unit_id": "JKT-RAIN-M-BLU#001",
+      "unit_id": "JKT-RAIN-M-BLU#005",
       "sku": "JKT-RAIN-M-BLU",
       "from_custodian": "store-richmond",
       "to_custodian": "box-07",
@@ -22,52 +22,52 @@
       "from_allocation": null,
       "to_allocation": "alloc::1792328400000-0000-tablet-a",
       "device": "tablet-a",
-      "hlc": "1792328410000-0000-tablet-a",
-      "device_clock": "2026-10-18T13:00:10Z",
+      "hlc": "1792328450000-0000-tablet-a",
+      "device_clock": "2026-10-18T13:00:50Z",
       "box_clock": null,
       "basket": null,
       "price": null,
       "tender": null
     },
     {
-      "_id": "txn::1792328510000-0000-tablet-a",
+      "_id": "txn::1792328550000-0000-tablet-a",
       "v": 1,
       "type": "transaction",
       "trip": "trip-2026-10-18-riverfest",
       "box": "box-07",
       "kind": "check_out",
-      "unit_id": "JKT-RAIN-M-BLU#001",
+      "unit_id": "JKT-RAIN-M-BLU#005",
       "sku": "JKT-RAIN-M-BLU",
       "from_custodian": "box-07",
       "to_custodian": "tablet-a",
-      "prev_txn": "txn::1792328410000-0000-tablet-a",
+      "prev_txn": "txn::1792328450000-0000-tablet-a",
       "from_allocation": "alloc::1792328400000-0000-tablet-a",
       "to_allocation": "alloc::1792328500000-0000-tablet-a",
       "device": "tablet-a",
-      "hlc": "1792328510000-0000-tablet-a",
-      "device_clock": "2026-10-18T13:01:50Z",
+      "hlc": "1792328550000-0000-tablet-a",
+      "device_clock": "2026-10-18T13:02:30Z",
       "box_clock": null,
       "basket": null,
       "price": null,
       "tender": null
     },
     {
-      "_id": "txn::1792328511000-0000-tablet-b",
+      "_id": "txn::1792329400000-0000-tablet-b",
       "v": 1,
       "type": "transaction",
       "trip": "trip-2026-10-18-riverfest",
       "box": "box-07",
       "kind": "check_out",
-      "unit_id": "JKT-RAIN-M-BLU#001",
+      "unit_id": "JKT-RAIN-M-BLU#005",
       "sku": "JKT-RAIN-M-BLU",
       "from_custodian": "box-07",
       "to_custodian": "tablet-b",
-      "prev_txn": "txn::1792328410000-0000-tablet-a",
-      "from_allocation": "alloc::1792328400000-0000-tablet-a",
-      "to_allocation": "alloc::1792328501000-0000-tablet-b",
+      "prev_txn": null,
+      "from_allocation": null,
+      "to_allocation": "alloc::1792329300000-0000-tablet-b",
       "device": "tablet-b",
-      "hlc": "1792328511000-0000-tablet-b",
-      "device_clock": "2026-10-18T13:01:51Z",
+      "hlc": "1792329400000-0000-tablet-b",
+      "device_clock": "2026-10-18T13:16:40Z",
       "box_clock": null,
       "basket": null,
       "price": null,
@@ -77,7 +77,7 @@
   "resolutions": [],
   "expected": {
     "units": {
-      "JKT-RAIN-M-BLU#001": {
+      "JKT-RAIN-M-BLU#005": {
         "sku": "JKT-RAIN-M-BLU",
         "holder": null,
         "allocation": null,
@@ -89,16 +89,16 @@
     "allocation_counts": {
       "alloc::1792328400000-0000-tablet-a": 0,
       "alloc::1792328500000-0000-tablet-a": 0,
-      "alloc::1792328501000-0000-tablet-b": 0
+      "alloc::1792329300000-0000-tablet-b": 0
     },
     "forks": [
       {
-        "unit_id": "JKT-RAIN-M-BLU#001",
+        "unit_id": "JKT-RAIN-M-BLU#005",
         "sku": "JKT-RAIN-M-BLU",
-        "prev_txn": "txn::1792328410000-0000-tablet-a",
+        "prev_txn": "txn::1792328450000-0000-tablet-a",
         "branches": [
-          "txn::1792328510000-0000-tablet-a",
-          "txn::1792328511000-0000-tablet-b"
+          "txn::1792328550000-0000-tablet-a",
+          "txn::1792329400000-0000-tablet-b"
         ],
         "resolved_by": null
       }
@@ -107,34 +107,34 @@
       "detector": "tablet-a",
       "docs": [
         {
-          "_id": "exc::tablet-a::JKT-RAIN-M-BLU#001::111c7a4e",
+          "_id": "exc::tablet-a::JKT-RAIN-M-BLU#005::d7a5d96d",
           "v": 1,
           "type": "exception",
           "trip": "trip-2026-10-18-riverfest",
           "box": "box-07",
           "kind": "double_scan",
-          "unit_id": "JKT-RAIN-M-BLU#001",
+          "unit_id": "JKT-RAIN-M-BLU#005",
           "sku": "JKT-RAIN-M-BLU",
-          "dispute_key": "JKT-RAIN-M-BLU#001|txn::1792328410000-0000-tablet-a",
-          "fork_txn": "txn::1792328410000-0000-tablet-a",
+          "dispute_key": "JKT-RAIN-M-BLU#005|txn::1792328450000-0000-tablet-a",
+          "fork_txn": "txn::1792328450000-0000-tablet-a",
           "transactions": [
-            "txn::1792328510000-0000-tablet-a",
-            "txn::1792328511000-0000-tablet-b"
+            "txn::1792328550000-0000-tablet-a",
+            "txn::1792329400000-0000-tablet-b"
           ],
           "branches": [
             {
-              "txn": "txn::1792328510000-0000-tablet-a",
+              "txn": "txn::1792328550000-0000-tablet-a",
               "device": "tablet-a",
               "kind": "check_out",
               "to_custodian": "tablet-a",
-              "hlc": "1792328510000-0000-tablet-a"
+              "hlc": "1792328550000-0000-tablet-a"
             },
             {
-              "txn": "txn::1792328511000-0000-tablet-b",
+              "txn": "txn::1792329400000-0000-tablet-b",
               "device": "tablet-b",
               "kind": "check_out",
               "to_custodian": "tablet-b",
-              "hlc": "1792328511000-0000-tablet-b"
+              "hlc": "1792329400000-0000-tablet-b"
             }
           ],
           "proposed_resolution": {

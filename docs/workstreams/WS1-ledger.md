@@ -1,6 +1,6 @@
 # WS1: Custody ledger, reference implementation
 
-**Milestone:** M1  **Depends on:** contracts v0.1 (CC1, CC3)  **Label:** `ws:1-ledger`  **Agent type:** ws-design
+**Milestone:** M1  **Depends on:** contracts v0.3.0 (CC1, CC3, CC5, CC6)  **Label:** `ws:1-ledger`  **Agent type:** ws-design
 **Issue:** #12
 
 The blueprint. The architect (`ws-architect`) writes it before any code is dispatched; the PR is judged against it.
@@ -32,7 +32,10 @@ Built here:
 - `ports/ledger.md`: the reducer interface in language-neutral terms, which WS4 implements in Swift.
 
 Left for later: allowances (Phase 1), two-level splits (the reducer handles any depth; the fixtures for a
-three-deep tree arrive with Phase 1), case-level units, clock-skew staging (Phase 1 showcase 11), any I/O.
+three-deep tree arrive with Phase 1), case-level units, clock-skew staging (Phase 1 showcase 11; this includes a
+blind movement whose writer's clock is behind the packer's, which finds no predecessor and stays a dangling root
+until its writer moves the unit again, and two blind takes of a unit nobody packed, which never fork: CC6, #33),
+any I/O.
 
 ## Files
 
@@ -54,8 +57,9 @@ Document shapes are the foreman's: `contracts/schemas/store/transaction.schema.j
 **Vocabulary** (from CC3): a *unit* is one physical item, identified by its QR payload `<SKU>#<serial>`. A
 *custodian* is `store-richmond`, `box-07`, `tablet-a`, `tablet-b`, `phone-1`, or the pseudo-custodian `customer`.
 A *movement* is a `transaction` of kind `check_out`, `check_in` or `sale`, carrying `unit_id`, `from_custodian`,
-`to_custodian`, `prev_txn` (the id of the movement that gave the writer custody, or `null` when the unit leaves the
-store root) and an `hlc`. A *fork* is two or more movements with the same `(unit_id, prev_txn)`.
+`to_custodian`, `prev_txn` (the id of the movement that gave the writer custody; `null` when the unit leaves the
+store root, or when the writer had no record of the unit: a *blind* movement, rule 1) and an `hlc`. A *fork* is
+two or more movements with the same `(unit_id, predecessor)` (rule 2).
 
 **`ports/ledger.md` fixes these operations**, which every implementation (Python here, Swift in WS4) provides:
 
@@ -78,15 +82,24 @@ exceptions_for(state, detector, trip, box) -> [ exception documents ]
   greatest hlc is a sale, else "double_scan"; for an unexpected check-in dispute_key is "<unit_id>|<check_in id>"
   and kind is "unexpected_check_in". Idempotent: same inputs, byte-identical output.
 
-conservation(state, store, inventory) -> [ Row{ sku, opening_on_hand, received, left_store, returned_to_store,
-                                                 store_on_hand, in_custody: {custodian: int}, sold, disputed, holds } ]
-  left_store = units of the SKU that appear in the ledger; returned_to_store = those held by the store
-  store_on_hand = opening_on_hand + received - left_store + returned_to_store
-  holds = store_on_hand + sum(in_custody) + sold + disputed == opening_on_hand + received
+conservation(state, store, inventory) -> [ Row{ sku, opening_on_hand, received, left_store, untraced,
+                                                 returned_to_store, store_on_hand, in_custody: {custodian: int},
+                                                 sold, disputed, holds } ]
+  untraced   = units of the SKU in the ledger whose every root is a check_in with prev_txn null
+               (entered only by an unexpected check-in, rule 6; nothing says the store released it)
+  left_store = every other unit of the SKU in the ledger (the release is presumed for any other root: a
+               store root, or a dangling root, a blind movement with no predecessor in the input included)
+  returned_to_store = of the left_store units, those held by the store
+  Identity, true by construction and NOT the check:
+    left_store + untraced == returned_to_store + sum(in_custody) + sold + disputed
+  store_on_hand = opening_on_hand + received - left_store + returned_to_store   (may be negative)
+  holds = untraced == 0 and store_on_hand >= 0
   Venue-side callers (no inventory) pass inventory = None and get rows whose opening_on_hand, received and
-  store_on_hand are null; holds then means left_store == sum(in_custody) + sold + disputed + returned_to_store.
-  (Defined in units rather than packs so an HQ sale of a unit still in the store balances; see
-  `contracts/fixtures/README.md`, which also fixes the order of every output list.)
+  store_on_hand are null; holds then means untraced == 0.
+  (A sum over the unit states is an identity in a unit ledger; what holds checks is that the ledger agrees with
+  what the store released: no unit the store never let go of, and no more units than it had. CC5, #29, after
+  #27; see `contracts/fixtures/README.md`, which also fixes the order of every output list. Fixtures `overpacked`
+  and `untraced-unit` are the ones where holds is false.)
 
 HLC: string "<unix_ms:13 digits>-<counter:4 hex>-<device_id>", compared lexicographically.
   hlc_now(clock, last) -> hlc        (clock is injected; tests use a fake clock)
@@ -94,12 +107,24 @@ HLC: string "<unix_ms:13 digits>-<counter:4 hex>-<device_id>", compared lexicogr
 ```
 
 **Reducer rules** (also written into `ports/ledger.md`, and they are what the fixtures test):
-1. Movements for a unit form a forest by `prev_txn` (edge from the predecessor to the movement). A *root* is a
-   movement whose `prev_txn` is `null` or names a transaction this node does not have (a *dangling* root, which is
-   not an error: the predecessor may not have arrived yet).
-2. A *fork* is a group of two or more movements with the same `prev_txn` value, including the value `null` (a
-   *root fork*), except that a `check_in` with `prev_txn == null` never joins a root fork (rule 6 covers it). Two
-   dangling roots with different missing predecessors are not a fork.
+1. Movements for a unit form a forest by *predecessor* (edge from the predecessor to the movement). A movement's
+   predecessor is the transaction its `prev_txn` names, except for a *blind* movement: a `check_out` or `sale`
+   with `prev_txn == null` whose `from_custodian` is not the store (its writer had no record of the unit, for
+   example a tablet taking a unit off the box before the pack replicated; CC6, #33). A blind movement's
+   predecessor is the movement of the same unit with `to_custodian == its from_custodian` and the greatest `hlc`
+   below its own, among every movement of the unit in the input (branches a resolution set aside included); when
+   there is none it has no predecessor. A *root* is a movement with no predecessor: a *store root* (`prev_txn`
+   null, `from_custodian` the store), a *dangling* root (`prev_txn` names a transaction this node does not have,
+   or a blind movement whose implied predecessor has not arrived; not an error), or a `check_in` with `prev_txn`
+   null (rule 6). Successor, descendant and leaf follow this relation, not `prev_txn` alone. The `hlc` bound is
+   what keeps the forest acyclic (a later return to the box also gave the box custody; fixture
+   `null-root-take-returned`).
+2. A *fork* is a group of two or more movements with the same `(unit_id, predecessor)`. A *root fork* is two or
+   more store roots of one unit (two packs, or a pack and HQ's sale). Dangling roots are never a fork, whether
+   their missing predecessors are named or implied, and a `check_in` with `prev_txn == null` never joins any fork
+   (rule 6 covers it). So a take written before the pack replicated is the pack's child once the pack arrives
+   (fixture `null-root-take-pack-arrives`), and a double take with one blind side forks at the pack
+   (`null-root-double-take`).
 3. An unresolved fork makes the unit `disputed`: holder `null`, counted under `disputed`, not under any custodian
    or allocation. Only HQ resolves: a resolution counts only when `resolution.by == "hq"` and any other is ignored
    (peer-to-peer sync never runs the App Services sync function, so the reducer enforces it; fixture
@@ -128,7 +153,13 @@ CLI (fixed): `python -m siab_ledger check [--fixtures DIR] [--seed N]` exits 0 a
 - CC1 (#2): `contracts/` layout, schema conventions, `contracts/VERSION`, `scripts/check_contracts.py`.
 - CC3 (#4): `store.allocation`, `store.transaction`, `store.exception` schemas, the id and HLC conventions, and
   the ledger golden fixtures under `contracts/fixtures/ledger/` (scenario list in the issue).
-Both are applied before dispatch.
+- CC5 (#29, contracts 0.2.0): conservation `holds` is a check, not an identity (#27). The row gains `untraced`;
+  `holds` is `untraced == 0` at the venue and also `store_on_hand >= 0` with inventory; fixtures `overpacked`
+  and `untraced-unit` are the first with `holds: false`.
+- CC6 (#33, contracts 0.3.0): a blind movement (`prev_txn` null from a custodian other than the store) continues
+  the movement that gave that custodian custody instead of forming a root fork with the pack (#32); rules 1 and
+  2 above. Fixtures `null-root-take-pack-arrives`, `null-root-double-take`, `null-root-take-returned`.
+All four are applied before dispatch.
 
 ## Exit criteria
 
@@ -136,8 +167,15 @@ Both are applied before dispatch.
       re-runs of the `order_independent` ones.
 - [ ] `pytest tests/ledger` passes; it includes `test_fork_detection_is_order_independent` (property-style: random
       permutations of each fixture's transactions give identical `LedgerState`), `test_dangling_predecessor_is_not_a_fork`,
-      `test_exception_id_is_deterministic`, `test_hlc_monotonic_under_fake_clock`, and
-      `test_resolution_settles_fork`.
+      `test_exception_id_is_deterministic`, `test_hlc_monotonic_under_fake_clock`,
+      `test_resolution_settles_fork`, and `test_conservation_holds_can_fail` (the `overpacked` fixture gives
+      `holds: false` only with inventory, with `store_on_hand == -1`; `untraced-unit` gives `holds: false` in both
+      modes with `untraced == 1`; a build of `conservation` that returns `holds: true` unconditionally fails it),
+      and `test_blind_take_links_under_the_pack` (`null-root-take-pack-arrives` gives no fork and `tablet-b` as
+      holder; `null-root-double-take` gives one fork whose `prev_txn` is the pack; `null-root-take-returned`
+      terminates with the chain pack, take, return, take; a build that puts every null-`prev_txn` movement into a
+      root fork fails the first, and one that links a blind movement to the latest movement into its source
+      custodian, with no `hlc` bound, fails or hangs on the third).
 - [ ] `python scripts/check_contracts.py` passes (every exception document `exceptions_for` emits for the fixtures
       validates against `contracts/schemas/store/exception.schema.json`; the test writes them to a temp dir and runs
       the validator on it, or calls the validator's function).
@@ -165,9 +203,12 @@ directory and compares the two reports line by line.
 Milestones and acceptance tests (ws-design):
 1. `[any]` HLC and chain building: `reduce` over linear chains (pack, sell, split, merge). Accept: fixtures
    `pack-and-sell`, `split-and-merge`, `merge-order-independent` pass.
-2. `[any]` Forks, dangling branches, resolutions, `exceptions_for`. Accept: fixtures `double-scan`, `oversell-hq`,
-   `unexpected-check-in`, `dangling-predecessor`, `resolved-fork` pass; exception documents validate.
-3. `[any]` `conservation` rows, venue-side and HQ-side. Accept: fixture `conservation-day` passes in both modes.
+2. `[any]` Forks, dangling branches, blind movements, resolutions, `exceptions_for`. Accept: fixtures `double-scan`,
+   `oversell-hq`, `unexpected-check-in`, `dangling-predecessor`, `resolved-fork`, `null-root-take`,
+   `null-root-take-pack-arrives`, `null-root-double-take`, `null-root-take-returned` pass; exception documents
+   validate.
+3. `[any]` `conservation` rows, venue-side and HQ-side. Accept: fixtures `conservation-day` (every row holds),
+   `overpacked` (holds only venue-side) and `untraced-unit` (holds in neither mode) pass in both modes.
 4. `[any]` `ports/ledger.md`, `ports/README.md`, the CLI, the `pyproject.toml` entries.
 5. `[any]` **PR.** One PR, `Closes #<issue>`; `needs-verification` issues filed and linked from "Not verified"
    (expected: none). Expected size: about 700 lines of code (tests and fixtures not counted; split the issue if it is

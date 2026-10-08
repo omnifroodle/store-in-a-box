@@ -1,0 +1,26 @@
+{
+  "name": "store",
+  "bucket": "retail",
+  "scope": "store",
+  "collections": {
+    "product": "functions/store.product.js",
+    "trip": "functions/store.trip.js",
+    "allocation": "functions/store.allocation.js",
+    "transaction": "functions/store.transaction.js",
+    "exception": "functions/store.exception.js"
+  },
+  "users": [
+    {
+      "name": "box-07",
+      "user_env": "BOX_APP_USER",
+      "password_env": "BOX_APP_PASSWORD",
+      "channels": ["trip:trip-2026-10-18-riverfest", "catalog:va-central", "box:box-07"]
+    },
+    {
+      "name": "hq",
+      "user_env": "HQ_APP_USER",
+      "password_env": "HQ_APP_PASSWORD",
+      "channels": ["*"]
+    }
+  ]
+}

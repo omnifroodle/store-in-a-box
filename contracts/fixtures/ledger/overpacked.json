@@ -1,73 +1,84 @@
 {
-  "name": "pack-and-sell",
-  "description": "tablet-a packs three rain shells onto the box, then sells #002 off the table.",
+  "name": "overpacked",
+  "description": "The store's books say two sun hats; tablet-a packs three and sells one. The venue cannot see the books, so its row holds; with inventory the store is overdrawn by one (store_on_hand -1) and holds is false. The only fixture where holds depends on the inventory.",
   "order_independent": true,
   "trip": "trip-2026-10-18-riverfest",
   "box": "box-07",
   "store": "store-richmond",
-  "inventory": null,
+  "inventory": [
+    {
+      "_id": "inventory::store-richmond::HAT-BRIM-OS",
+      "v": 1,
+      "type": "inventory",
+      "store": "store-richmond",
+      "sku": "HAT-BRIM-OS",
+      "opening_on_hand": 2,
+      "received": 0,
+      "as_of": "2026-10-17T00:00:00Z"
+    }
+  ],
   "transactions": [
     {
-      "_id": "txn::1792328410000-0000-tablet-a",
+      "_id": "txn::1792328411000-0000-tablet-a",
       "v": 1,
       "type": "transaction",
       "trip": "trip-2026-10-18-riverfest",
       "box": "box-07",
       "kind": "check_out",
-      "unit_id": "JKT-RAIN-M-BLU#001",
-      "sku": "JKT-RAIN-M-BLU",
+      "unit_id": "HAT-BRIM-OS#001",
+      "sku": "HAT-BRIM-OS",
       "from_custodian": "store-richmond",
       "to_custodian": "box-07",
       "prev_txn": null,
       "from_allocation": null,
       "to_allocation": "alloc::1792328400000-0000-tablet-a",
       "device": "tablet-a",
-      "hlc": "1792328410000-0000-tablet-a",
-      "device_clock": "2026-10-18T13:00:10Z",
+      "hlc": "1792328411000-0000-tablet-a",
+      "device_clock": "2026-10-18T13:00:11Z",
       "box_clock": null,
       "basket": null,
       "price": null,
       "tender": null
     },
     {
-      "_id": "txn::1792328420000-0000-tablet-a",
+      "_id": "txn::1792328412000-0000-tablet-a",
       "v": 1,
       "type": "transaction",
       "trip": "trip-2026-10-18-riverfest",
       "box": "box-07",
       "kind": "check_out",
-      "unit_id": "JKT-RAIN-M-BLU#002",
-      "sku": "JKT-RAIN-M-BLU",
+      "unit_id": "HAT-BRIM-OS#002",
+      "sku": "HAT-BRIM-OS",
       "from_custodian": "store-richmond",
       "to_custodian": "box-07",
       "prev_txn": null,
       "from_allocation": null,
       "to_allocation": "alloc::1792328400000-0000-tablet-a",
       "device": "tablet-a",
-      "hlc": "1792328420000-0000-tablet-a",
-      "device_clock": "2026-10-18T13:00:20Z",
+      "hlc": "1792328412000-0000-tablet-a",
+      "device_clock": "2026-10-18T13:00:12Z",
       "box_clock": null,
       "basket": null,
       "price": null,
       "tender": null
     },
     {
-      "_id": "txn::1792328430000-0000-tablet-a",
+      "_id": "txn::1792328413000-0000-tablet-a",
       "v": 1,
       "type": "transaction",
       "trip": "trip-2026-10-18-riverfest",
       "box": "box-07",
       "kind": "check_out",
-      "unit_id": "JKT-RAIN-M-BLU#003",
-      "sku": "JKT-RAIN-M-BLU",
+      "unit_id": "HAT-BRIM-OS#003",
+      "sku": "HAT-BRIM-OS",
       "from_custodian": "store-richmond",
       "to_custodian": "box-07",
       "prev_txn": null,
       "from_allocation": null,
       "to_allocation": "alloc::1792328400000-0000-tablet-a",
       "device": "tablet-a",
-      "hlc": "1792328430000-0000-tablet-a",
-      "device_clock": "2026-10-18T13:00:30Z",
+      "hlc": "1792328413000-0000-tablet-a",
+      "device_clock": "2026-10-18T13:00:13Z",
       "box_clock": null,
       "basket": null,
       "price": null,
@@ -80,26 +91,26 @@
       "trip": "trip-2026-10-18-riverfest",
       "box": "box-07",
       "kind": "sale",
-      "unit_id": "JKT-RAIN-M-BLU#002",
-      "sku": "JKT-RAIN-M-BLU",
+      "unit_id": "HAT-BRIM-OS#002",
+      "sku": "HAT-BRIM-OS",
       "from_custodian": "box-07",
       "to_custodian": "customer",
-      "prev_txn": "txn::1792328420000-0000-tablet-a",
+      "prev_txn": "txn::1792328412000-0000-tablet-a",
       "from_allocation": "alloc::1792328400000-0000-tablet-a",
       "to_allocation": null,
       "device": "tablet-a",
       "hlc": "1792329000000-0000-tablet-a",
       "device_clock": "2026-10-18T13:10:00Z",
       "box_clock": null,
-      "basket": "00000000-0000-4000-8000-000000000001",
+      "basket": "00000000-0000-4000-8000-000000000031",
       "price": {
-        "cents": 12900,
+        "cents": 3400,
         "currency": "USD"
       },
       "tender": {
         "kind": "cash",
         "amount": {
-          "cents": 12900,
+          "cents": 3400,
           "currency": "USD"
         }
       }
@@ -108,32 +119,32 @@
   "resolutions": [],
   "expected": {
     "units": {
-      "JKT-RAIN-M-BLU#001": {
-        "sku": "JKT-RAIN-M-BLU",
+      "HAT-BRIM-OS#001": {
+        "sku": "HAT-BRIM-OS",
         "holder": "box-07",
         "allocation": "alloc::1792328400000-0000-tablet-a",
         "state": "held",
-        "last_txn": "txn::1792328410000-0000-tablet-a"
+        "last_txn": "txn::1792328411000-0000-tablet-a"
       },
-      "JKT-RAIN-M-BLU#002": {
-        "sku": "JKT-RAIN-M-BLU",
+      "HAT-BRIM-OS#002": {
+        "sku": "HAT-BRIM-OS",
         "holder": "customer",
         "allocation": null,
         "state": "sold",
         "last_txn": "txn::1792329000000-0000-tablet-a"
       },
-      "JKT-RAIN-M-BLU#003": {
-        "sku": "JKT-RAIN-M-BLU",
+      "HAT-BRIM-OS#003": {
+        "sku": "HAT-BRIM-OS",
         "holder": "box-07",
         "allocation": "alloc::1792328400000-0000-tablet-a",
         "state": "held",
-        "last_txn": "txn::1792328430000-0000-tablet-a"
+        "last_txn": "txn::1792328413000-0000-tablet-a"
       }
     },
     "counts": [
       {
         "custodian": "box-07",
-        "sku": "JKT-RAIN-M-BLU",
+        "sku": "HAT-BRIM-OS",
         "qty": 2
       }
     ],
@@ -146,10 +157,26 @@
       "docs": []
     },
     "conservation": {
-      "with_inventory": null,
+      "with_inventory": [
+        {
+          "sku": "HAT-BRIM-OS",
+          "opening_on_hand": 2,
+          "received": 0,
+          "left_store": 3,
+          "untraced": 0,
+          "returned_to_store": 0,
+          "store_on_hand": -1,
+          "in_custody": {
+            "box-07": 2
+          },
+          "sold": 1,
+          "disputed": 0,
+          "holds": false
+        }
+      ],
       "venue_only": [
         {
-          "sku": "JKT-RAIN-M-BLU",
+          "sku": "HAT-BRIM-OS",
           "opening_on_hand": null,
           "received": null,
           "left_store": 3,
