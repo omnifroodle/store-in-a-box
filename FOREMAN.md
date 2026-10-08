@@ -203,8 +203,8 @@ The stack is decision 002: one Swift/SwiftUI app on two iPads and an iPhone (Cou
 tested with `node --test`; GitHub Actions. The demo runs on three tiers (`docs/SPEC.md` sections 3 and 9.2):
 - **Capella**: one cluster with App Services, Search, Columnar, Eventing, AI Services and Agent Catalog. Credentials
   come from the environment (`.env`, never committed; `.env.example` lists the names): `CAPELLA_CONN_STRING`,
-  `CAPELLA_DB_USERNAME`, `CAPELLA_DB_PASSWORD`, `CAPELLA_API_KEY`, `CAPELLA_ORG_ID`, `CAPELLA_PROJECT_ID`,
-  `CAPELLA_CLUSTER_ID`, `CAPELLA_APP_SERVICE_ID`, `APP_SERVICES_PUBLIC_URL`, `APP_SERVICES_ADMIN_URL`, `SIAB_TRIP`,
+  `CAPELLA_DB_USERNAME`, `CAPELLA_DB_PASSWORD`, `CAPELLA_API_KEY`, `CAPELLA_API_BASE`, `CAPELLA_ORG_ID`,
+  `CAPELLA_PROJECT_ID`, `CAPELLA_CLUSTER_ID`, `CAPELLA_APP_SERVICE_ID`, `APP_SERVICES_PUBLIC_URL`, `APP_SERVICES_ADMIN_URL`, `SIAB_TRIP`,
   `SIAB_REGION`, `BOX_APP_USER`, `BOX_APP_PASSWORD`, `HQ_APP_USER`, `HQ_APP_PASSWORD` (WS2 owns the list).
 - **The box**: Couchbase Edge Server and the box agent on a macOS laptop (decision 002). A Raspberry Pi on Debian
   Trixie is optional and best-effort: Edge Server 1.1 supports ARM64 only on Ubuntu.

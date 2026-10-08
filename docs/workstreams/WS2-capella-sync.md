@@ -53,6 +53,7 @@ CAPELLA_CONN_STRING        couchbases://... (Data Service, SDK)
 CAPELLA_DB_USERNAME        cluster database credential used by the scripts and WS5
 CAPELLA_DB_PASSWORD
 CAPELLA_API_KEY            Capella Management API v4 bearer token
+CAPELLA_API_BASE           Capella Management API v4 base URL (see Capella's API docs)
 CAPELLA_ORG_ID
 CAPELLA_PROJECT_ID
 CAPELLA_CLUSTER_ID

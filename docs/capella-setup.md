@@ -18,6 +18,7 @@ Copy `.env.example` to `.env` at the repository root (never committed). The proc
 | `CAPELLA_CONN_STRING` | `couchbases://...`: the Data Service, for the SDK |
 | `CAPELLA_DB_USERNAME`, `CAPELLA_DB_PASSWORD` | the cluster database credential the scripts (and WS5) use; needs read and write on `retail` and query/index rights |
 | `CAPELLA_API_KEY` | Management API v4 bearer token (project owner or cluster manager, to create buckets and configure App Services) |
+| `CAPELLA_API_BASE` | the Capella Management API v4 base URL (see Capella's API docs) |
 | `CAPELLA_ORG_ID`, `CAPELLA_PROJECT_ID`, `CAPELLA_CLUSTER_ID` | the ids the Management API addresses |
 | `CAPELLA_APP_SERVICE_ID` | the App Service linked to the cluster |
 | `APP_SERVICES_PUBLIC_URL` | `wss://.../store`: the box's replication target (WS3) and what `verify` logs in to |
