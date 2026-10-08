@@ -1,0 +1,103 @@
+{
+  "name": "null-root-double-take-no-pack",
+  "description": "Two blind takes of a unit nobody packed: tablet-a and tablet-b each take #001 off the box with no record of it, and no pack ever arrives. Neither blind take finds a movement into the box below its own hlc, so each has no predecessor and is in no fork (rule 2): what each continues is unknown until the pack arrives. Two dangling roots, and the leaf with the greatest hlc wins (rule 4): tablet-b holds the unit, nothing is written, and the row holds (a dangling root presumes the store's release). A build that groups predecessor-less blind movements by their from_custodian forks them at the box and marks the unit disputed. With the pack in the input this is null-root-double-take.",
+  "order_independent": true,
+  "trip": "trip-2026-10-18-riverfest",
+  "box": "box-07",
+  "store": "store-richmond",
+  "inventory": null,
+  "transactions": [
+    {
+      "_id": "txn::1792328510000-0000-tablet-a",
+      "v": 1,
+      "type": "transaction",
+      "trip": "trip-2026-10-18-riverfest",
+      "box": "box-07",
+      "kind": "check_out",
+      "unit_id": "JKT-RAIN-M-BLU#001",
+      "sku": "JKT-RAIN-M-BLU",
+      "from_custodian": "box-07",
+      "to_custodian": "tablet-a",
+      "prev_txn": null,
+      "from_allocation": null,
+      "to_allocation": "alloc::1792328500000-0000-tablet-a",
+      "device": "tablet-a",
+      "hlc": "1792328510000-0000-tablet-a",
+      "device_clock": "2026-10-18T13:01:50Z",
+      "box_clock": null,
+      "basket": null,
+      "price": null,
+      "tender": null
+    },
+    {
+      "_id": "txn::1792328511000-0000-tablet-b",
+      "v": 1,
+      "type": "transaction",
+      "trip": "trip-2026-10-18-riverfest",
+      "box": "box-07",
+      "kind": "check_out",
+      "unit_id": "JKT-RAIN-M-BLU#001",
+      "sku": "JKT-RAIN-M-BLU",
+      "from_custodian": "box-07",
+      "to_custodian": "tablet-b",
+      "prev_txn": null,
+      "from_allocation": null,
+      "to_allocation": "alloc::1792328501000-0000-tablet-b",
+      "device": "tablet-b",
+      "hlc": "1792328511000-0000-tablet-b",
+      "device_clock": "2026-10-18T13:01:51Z",
+      "box_clock": null,
+      "basket": null,
+      "price": null,
+      "tender": null
+    }
+  ],
+  "resolutions": [],
+  "expected": {
+    "units": {
+      "JKT-RAIN-M-BLU#001": {
+        "sku": "JKT-RAIN-M-BLU",
+        "holder": "tablet-b",
+        "allocation": "alloc::1792328501000-0000-tablet-b",
+        "state": "held",
+        "last_txn": "txn::1792328511000-0000-tablet-b"
+      }
+    },
+    "counts": [
+      {
+        "custodian": "tablet-b",
+        "sku": "JKT-RAIN-M-BLU",
+        "qty": 1
+      }
+    ],
+    "allocation_counts": {
+      "alloc::1792328500000-0000-tablet-a": 0,
+      "alloc::1792328501000-0000-tablet-b": 1
+    },
+    "forks": [],
+    "exceptions": {
+      "detector": "tablet-a",
+      "docs": []
+    },
+    "conservation": {
+      "with_inventory": null,
+      "venue_only": [
+        {
+          "sku": "JKT-RAIN-M-BLU",
+          "opening_on_hand": null,
+          "received": null,
+          "left_store": 1,
+          "untraced": 0,
+          "returned_to_store": 0,
+          "store_on_hand": null,
+          "in_custody": {
+            "tablet-b": 1
+          },
+          "sold": 0,
+          "disputed": 0,
+          "holds": true
+        }
+      ]
+    }
+  }
+}

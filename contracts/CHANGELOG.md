@@ -3,6 +3,14 @@
 One line per version, newest first: version, date, what was added (additive) or changed (breaking). The first
 version line must match `VERSION` (`scripts/check_contracts.py` checks it).
 
+- 0.4.0 (2026-10-08): a resolution binds to the branches it was written for (rule 3: it matches a fork by
+  `dispute_key` and `transactions`; a third branch reopens the fork; forks among set-aside movements are not
+  reported; the latest `resolution.at` wins among several; `chosen_txn` null settles nothing), and
+  `returned_to_store` counts every unit the store holds, untraced included (#58, CC8 #70, decision 006). `reduce`
+  takes the store (#59); rule 2 wording and the versioning rule for rule changes (#56). Fixtures
+  `third-branch-at-resolved-fork`, `untraced-unit-returned`, `fork-inside-set-aside-branch`,
+  `two-resolutions-one-fork`, `resolution-without-choice` and `null-root-double-take-no-pack` (the #56 gap).
+  Changed rules, so a minor bump.
 - 0.3.1 (2026-10-08): rule 2 restored for named predecessors: two dangling roots whose `prev_txn` name the same
   missing transaction are a fork, as in 0.2.0 (0.3.0's wording had dropped it, unrecorded; #37, CC7 #44); a blind
   movement with no predecessor is still in no fork. Fixtures `dangling-double-take` (pins it),

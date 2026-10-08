@@ -1,6 +1,6 @@
 # WS1: Custody ledger, reference implementation
 
-**Milestone:** M1  **Depends on:** contracts v0.3.1 (CC1, CC3, CC5, CC6, CC7)  **Label:** `ws:1-ledger`  **Agent type:** ws-design
+**Milestone:** M1  **Depends on:** contracts v0.4.0 (CC1, CC3, CC5, CC6, CC7, CC8)  **Label:** `ws:1-ledger`  **Agent type:** ws-design
 **Issue:** #12
 
 The blueprint. The architect (`ws-architect`) writes it before any code is dispatched; the PR is judged against it.
@@ -173,6 +173,10 @@ CLI (fixed): `python -m siab_ledger check [--fixtures DIR] [--seed N]` exits 0 a
   roots whose `prev_txn` name the same missing transaction (as 0.2.0 had it; 0.3.0's wording dropped it), and a
   blind movement with no predecessor is in no fork. Fixtures `dangling-double-take`, `null-root-take-after-return`,
   `null-root-sale-oversell`, `null-root-take-resolved-fork`.
+- CC8 (#70, contracts 0.4.0, answering #58): a resolution binds to the branches it was written for (rules 2, 3, 7:
+  a third branch reopens a settled fork, a fork inside a set-aside branch is not reported, the latest `resolution.at` wins,
+  `chosen_txn` null settles nothing), and `returned_to_store` counts every unit the store holds. Six new fixtures; decision
+  006. This changes the PR #60 reducer (`chain.py`, `conservation.py`, `ports/ledger.md`): rebase it onto 0.4.0.
 All five are applied before dispatch.
 
 ## Exit criteria
