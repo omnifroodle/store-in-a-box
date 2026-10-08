@@ -89,7 +89,7 @@ what it would write with `--dry-run`).
 
 - CC3 (#4): the `exception` `resolution` block and the `hq` detector are in the schema; `transaction.box` nullable
   for `hq` writers.
-- CC5 (#29, contracts 0.1.1): the conservation row gains `untraced` and `holds` can be false (`overpacked`,
+- CC5 (#29, contracts 0.2.0): the conservation row gains `untraced` and `holds` can be false (`overpacked`,
   `untraced-unit`). Owned by WS1's interface; this workstream only displays it. No new change of its own.
 
 ## Exit criteria

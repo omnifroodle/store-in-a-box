@@ -1,6 +1,6 @@
 # WS1: Custody ledger, reference implementation
 
-**Milestone:** M1  **Depends on:** contracts v0.1.1 (CC1, CC3, CC5)  **Label:** `ws:1-ledger`  **Agent type:** ws-design
+**Milestone:** M1  **Depends on:** contracts v0.2.0 (CC1, CC3, CC5)  **Label:** `ws:1-ledger`  **Agent type:** ws-design
 **Issue:** #12
 
 The blueprint. The architect (`ws-architect`) writes it before any code is dispatched; the PR is judged against it.
@@ -137,7 +137,7 @@ CLI (fixed): `python -m siab_ledger check [--fixtures DIR] [--seed N]` exits 0 a
 - CC1 (#2): `contracts/` layout, schema conventions, `contracts/VERSION`, `scripts/check_contracts.py`.
 - CC3 (#4): `store.allocation`, `store.transaction`, `store.exception` schemas, the id and HLC conventions, and
   the ledger golden fixtures under `contracts/fixtures/ledger/` (scenario list in the issue).
-- CC5 (#29, contracts 0.1.1): conservation `holds` is a check, not an identity (#27). The row gains `untraced`;
+- CC5 (#29, contracts 0.2.0): conservation `holds` is a check, not an identity (#27). The row gains `untraced`;
   `holds` is `untraced == 0` at the venue and also `store_on_hand >= 0` with inventory; fixtures `overpacked`
   and `untraced-unit` are the first with `holds: false`.
 All three are applied before dispatch.
