@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HQ: Store in a Box</title>
+<link rel="stylesheet" href="/hq.css">
+</head>
+<body>
+<main>
+  <section id="conservation" class="panel wide" aria-live="polite"></section>
+  <section id="tree" class="panel"></section>
+  <section class="panel">
+    <div id="exceptions"></div>
+    <label class="filter">show
+      <select id="status" aria-label="which disputes">
+        <option value="open">open</option>
+        <option value="resolved">resolved</option>
+        <option value="all">all</option>
+      </select>
+    </label>
+  </section>
+  <section id="stage" class="panel"></section>
+  <section id="box" class="panel"></section>
+  <p id="error" role="status"></p>
+</main>
+<script src="/hq.js"></script>
+</body>
+</html>
