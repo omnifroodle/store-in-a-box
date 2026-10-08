@@ -44,12 +44,15 @@ final class ReplicationTests: XCTestCase {
     func testLocalScopeIsNotInAnyReplicatorConfig() throws {
         let box = try Replication.boxConfiguration(database, pairing: Self.pairing, pinned: nil).collections
             .map { "\($0.collection.scope.name).\($0.collection.name)" }.sorted()
-        let mesh = try Replication.meshCollections(database)
-            .map { "\($0.collection.scope.name).\($0.collection.name)" }.sorted()
         let expected = ["store.allocation", "store.exception", "store.product", "store.transaction", "store.trip"]
         XCTAssertEqual(box, expected)
+        XCTAssertFalse(box.contains { $0.hasPrefix("local.") })
+        #if COUCHBASE_ENTERPRISE
+        let mesh = try Replication.meshCollections(database)
+            .map { "\($0.collection.scope.name).\($0.collection.name)" }.sorted()
         XCTAssertEqual(mesh, expected)
-        XCTAssertFalse((box + mesh).contains { $0.hasPrefix("local.") })
+        XCTAssertFalse(mesh.contains { $0.hasPrefix("local.") })
+        #endif
         // The local scope exists on the device all the same.
         XCTAssertEqual(try database.scope(name: "local")?.collections().map(\.name).sorted(), ["device", "unit_state"])
     }

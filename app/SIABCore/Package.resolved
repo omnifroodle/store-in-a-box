@@ -1,5 +1,5 @@
 {
-  "originHash" : "fc48cdb57bc6b5891f5d0e5aeb69acd89681890621045d9288528a34249002e3",
+  "originHash" : "a53e332a600b889c7f32a265f241bcb5115657ff0042f091f4163ab1645f1dec",
   "pins" : [
     {
       "identity" : "couchbase-lite-swift-ee",

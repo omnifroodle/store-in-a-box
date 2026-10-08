@@ -4,8 +4,8 @@ import Foundation
 import Security
 
 /// The replicators' configurations, built from the pairing payload. Both carry exactly the five `store` collections;
-/// nothing in `local` is ever added. (The live `SyncCoordinator` that starts them and reports their state is the
-/// follow-up to this package.)
+/// nothing in `local` is ever added. `SyncCoordinator` starts them and reports their state. The mesh exists only in
+/// Couchbase Lite Enterprise Edition (`COUCHBASE_ENTERPRISE`, set by Package.swift).
 public enum Replication {
     public static func replicatedCollections(_ db: Database) throws -> [Collection] {
         try CustodyStore.prepare(db)
@@ -26,6 +26,7 @@ public enum Replication {
         return config
     }
 
+    #if COUCHBASE_ENTERPRISE
     /// The device-to-device mesh: the peer group from the pairing payload, Wi-Fi and Bluetooth LE.
     public static func meshConfiguration(_ db: Database, pairing: PairingPayload,
                                          identity: TLSIdentity) throws -> MultipeerReplicatorConfiguration {
@@ -41,6 +42,7 @@ public enum Replication {
     public static func meshCollections(_ db: Database) throws -> [MultipeerCollectionConfiguration] {
         MultipeerCollectionConfiguration.fromCollections(try replicatedCollections(db))
     }
+    #endif
 
     /// The certificate to pin, from the box agent's `/cert.pem`, only if the sha256 of its DER is `expected`.
     public static func pinnedCertificate(pem: Data, expected: String) -> SecCertificate? {
