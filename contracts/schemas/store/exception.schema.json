@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "siab://contracts/store/exception.schema.json",
   "title": "exception",
-  "description": "store.exception, id exc::<detected_by>::<unit_id>::<hash8>, where hash8 is the first 8 hex characters of sha256 over the transactions ids, sorted and joined by '|'. Created by its detector; afterwards edited only by hq, and only in status and resolution. Cross-field rules checked by scripts/check_contracts.py: transactions sorted, branches[i].txn == transactions[i], sku is the SKU part of unit_id.",
+  "description": "store.exception, id exc::<detected_by>::<unit_id>::<hash8>, where hash8 is the first 8 hex characters of sha256 over the transactions ids, sorted and joined by '|'. Created by its detector; afterwards edited only by hq, and only in status and resolution. resolution.hlc is the resolver's hybrid logical clock and orders HQ's decisions on one dispute (fixtures/README.md rule 3); resolution.at is a label for people. Cross-field rules checked by scripts/check_contracts.py: transactions sorted, branches[i].txn == transactions[i], sku is the SKU part of unit_id, resolution.hlc ends with resolution.by.",
   "x-id-template": "exc::{detected_by}::{unit_id}::{sha256_8:transactions}",
   "type": "object",
   "additionalProperties": false,
@@ -13,11 +13,11 @@
     "type": { "const": "exception" },
     "trip": { "$ref": "../common.schema.json#/$defs/trip_id" },
     "box": { "anyOf": [{ "$ref": "../common.schema.json#/$defs/custodian_id" }, { "type": "null" }] },
-    "kind": { "enum": ["oversell", "double_scan", "unexpected_check_in"] },
+    "kind": { "enum": ["oversell", "double_scan", "unexpected_check_in", "foreign_movement"] },
     "unit_id": { "$ref": "../common.schema.json#/$defs/unit_id" },
     "sku": { "$ref": "../common.schema.json#/$defs/sku" },
     "dispute_key": {
-      "description": "Fork: <unit_id>|<prev_txn or root>. Unexpected check-in: <unit_id>|<check-in id>. HQ groups detectors' copies of one dispute by it.",
+      "description": "Fork: <unit_id>|<prev_txn or root>. Unexpected check-in or foreign movement: <unit_id>|<movement id>. HQ groups detectors' copies of one dispute by it.",
       "type": "string",
       "pattern": "^[A-Z0-9]+(-[A-Z0-9]+)*#[0-9]{3}\\|(root|txn::[0-9]{13}-[0-9a-f]{4}-[a-z][a-z0-9-]*)$"
     },
@@ -59,10 +59,11 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["by", "at", "chosen_txn", "note"],
+          "required": ["by", "at", "hlc", "chosen_txn", "note"],
           "properties": {
             "by": { "$ref": "../common.schema.json#/$defs/device_id" },
             "at": { "type": "string", "format": "date-time" },
+            "hlc": { "$ref": "../common.schema.json#/$defs/hlc" },
             "chosen_txn": { "anyOf": [{ "$ref": "../common.schema.json#/$defs/doc_ref_txn" }, { "type": "null" }] },
             "note": { "type": "string" }
           }

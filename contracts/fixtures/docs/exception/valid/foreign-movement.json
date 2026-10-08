@@ -1,0 +1,40 @@
+{
+  "_id": "exc::tablet-a::JKT-RAIN-M-BLU#001::74f5bc5e",
+  "v": 1,
+  "type": "exception",
+  "trip": "trip-2026-10-18-riverfest",
+  "box": "box-07",
+  "kind": "foreign_movement",
+  "unit_id": "JKT-RAIN-M-BLU#001",
+  "sku": "JKT-RAIN-M-BLU",
+  "dispute_key": "JKT-RAIN-M-BLU#001|txn::1792329000000-0000-tablet-a",
+  "fork_txn": null,
+  "transactions": [
+    "txn::1792328511000-0000-tablet-b",
+    "txn::1792329000000-0000-tablet-a"
+  ],
+  "branches": [
+    {
+      "txn": "txn::1792328511000-0000-tablet-b",
+      "device": "tablet-b",
+      "kind": "check_out",
+      "to_custodian": "tablet-b",
+      "hlc": "1792328511000-0000-tablet-b"
+    },
+    {
+      "txn": "txn::1792329000000-0000-tablet-a",
+      "device": "tablet-a",
+      "kind": "sale",
+      "to_custodian": "customer",
+      "hlc": "1792329000000-0000-tablet-a"
+    }
+  ],
+  "proposed_resolution": {
+    "action": "review",
+    "note": "Moved by a device that did not hold it. Confirm where the unit is."
+  },
+  "status": "open",
+  "resolution": null,
+  "detected_by": "tablet-a",
+  "detected_at": "1792329100000-0000-tablet-a"
+}

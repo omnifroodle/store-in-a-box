@@ -3,6 +3,14 @@
 One line per version, newest first: version, date, what was added (additive) or changed (breaking). The first
 version line must match `VERSION` (`scripts/check_contracts.py` checks it).
 
+- 0.5.0 (2026-10-08): HQ's own clock orders its decisions: `resolution.hlc` (new, required) is what rule 3 compares
+  and `resolution.at` is a label; the latest matching resolution decides even when it chooses nothing, and an
+  earlier choice is not revived; set-aside movements raise no `unexpected_check_in`; rule 8, a *foreign* movement
+  (a `check_out` onto, or a `sale` from, a custodian its writer does not act for) stands and gets a
+  `foreign_movement` exception, a new kind, never a refused scan (#72, #77, CC9 #80, decision 008). Fixtures
+  `latest-resolution-chooses-nothing`, `unexpected-check-in-inside-set-aside-branch`, `resolution-order-by-hlc`,
+  `foreign-sale`, `foreign-check-out`, `second-level-take`; `resolution.hlc` added to every resolved fixture. A new
+  required field, a new enum value and changed rules, so a minor bump.
 - 0.4.0 (2026-10-08): a resolution binds to the branches it was written for (rule 3: it matches a fork by
   `dispute_key` and `transactions`; a third branch reopens the fork; forks among set-aside movements are not
   reported; the latest `resolution.at` wins among several; `chosen_txn` null settles nothing), and

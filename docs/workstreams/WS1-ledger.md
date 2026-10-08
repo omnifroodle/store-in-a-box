@@ -1,6 +1,6 @@
 # WS1: Custody ledger, reference implementation
 
-**Milestone:** M1  **Depends on:** contracts v0.4.0 (CC1, CC3, CC5, CC6, CC7, CC8)  **Label:** `ws:1-ledger`  **Agent type:** ws-design
+**Milestone:** M1  **Depends on:** contracts v0.5.0 (CC1, CC3, CC5, CC6, CC7, CC8, CC9)  **Label:** `ws:1-ledger`  **Agent type:** ws-design
 **Issue:** #12
 
 The blueprint. The architect (`ws-architect`) writes it before any code is dispatched; the PR is judged against it.
@@ -50,6 +50,8 @@ Owned by this workstream:
 Named edits in neighbours' code:
 - `pyproject.toml`: already declares `siab_ledger` and the `siab-ledger` script (M0 setup PR). Edit it only to add a
   dependency it lacks.
+
+Tests: `tests/ledger/` (#67 item 4).
 
 ## Interfaces
 
@@ -159,6 +161,9 @@ CLI (fixed): `python -m siab_ledger check [--fixtures DIR] [--seed N]` exits 0 a
 (`PASS <name>` / `FAIL <name>: <first difference>`), exits 1 on any failure.
 
 ## Contract changes
+- CC9 (#80, contracts 0.5.0, decision 008): rule 3 orders resolutions by `resolution.hlc`; rule 7 skips set-aside
+  movements; rule 8 flags a `foreign_movement`; `LedgerState` gains `set_aside`. Where this blueprint restates a rule,
+  `contracts/fixtures/README.md` (0.5.0) wins (#73).
 
 - CC1 (#2): `contracts/` layout, schema conventions, `contracts/VERSION`, `scripts/check_contracts.py`.
 - CC3 (#4): `store.allocation`, `store.transaction`, `store.exception` schemas, the id and HLC conventions, and

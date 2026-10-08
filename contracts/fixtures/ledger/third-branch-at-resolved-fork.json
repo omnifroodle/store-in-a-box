@@ -136,6 +136,7 @@
       "resolution": {
         "by": "hq",
         "at": "2026-10-18T13:30:00Z",
+        "hlc": "1792330200000-0000-hq",
         "chosen_txn": "txn::1792328510000-0000-tablet-a",
         "note": "tablet-a has the jacket."
       },
