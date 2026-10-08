@@ -54,7 +54,9 @@ protocol CustodyStoring { checkOut(...); checkIn(...); sell(...); state: AnyPubl
 final class SellViewModel     { basket: [BasketLine]; add(scan: ScanResult); remove(unit:); tender(kind: TenderKind) throws }
 final class ShelfViewModel    { rows: [ShelfRow] /* sku, name, price, here: Int, box: Int */ ; filter: String }
 final class CustodyViewModel  { mode: .take | .return_ | .pack; session: [CustodyLine]; apply(scan: ScanResult) throws }
-final class ExceptionsViewModel { disputes: [DisputeRow] }   // grouped by dispute_key, open only
+final class ExceptionsViewModel { disputes: [DisputeRow] }   // grouped by dispute_key and fork-or-movement
+                                                              // (kind in oversell/double_scan or not: a fork at a flagged
+                                                              // movement shares its key, decision 009), open only
 struct ScanResult { unit: UnitID; sku: String; serial: String }   // parsed from "<SKU>#<serial>", else nil with a reason
 enum TenderKind: String { case cash, card_simulated }
 ```

@@ -3,6 +3,12 @@
 One line per version, newest first: version, date, what was added (additive) or changed (breaking). The first
 version line must match `VERSION` (`scripts/check_contracts.py` checks it).
 
+- 0.6.0 (2026-10-08): HQ's closure of an `unexpected_check_in` or a `foreign_movement` holds by `kind` and
+  `dispute_key` (the movement), whatever its `transactions`, so a predecessor that arrives after the close no longer
+  reopens it (rule 7; #83, CC10 #86, decision 009); rule 8 names who acts for the store (only `hq`) and that `hq`
+  has no box. Fixtures `closed-foreign-movement-predecessor-arrives`,
+  `closed-unexpected-check-in-predecessor-arrives`, `closed-foreign-movement-fork-at-same-key`, `foreign-store-sale`,
+  `foreign-check-out-to-store`, `foreign-hq-check-out`. A changed rule, so a minor bump.
 - 0.5.0 (2026-10-08): HQ's own clock orders its decisions: `resolution.hlc` (new, required) is what rule 3 compares
   and `resolution.at` is a label; the latest matching resolution decides even when it chooses nothing, and an
   earlier choice is not revived; set-aside movements raise no `unexpected_check_in`; rule 8, a *foreign* movement
