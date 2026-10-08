@@ -1,0 +1,36 @@
+{
+  "$schema": "https://packages.couchbase.com/couchbase-edge-server/config_schema.json",
+  "interface": "0.0.0.0:${EDGE_PORT}",
+  "users": "${SIAB_EDGE_DIR}/users.json",
+  "enable_anonymous_users": false,
+  "databases": {
+    "retail": {
+      "path": "${SIAB_EDGE_DIR}/retail.cblite2",
+      "create": true,
+      "enable_client_sync": "bidirectional",
+      "collections": ["store.product", "store.trip", "store.allocation", "store.transaction", "store.exception"]
+    }
+  },
+  "logging": {
+    "console": true
+  },
+  "replications": [
+    {
+      "source": "retail",
+      "target": "ws://127.0.0.1:${SIAB_PROXY_PORT}${SIAB_ENDPOINT_PATH}",
+      "bidirectional": true,
+      "continuous": true,
+      "collections": {
+        "store.product": {"channels": ["trip:${SIAB_TRIP}", "catalog:${SIAB_REGION}", "box:${SIAB_BOX_ID}"]},
+        "store.trip": {"channels": ["trip:${SIAB_TRIP}", "catalog:${SIAB_REGION}", "box:${SIAB_BOX_ID}"]},
+        "store.allocation": {"channels": ["trip:${SIAB_TRIP}", "catalog:${SIAB_REGION}", "box:${SIAB_BOX_ID}"]},
+        "store.transaction": {"channels": ["trip:${SIAB_TRIP}", "catalog:${SIAB_REGION}", "box:${SIAB_BOX_ID}"]},
+        "store.exception": {"channels": ["trip:${SIAB_TRIP}", "catalog:${SIAB_REGION}", "box:${SIAB_BOX_ID}"]}
+      },
+      "auth": {
+        "user": "${BOX_APP_USER}",
+        "password": "${BOX_APP_PASSWORD}"
+      }
+    }
+  ]
+}

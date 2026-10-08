@@ -6,3 +6,5 @@ _site/
 .pytest_cache/
 .ruff_cache/
 dist/
+box/.edge-server/
+box/logs/
