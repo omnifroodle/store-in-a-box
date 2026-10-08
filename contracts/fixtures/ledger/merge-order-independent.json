@@ -705,6 +705,7 @@
           "opening_on_hand": null,
           "received": null,
           "left_store": 10,
+          "untraced": 0,
           "returned_to_store": 0,
           "store_on_hand": null,
           "in_custody": {

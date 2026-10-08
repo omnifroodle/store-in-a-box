@@ -60,7 +60,9 @@ public struct Trip: Codable, Identifiable { ... }
 public enum Ledger {
   public static func reduce(transactions: [Transaction], resolutions: [ExceptionDoc]) -> LedgerState
   public static func exceptions(for state: LedgerState, detector: String, trip: String, box: String?) -> [ExceptionDoc]
-  public static func conservation(state: LedgerState, packed: Set<String>, inventory: [Inventory]?) -> [ConservationRow]
+  public static func conservation(state: LedgerState, store: String, inventory: [Inventory]?) -> [ConservationRow]
+  // ConservationRow mirrors WS1's row (sku, opening_on_hand, received, left_store, untraced, returned_to_store,
+  // store_on_hand, in_custody, sold, disputed, holds); venue-side callers pass inventory nil. CC5 (#29).
 }
 public struct LedgerState { units: [String: UnitState]; counts: [CustodianSKU: Int]; allocationCounts: [String: Int]; forks: [Fork] }
 

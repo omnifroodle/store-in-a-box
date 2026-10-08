@@ -1,6 +1,6 @@
 # WS1: Custody ledger, reference implementation
 
-**Milestone:** M1  **Depends on:** contracts v0.1 (CC1, CC3)  **Label:** `ws:1-ledger`  **Agent type:** ws-design
+**Milestone:** M1  **Depends on:** contracts v0.1.1 (CC1, CC3, CC5)  **Label:** `ws:1-ledger`  **Agent type:** ws-design
 **Issue:** #12
 
 The blueprint. The architect (`ws-architect`) writes it before any code is dispatched; the PR is judged against it.
@@ -78,15 +78,24 @@ exceptions_for(state, detector, trip, box) -> [ exception documents ]
   greatest hlc is a sale, else "double_scan"; for an unexpected check-in dispute_key is "<unit_id>|<check_in id>"
   and kind is "unexpected_check_in". Idempotent: same inputs, byte-identical output.
 
-conservation(state, store, inventory) -> [ Row{ sku, opening_on_hand, received, left_store, returned_to_store,
-                                                 store_on_hand, in_custody: {custodian: int}, sold, disputed, holds } ]
-  left_store = units of the SKU that appear in the ledger; returned_to_store = those held by the store
-  store_on_hand = opening_on_hand + received - left_store + returned_to_store
-  holds = store_on_hand + sum(in_custody) + sold + disputed == opening_on_hand + received
+conservation(state, store, inventory) -> [ Row{ sku, opening_on_hand, received, left_store, untraced,
+                                                 returned_to_store, store_on_hand, in_custody: {custodian: int},
+                                                 sold, disputed, holds } ]
+  left_store = units of the SKU the store released: some movement of the unit (any branch) has
+               from_custodian == store, or the unit has a dangling root (rule 1: the release is presumed)
+  untraced   = the other units of the SKU in the ledger: every root is a check_in with prev_txn null
+               (entered by an unexpected check-in, rule 6; nothing says the store released it)
+  returned_to_store = of the left_store units, those held by the store
+  Identity, true by construction and NOT the check:
+    left_store + untraced == returned_to_store + sum(in_custody) + sold + disputed
+  store_on_hand = opening_on_hand + received - left_store + returned_to_store   (may be negative)
+  holds = untraced == 0 and store_on_hand >= 0
   Venue-side callers (no inventory) pass inventory = None and get rows whose opening_on_hand, received and
-  store_on_hand are null; holds then means left_store == sum(in_custody) + sold + disputed + returned_to_store.
-  (Defined in units rather than packs so an HQ sale of a unit still in the store balances; see
-  `contracts/fixtures/README.md`, which also fixes the order of every output list.)
+  store_on_hand are null; holds then means untraced == 0.
+  (A sum over the unit states is an identity in a unit ledger; what holds checks is that the ledger agrees with
+  what the store released: no unit the store never let go of, and no more units than it had. CC5, #29, after
+  #27; see `contracts/fixtures/README.md`, which also fixes the order of every output list. Fixtures `overpacked`
+  and `untraced-unit` are the ones where holds is false.)
 
 HLC: string "<unix_ms:13 digits>-<counter:4 hex>-<device_id>", compared lexicographically.
   hlc_now(clock, last) -> hlc        (clock is injected; tests use a fake clock)
@@ -128,7 +137,10 @@ CLI (fixed): `python -m siab_ledger check [--fixtures DIR] [--seed N]` exits 0 a
 - CC1 (#2): `contracts/` layout, schema conventions, `contracts/VERSION`, `scripts/check_contracts.py`.
 - CC3 (#4): `store.allocation`, `store.transaction`, `store.exception` schemas, the id and HLC conventions, and
   the ledger golden fixtures under `contracts/fixtures/ledger/` (scenario list in the issue).
-Both are applied before dispatch.
+- CC5 (#29, contracts 0.1.1): conservation `holds` is a check, not an identity (#27). The row gains `untraced`;
+  `holds` is `untraced == 0` at the venue and also `store_on_hand >= 0` with inventory; fixtures `overpacked`
+  and `untraced-unit` are the first with `holds: false`.
+All three are applied before dispatch.
 
 ## Exit criteria
 
@@ -136,8 +148,10 @@ Both are applied before dispatch.
       re-runs of the `order_independent` ones.
 - [ ] `pytest tests/ledger` passes; it includes `test_fork_detection_is_order_independent` (property-style: random
       permutations of each fixture's transactions give identical `LedgerState`), `test_dangling_predecessor_is_not_a_fork`,
-      `test_exception_id_is_deterministic`, `test_hlc_monotonic_under_fake_clock`, and
-      `test_resolution_settles_fork`.
+      `test_exception_id_is_deterministic`, `test_hlc_monotonic_under_fake_clock`,
+      `test_resolution_settles_fork`, and `test_conservation_holds_can_fail` (the `overpacked` fixture gives
+      `holds: false` only with inventory, with `store_on_hand == -1`; `untraced-unit` gives `holds: false` in both
+      modes with `untraced == 1`; a build of `conservation` that returns `holds: true` unconditionally fails it).
 - [ ] `python scripts/check_contracts.py` passes (every exception document `exceptions_for` emits for the fixtures
       validates against `contracts/schemas/store/exception.schema.json`; the test writes them to a temp dir and runs
       the validator on it, or calls the validator's function).
@@ -167,7 +181,8 @@ Milestones and acceptance tests (ws-design):
    `pack-and-sell`, `split-and-merge`, `merge-order-independent` pass.
 2. `[any]` Forks, dangling branches, resolutions, `exceptions_for`. Accept: fixtures `double-scan`, `oversell-hq`,
    `unexpected-check-in`, `dangling-predecessor`, `resolved-fork` pass; exception documents validate.
-3. `[any]` `conservation` rows, venue-side and HQ-side. Accept: fixture `conservation-day` passes in both modes.
+3. `[any]` `conservation` rows, venue-side and HQ-side. Accept: fixtures `conservation-day` (every row holds),
+   `overpacked` (holds only venue-side) and `untraced-unit` (holds in neither mode) pass in both modes.
 4. `[any]` `ports/ledger.md`, `ports/README.md`, the CLI, the `pyproject.toml` entries.
 5. `[any]` **PR.** One PR, `Closes #<issue>`; `needs-verification` issues filed and linked from "Not verified"
    (expected: none). Expected size: about 700 lines of code (tests and fixtures not counted; split the issue if it is
