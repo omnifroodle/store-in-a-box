@@ -19,12 +19,12 @@ sequenceDiagram
   B->>TB: split 40.00 to tablet B
   Note over TA,TB: Uplink cut
   M->>TA: QR (signed, 48h window) + last four of phone
-  TA->>TA: verify signature with retailer public key; check phone hash
+  TA->>TA: verify signature with retailer public key, check phone hash
   TA->>TA: sale 65.00 on account, allowance 80 → 15, one batch
   M->>TB: tries 30.00 at tablet B
   TB->>TB: tablet B's slice is 40, but merged view after peer sync says 15 remains → decline, reason shown
   Note over B: Uplink restored
-  B->>HQ: post 65.00 charge; release unspent reservation
+  B->>HQ: post 65.00 charge, release unspent reservation
 ```
 
 ## How Store in a Box uses it
