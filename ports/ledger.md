@@ -101,11 +101,18 @@ trip, box, *, detected_at=None)`, `siab_ledger.conservation(state, store, invent
 6. **Unexpected check-in.** A `check_in` whose `from_custodian` is neither its `device` nor its `box`, or whose
    `prev_txn` is null, is unexpected. The movement stands (the physical scan is the stronger evidence) and an
    `unexpected_check_in` exception attaches the check-in and, when the input has it, its `prev_txn`.
-7. **Detectors only create.** `exceptions_for` emits one document per unresolved fork in `forks`, one per
-   unexpected check-in (rule 6) and one per foreign movement (rule 8), leaves out movements a resolution set aside
-   (rule 3), and leaves out any whose `dispute_key` and `transactions` match a resolution that counts (rule 3),
-   whether or not that resolution chose a branch. A new branch at the same fork gives a new document id (a
-   different hash), never an update.
+7. **Detectors only create.** `exceptions_for` only creates: a new branch at the same fork gives a new id (a
+   different hash). It emits one exception per unresolved fork in `forks`, one per unexpected check-in (rule 6) and one per foreign movement
+   (rule 8), leaving out movements a resolution set aside (rule 3) and any exception that a resolution that counts
+   has closed, whether or not that resolution chose a branch. A fork's exception is closed by a resolution with the
+   same `dispute_key` and `transactions`: a new branch is a new claimant, and HQ decides again (rule 3). An
+   unexpected check-in's or a foreign movement's is closed by a resolution of the same `kind` with the same
+   `dispute_key`, whatever its `transactions`: the key names the movement, which is what HQ judged, and whether a
+   movement is unexpected or foreign depends on that movement alone, so a predecessor that arrives after HQ closed
+   it changes the exception's `transactions` and id but not the closure
+   (`closed-foreign-movement-predecessor-arrives`, `closed-unexpected-check-in-predecessor-arrives`). The `kind` is
+   part of that match because a fork at the movement (two movements naming it) has the same `dispute_key`
+   (`closed-foreign-movement-fork-at-same-key`).
 8. **Foreign movement.** A movement is foreign when its writer acted for neither custodian it names on its own side
    of the movement. A writer acts for itself (`device`), for its `box`, and, when it is `hq`, for the store. A
    `check_out` is foreign when its `to_custodian` is none of those (whom it takes from is the chain's business, so

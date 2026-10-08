@@ -120,4 +120,12 @@ def exceptions_for(state: LedgerState, detector: str, trip: str, box: str | None
                         detected_at=detected_at)
         docs[doc["_id"]] = doc
     settled = {(r.get("dispute_key"), tuple(sorted(r.get("transactions") or ()))) for r in state.resolutions}
-    return [docs[i] for i in sorted(docs) if (docs[i]["dispute_key"], tuple(docs[i]["transactions"])) not in settled]
+    closed = {(r.get("kind"), r.get("dispute_key")) for r in state.resolutions
+              if r.get("kind") in (UNEXPECTED_CHECK_IN, FOREIGN)}
+
+    def is_closed(doc):
+        if doc["kind"] in (UNEXPECTED_CHECK_IN, FOREIGN):
+            return (doc["kind"], doc["dispute_key"]) in closed
+        return (doc["dispute_key"], tuple(doc["transactions"])) in settled
+
+    return [docs[i] for i in sorted(docs) if not is_closed(docs[i])]

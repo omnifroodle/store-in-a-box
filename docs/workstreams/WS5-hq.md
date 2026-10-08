@@ -64,9 +64,11 @@ the ledger fixtures' transactions. The ledger is `siab_ledger` (WS1), imported, 
 - `GET /api/tree?trip=` → `{ "root": "store-richmond", "nodes": [ { "custodian", "parent", "allocations": [ { "id",
   "sku", "status", "count" } ] } ] }` built from `LedgerState.allocation_counts` and the allocation documents.
 - `GET /api/exceptions?trip=&status=open|resolved|all` → `{ "disputes": [...], "superseded": [...] }`. **The queue is
-  the reducer's, not the documents'** (#77 finding F, decision 008): one entry per `(dispute_key, transactions)` that
-  HQ's own `reduce` holds as a live dispute (each fork in `forks` with `resolved_by` null, and each unexpected check-in
-  or foreign movement not set aside and not matched by a counting resolution), each with `"dispute_key", "kind",
+  the reducer's, not the documents'** (#77 finding F, decisions 008 and 009): a fork entry is one per
+  `(dispute_key, transactions)` that HQ's own `reduce` holds as a live fork (`resolved_by` null); an unexpected check-in
+  or foreign movement entry is one per `(kind, dispute_key)`, live when the movement is not set aside and no counting
+  resolution has that kind and key, and its `documents` are every copy of that kind and key whatever their
+  `transactions` (their set grows when a predecessor arrives), each with `"dispute_key", "kind",
   "unit_id", "sku", "detectors", "transactions"` (full docs), `"branches": [ { "txn", "leaf" } ]` (the leaf is the full
   doc of the branch's last movement), `"documents"` (every exception doc with that key and set, any detector, any
   status) and `"status"`. An entry whose documents are all resolved with `chosen_txn` null reads `withdrawn: choose
@@ -80,7 +82,9 @@ the ledger fixtures' transactions. The ledger is `siab_ledger` (WS1), imported, 
   updates only the exception documents with that `dispute_key` whose `transactions` equal the branch set HQ chose from
   (copies written for a smaller set stay as they are, decision 006) to `status: "resolved"`, `resolution: { by: "hq",
   hlc, at: iso8601, chosen_txn, note }`, as the `hq` app user. For a fork `chosen_txn` must be one of `transactions`
-  (400 otherwise); `unexpected_check_in` and `foreign_movement` close with `chosen_txn` null. `resolution.hlc` comes
+  (400 otherwise); `unexpected_check_in` and `foreign_movement` close with `chosen_txn` null, and for those two kinds
+  the endpoint updates every copy with that `kind` and `dispute_key` whatever their `transactions` (decision 009). HQ
+  writes no `check_out` (only the staged sale and resolutions): rule 8 gives `hq` no box (`foreign-hq-check-out`). `resolution.hlc` comes
   from HQ's clock and orders HQ's decisions; `at` is a label (decision 008). Returns the updated count.
 - **HQ's clock:** `siab_hq` keeps one HLC for device `hq`, `hlc_now(clock, last, "hq")`, where `last` is the greater of
   the last it issued and the greatest `resolution.hlc` among the trip's exceptions it has read, so it is monotonic across
@@ -104,6 +108,8 @@ reconciler also runs once at startup and on `POST /api/reconcile/run`.
 what it would write with `--dry-run`).
 
 ## Contract changes
+- CC10 (#86, contracts 0.6.0, decision 009): a closed `unexpected_check_in` or `foreign_movement` stays closed when its
+  predecessor arrives (matched by `kind` and `dispute_key`); rule 8's store clause pinned.
 - CC9 (#80, contracts 0.5.0, decisions 007 and 008): resolutions ordered by `resolution.hlc`; the reducer-driven queue;
   `foreign_movement`; the resolve endpoint binds to a branch set.
 
@@ -115,6 +121,8 @@ what it would write with `--dry-run`).
 ## Exit criteria
 - [ ] `test_queue_follows_reducer_not_documents` (#77 finding F: an open `hq` document whose fork no longer exists is
       listed as superseded) and `test_withdrawn_choice_is_back_on_queue` (fixture `latest-resolution-chooses-nothing`).
+- [ ] `test_closed_movement_exception_stays_closed_when_its_predecessor_arrives` (fixture
+      `closed-foreign-movement-predecessor-arrives`).
 - [ ] `test_resolve_updates_only_the_matching_branch_set` and `test_resolve_rejects_a_choice_outside_the_branches`.
 
 - [ ] `pytest tests/hq` passes against `FakeCapella` loaded from `contracts/fixtures/ledger/`; includes

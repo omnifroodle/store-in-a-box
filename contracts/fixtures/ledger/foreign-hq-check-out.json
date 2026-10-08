@@ -1,0 +1,137 @@
+{
+  "name": "foreign-hq-check-out",
+  "description": "hq writes a check_out of #001 from the store onto box-07 (HQ staging a pack). hq acts for itself and the store and has no box (rule 8), so a check_out onto a box is foreign: it stands, box-07 holds the unit, and one foreign_movement exception attaches it alone (prev_txn null), detected by hq (box null). A pack is written by the box's device that scans it (pack-and-sell). A build that lets hq act for every custodian, or for every box, writes nothing.",
+  "order_independent": true,
+  "trip": "trip-2026-10-18-riverfest",
+  "box": "box-07",
+  "store": "store-richmond",
+  "inventory": [
+    {
+      "_id": "inventory::store-richmond::JKT-RAIN-M-BLU",
+      "v": 1,
+      "type": "inventory",
+      "store": "store-richmond",
+      "sku": "JKT-RAIN-M-BLU",
+      "opening_on_hand": 12,
+      "received": 0,
+      "as_of": "2026-10-17T00:00:00Z"
+    }
+  ],
+  "transactions": [
+    {
+      "_id": "txn::1792324800000-0000-hq",
+      "v": 1,
+      "type": "transaction",
+      "trip": "trip-2026-10-18-riverfest",
+      "box": null,
+      "kind": "check_out",
+      "unit_id": "JKT-RAIN-M-BLU#001",
+      "sku": "JKT-RAIN-M-BLU",
+      "from_custodian": "store-richmond",
+      "to_custodian": "box-07",
+      "prev_txn": null,
+      "from_allocation": null,
+      "to_allocation": null,
+      "device": "hq",
+      "hlc": "1792324800000-0000-hq",
+      "device_clock": "2026-10-18T12:00:00Z",
+      "box_clock": null,
+      "basket": null,
+      "price": null,
+      "tender": null
+    }
+  ],
+  "resolutions": [],
+  "expected": {
+    "units": {
+      "JKT-RAIN-M-BLU#001": {
+        "sku": "JKT-RAIN-M-BLU",
+        "holder": "box-07",
+        "allocation": null,
+        "state": "held",
+        "last_txn": "txn::1792324800000-0000-hq"
+      }
+    },
+    "counts": [
+      {
+        "custodian": "box-07",
+        "sku": "JKT-RAIN-M-BLU",
+        "qty": 1
+      }
+    ],
+    "allocation_counts": {},
+    "forks": [],
+    "exceptions": {
+      "detector": "hq",
+      "docs": [
+        {
+          "_id": "exc::hq::JKT-RAIN-M-BLU#001::d80bd260",
+          "v": 1,
+          "type": "exception",
+          "trip": "trip-2026-10-18-riverfest",
+          "box": null,
+          "kind": "foreign_movement",
+          "unit_id": "JKT-RAIN-M-BLU#001",
+          "sku": "JKT-RAIN-M-BLU",
+          "dispute_key": "JKT-RAIN-M-BLU#001|txn::1792324800000-0000-hq",
+          "fork_txn": null,
+          "transactions": [
+            "txn::1792324800000-0000-hq"
+          ],
+          "branches": [
+            {
+              "txn": "txn::1792324800000-0000-hq",
+              "device": "hq",
+              "kind": "check_out",
+              "to_custodian": "box-07",
+              "hlc": "1792324800000-0000-hq"
+            }
+          ],
+          "proposed_resolution": {
+            "action": "review",
+            "note": "Moved by a device that did not hold it. Confirm where the unit is."
+          },
+          "status": "open",
+          "resolution": null,
+          "detected_by": "hq"
+        }
+      ]
+    },
+    "conservation": {
+      "with_inventory": [
+        {
+          "sku": "JKT-RAIN-M-BLU",
+          "opening_on_hand": 12,
+          "received": 0,
+          "left_store": 1,
+          "untraced": 0,
+          "returned_to_store": 0,
+          "store_on_hand": 11,
+          "in_custody": {
+            "box-07": 1
+          },
+          "sold": 0,
+          "disputed": 0,
+          "holds": true
+        }
+      ],
+      "venue_only": [
+        {
+          "sku": "JKT-RAIN-M-BLU",
+          "opening_on_hand": null,
+          "received": null,
+          "left_store": 1,
+          "untraced": 0,
+          "returned_to_store": 0,
+          "store_on_hand": null,
+          "in_custody": {
+            "box-07": 1
+          },
+          "sold": 0,
+          "disputed": 0,
+          "holds": true
+        }
+      ]
+    }
+  }
+}

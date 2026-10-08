@@ -1,6 +1,6 @@
 # WS1: Custody ledger, reference implementation
 
-**Milestone:** M1  **Depends on:** contracts v0.5.0 (CC1, CC3, CC5, CC6, CC7, CC8, CC9)  **Label:** `ws:1-ledger`  **Agent type:** ws-design
+**Milestone:** M1  **Depends on:** contracts v0.6.0 (CC1, CC3, CC5, CC6, CC7, CC8, CC9, CC10)  **Label:** `ws:1-ledger`  **Agent type:** ws-design
 **Issue:** #12
 
 The blueprint. The architect (`ws-architect`) writes it before any code is dispatched; the PR is judged against it.
@@ -161,6 +161,8 @@ CLI (fixed): `python -m siab_ledger check [--fixtures DIR] [--seed N]` exits 0 a
 (`PASS <name>` / `FAIL <name>: <first difference>`), exits 1 on any failure.
 
 ## Contract changes
+- CC10 (#86, contracts 0.6.0, decision 009): rule 7 closes an `unexpected_check_in` or `foreign_movement` by `kind` and
+  `dispute_key` (forks keep the branch-set match); rule 8 pinned for the store clause and `hq` (no box). 39 fixtures.
 - CC9 (#80, contracts 0.5.0, decision 008): rule 3 orders resolutions by `resolution.hlc`; rule 7 skips set-aside
   movements; rule 8 flags a `foreign_movement`; `LedgerState` gains `set_aside`. Where this blueprint restates a rule,
   `contracts/fixtures/README.md` (0.5.0) wins (#73).

@@ -1,6 +1,6 @@
 # WS4: Tablet data layer: Couchbase Lite, the Swift ledger, replication to the box and device-to-device sync
 
-**Milestone:** M1  **Depends on:** WS1 (reducer rules and fixtures), contracts v0.5.0 (CC3, CC4, CC5, CC6, CC7, CC8, CC9); WS3 for the live tasks  **Label:** `ws:4-tablet-data`  **Agent type:** ws-design
+**Milestone:** M1  **Depends on:** WS1 (reducer rules and fixtures), contracts v0.6.0 (CC3, CC4, CC5, CC6, CC7, CC8, CC9, CC10); WS3 for the live tasks  **Label:** `ws:4-tablet-data`  **Agent type:** ws-design
 **Issue:** #15
 
 The blueprint. The architect (`ws-architect`) writes it before any code is dispatched; the PR is judged against it.
@@ -133,6 +133,8 @@ document counters, peers with last-seen, the `counts` table from `LedgerState`, 
 box's pairing QR (camera; WS6 reuses the scanner view) and a "Rebuild derived state" button.
 
 ## Contract changes
+- CC10 (#86, contracts 0.6.0, decision 009): rule 7 closes an `unexpected_check_in` or `foreign_movement` by `kind` and
+  `dispute_key` (forks keep the branch-set match); rule 8 pinned for the store clause and `hq` (no box). 39 fixtures.
 
 - CC3 (#4), CC4 (#5), CC5 (#29, the conservation row), CC6 (#33, blind movements: rules 1 and 2 and three
   fixtures, which the Swift port must pass like every other), CC7 (#44, contracts 0.3.1: two dangling roots naming

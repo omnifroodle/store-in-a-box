@@ -89,19 +89,31 @@ The rules (decision 001; `ports/ledger.md` restates them as an interface):
    `unexpected_check_in` attaches the check-in and, when the input has it, its predecessor.
 7. `exceptions_for` only creates: a new branch at the same fork gives a new id (a different hash). It emits one
    exception per unresolved fork in `forks`, one per unexpected check-in (rule 6) and one per foreign movement
-   (rule 8), leaving out movements a resolution set aside (rule 3) and any exception whose `dispute_key` and
-   `transactions` match a resolution that counts, whether or not that resolution chose a branch.
+   (rule 8), leaving out movements a resolution set aside (rule 3) and any exception that a resolution that counts
+   has closed, whether or not that resolution chose a branch. A fork's exception is closed by a resolution with the
+   same `dispute_key` and `transactions`: a new branch is a new claimant, and HQ decides again (rule 3). An
+   unexpected check-in's or a foreign movement's is closed by a resolution of the same `kind` with the same
+   `dispute_key`, whatever its `transactions`: the key names the movement, which is what HQ judged, and whether a
+   movement is unexpected or foreign depends on that movement alone, so a predecessor that arrives after HQ closed
+   it changes the exception's `transactions` and id but not the closure
+   (`closed-foreign-movement-predecessor-arrives`, `closed-unexpected-check-in-predecessor-arrives`). The `kind` is
+   part of that match because a fork at the movement (two movements naming it) has the same `dispute_key`
+   (`closed-foreign-movement-fork-at-same-key`).
 8. A movement is *foreign* when its writer acted for neither custodian it names on its own side of the movement. A
-   writer acts for itself (`device`), for its `box`, and, when it is `hq`, for the store. A `check_out` is foreign
-   when its `to_custodian` is none of those: a take lands on the writer and a pack on its box, and whom it takes
-   from is the chain's business (rules 1 and 2), so a phone taking from a tablet is not foreign (`second-level-take`)
-   and a tablet writing a take onto another tablet is (`foreign-check-out`). A `sale` is foreign when its
-   `from_custodian` is none of those: a device sells what it holds or what is on its box's table, HQ sells from the
-   store (`oversell-hq`), and a device selling what another device holds is foreign (`foreign-sale`). A `check_in`
-   is rule 6's. A foreign movement stands, as an unexpected check-in does (a scan is never refused, and the ledger
-   follows it), and an exception of kind `foreign_movement` attaches the movement and, when the input has it, the
-   transaction its `prev_txn` names. Pre-orders and tenders taken at a terminal that does not hold the unit get
-   their own document kinds later; in Phase 0 they are foreign sales, flagged and standing.
+   writer acts for itself (`device`), for its `box`, and, when it is `hq`, for the store; no other writer acts for
+   the store, and `hq` has no box. A `check_out` is foreign when its `to_custodian` is none of those: a take lands
+   on the writer and a pack on its box, and whom it takes from is the chain's business (rules 1 and 2), so a phone
+   taking from a tablet is not foreign (`second-level-take`), while a tablet writing a take onto another tablet is
+   (`foreign-check-out`), and so are a tablet writing a return onto the store as a `check_out` (a return is a
+   `check_in`, rule 6; `foreign-check-out-to-store`) and `hq` writing a pack onto a box (a pack is written by the
+   box's device that scans it; `foreign-hq-check-out`). A `sale` is foreign when its `from_custodian` is none of
+   those: a device sells what it holds or what is on its box's table, HQ sells from the store (`oversell-hq`), and a
+   device selling what another device holds (`foreign-sale`) or what the store holds (`foreign-store-sale`, which is
+   also a branch of a root fork and so raises both exceptions) is foreign. A `check_in` is rule 6's. A foreign
+   movement stands, as an unexpected check-in does (a scan is never refused, and the ledger follows it), and an
+   exception of kind `foreign_movement` attaches the movement and, when the input has it, the transaction its
+   `prev_txn` names. Pre-orders and tenders taken at a terminal that does not hold the unit get their own document
+   kinds later; in Phase 0 they are foreign sales, flagged and standing.
 
 What `expected` holds, and in what order (so two implementations produce identical output):
 
