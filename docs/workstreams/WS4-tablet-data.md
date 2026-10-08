@@ -1,6 +1,6 @@
 # WS4: Tablet data layer: Couchbase Lite, the Swift ledger, replication to the box and device-to-device sync
 
-**Milestone:** M1  **Depends on:** WS1 (reducer rules and fixtures), contracts v0.4.0 (CC3, CC4, CC5, CC6, CC7, CC8); WS3 for the live tasks  **Label:** `ws:4-tablet-data`  **Agent type:** ws-design
+**Milestone:** M1  **Depends on:** WS1 (reducer rules and fixtures), contracts v0.5.0 (CC3, CC4, CC5, CC6, CC7, CC8, CC9); WS3 for the live tasks  **Label:** `ws:4-tablet-data`  **Agent type:** ws-design
 **Issue:** #15
 
 The blueprint. The architect (`ws-architect`) writes it before any code is dispatched; the PR is judged against it.
@@ -141,6 +141,14 @@ box's pairing QR (camera; WS6 reuses the scanner view) and a "Rebuild derived st
   one did not (an edge case the port hits), file a `contract-change` for the fixture rather than diverging.
 - CC8 (#70, contracts 0.4.0): resolutions bind to the branches they were written for, and `returned_to_store` counts every
   unit the store holds; the Swift port implements the same text (README rules 2, 3, 7) and passes the six new fixtures.
+- CC9 (#80, contracts 0.5.0, decisions 007 and 008): rule 3 orders resolutions by `resolution.hlc` (HQ's clock), not
+  `resolution.at`; rule 7 raises nothing for a movement inside a branch a resolution set aside; **rule 8**: a `check_out`
+  onto, or a `sale` from, a custodian the writer does not act for (its own device id, its box, and the store only when
+  the writer is `hq`) stands and raises a `foreign_movement` exception, never a refusal (offline-first). `LedgerState`
+  gains `set_aside`. The Swift port passes all 33 fixtures and mirrors `src/siab_ledger/exceptions.py`'s `acts_for` /
+  `is_foreign`. The write path is unchanged: no new field on `transaction`, no close record (closes are Phase 2,
+  decision 007). Diagnostics shows the device's unpushed tail (`unpushed: N movements (oldest 14:02)`, `last pushed
+  14:05`) from the box replicator's pending document ids and its per-document error listener (#81).
 
 ## Exit criteria
 
