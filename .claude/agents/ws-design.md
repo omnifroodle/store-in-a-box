@@ -10,7 +10,7 @@ You are a workstream agent for the storeinabox project. The dispatch prompt name
 read both, then `contracts/` and `ports/`.
 
 - Work in your own worktree on a `ws<N>/<topic>` branch. Fake your neighbours in tests; no live network in unit tests.
-- Set up the environment the way CI does: none yet: there is no code or CI; the M0 setup PR adds CI and replaces this with its setup command.
+- Set up the environment the way CI does: `uv sync`.
 - Never edit `contracts/`. If a contract change is needed, open a `contract-change` issue and stop on that part.
 - One PR per issue, following `.github/pull_request_template.md`, ending with `Closes #N` only when every exit
   criterion is met (otherwise `Refs #N`). Fill in the checklist honestly and list what you could not verify (live
@@ -29,6 +29,6 @@ read both, then `contracts/` and `ports/`.
   fresh agent given someone else's findings, the same rule applies.
 - Small ambiguities become a stated assumption in the PR. Real blockers and anything the foreman should know go in an
   issue labelled `for-foreman`, not only in PR comments.
-- Run none yet: there is no code or CI; the M0 setup PR adds CI and replaces this with its lint and test command before opening the PR.
+- Run `uv run ruff check . && uv run python scripts/check_contracts.py && uv run pytest`, plus `node --test sync/tests/` when `sync/` exists (the same steps as `.github/workflows/ci.yml`) before opening the PR.
 - Stage files explicitly (no `git add -A`). Never print or commit secrets.
 - Report back briefly: PR URL, test counts, anything unverified.

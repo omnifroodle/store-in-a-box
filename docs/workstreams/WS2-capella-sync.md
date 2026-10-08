@@ -40,8 +40,8 @@ Owned by this workstream:
 - `ports/capella.md` (new: the gateway port and the environment variable names; the line in `ports/README.md`)
 
 Named edits in neighbours' code:
-- `pyproject.toml`: add `siab_capella` to packages, the `couchbase` and `httpx` dependencies, and a
-  `siab-capella = "siab_capella.__main__:main"` script entry.
+- `pyproject.toml`: already declares `siab_capella`, the `siab-capella` script, `couchbase` and `httpx` (M0 setup
+  PR). Edit it only to add a dependency it lacks.
 - `ports/README.md`: append one line pointing at `ports/capella.md`.
 - `.env.example` (new file at the repo root, no values): the variable names below.
 

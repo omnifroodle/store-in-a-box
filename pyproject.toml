@@ -1,0 +1,48 @@
+[project]
+name = "store-in-a-box"
+version = "0.1.0"
+description = "Store in a Box: a Couchbase demo of a store that sells offline, splits, merges and rejoins."
+requires-python = ">=3.12"
+# Every dependency decision 002 names is declared here once, so parallel workstreams do not collide on this file.
+dependencies = [
+    "couchbase>=4.3,<5",
+    "httpx>=0.27,<1",
+    "jsonschema>=4.18,<5",
+    "qrcode>=7.4,<9",
+]
+
+[project.scripts]
+siab-ledger = "siab_ledger.__main__:main"
+siab-capella = "siab_capella.__main__:main"
+siab-box = "siab_box.__main__:main"
+siab-hq = "siab_hq.__main__:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8,<9",
+    "ruff>=0.6",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+# Put src/ itself on the path in the editable install, so a package a workstream adds imports without a reinstall.
+dev-mode-dirs = ["src"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/siab_ledger", "src/siab_capella", "src/siab_box", "src/siab_hq"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Each workstream has its own tests/<area>/, and file names may repeat across them.
+addopts = "--import-mode=importlib"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["_site"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]

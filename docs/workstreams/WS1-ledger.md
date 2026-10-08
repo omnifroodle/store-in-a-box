@@ -43,8 +43,8 @@ Owned by this workstream:
 - `ports/README.md` (new: one paragraph on what `ports/` holds; later workstreams append a line each)
 
 Named edits in neighbours' code:
-- `pyproject.toml`: add `siab_ledger` to the packages list and a `siab-ledger = "siab_ledger.__main__:main"` script
-  entry. No other change.
+- `pyproject.toml`: already declares `siab_ledger` and the `siab-ledger` script (M0 setup PR). Edit it only to add a
+  dependency it lacks.
 
 ## Interfaces
 

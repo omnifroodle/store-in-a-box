@@ -179,7 +179,7 @@ def check(repo: str) -> int:
     problems = 0
 
     for i in issues:
-        is_ws = re.match(r"WS\d+\w*:", i["title"]) and any(l["name"].startswith("ws:") for l in i["labels"])
+        is_ws = re.match(r"WS\d+\w*:", i["title"]) and any(lab["name"].startswith("ws:") for lab in i["labels"])
         if is_ws and i["state"] == "CLOSED":
             left = len(re.findall(r"- \[ \]", i["body"] or ""))
             if left:

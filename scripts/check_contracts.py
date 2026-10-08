@@ -143,7 +143,7 @@ class Contracts:
             for sid, schema in schemas.items()}
 
     @classmethod
-    def load(cls, root: Path) -> "Contracts":
+    def load(cls, root: Path) -> Contracts:
         schemas = {}
         for path in sorted((root / "schemas").rglob("*.schema.json")):
             schema = json.loads(path.read_text())
@@ -220,7 +220,8 @@ def check_seed(root: Path, c: Contracts, problems: list[str]) -> int:
             continue
         collection = SEED_COLLECTIONS.get(path.name)
         if collection is None:
-            problems.append(f"{path}: unknown seed file (expected one of {sorted(SEED_COLLECTIONS)} or custodians.json)")
+            expected = f"{sorted(SEED_COLLECTIONS)} or custodians.json"
+            problems.append(f"{path}: unknown seed file (expected one of {expected})")
             continue
         if not isinstance(data, list):
             problems.append(f"{path}: a seed file is an array of documents")

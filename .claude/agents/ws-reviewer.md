@@ -13,7 +13,7 @@ what you find, and you never merge.
 ## Mode 1: PR gate
 Read in this order: the issue and its blueprint (`docs/workstreams/WS<N>-*.md`), `contracts/`, then the diff
 (`gh pr diff <n>`). Read the PR description last, so the author's account does not steer you. Check out the branch
-(detached is fine), set up the way CI does (none yet: there is no code or CI; the M0 setup PR adds CI and replaces this with its setup command) and run none yet: there is no code or CI; the M0 setup PR adds CI and replaces this with its lint and test command.
+(detached is fine), set up the way CI does (`uv sync`) and run `uv run ruff check . && uv run python scripts/check_contracts.py && uv run pytest`, plus `node --test sync/tests/` when `sync/` exists (the same steps as `.github/workflows/ci.yml`).
 
 A finding is **blocking** only if it is one of these four:
 1. An exit criterion is ticked but not met. Say which, and what you ran or read that shows it.
