@@ -1,6 +1,6 @@
 # 007: HQ settles; every node's view is tentative until the trip close, and a close is a manifest
 
-Status: proposed. Issues: #72, #77, #81, #80 (CC9).
+Status: accepted (owner, 2026-10-08: OD1–OD6 on #81). Issues: #72, #77, #81, #80 (CC9).
 
 The reducer presumes on a partial view (a dangling root is counted as released, a blind movement links to the
 latest predecessor it can see), and the owner asked who the authority is and how a tentative fact is told from a
