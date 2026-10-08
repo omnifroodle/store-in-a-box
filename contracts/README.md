@@ -42,8 +42,10 @@ every PR.
 ## Versioning
 
 `VERSION` is semver. An additive, optional field bumps the patch. A new required field, a removed field or a changed
-enum bumps the minor while we are before 1.0, and gets a decision note in `docs/decisions/`. Every bump is one line in
-`CHANGELOG.md`. Workstreams rebase onto the new version.
+enum bumps the minor while we are before 1.0, and gets a decision note in `docs/decisions/`. A changed reducer rule
+(one that changes `expected` for some input, whether or not a fixture holds that input) bumps the minor too, with a
+decision note; a wording correction that changes no `expected`, or new fixtures alone, bumps the patch. Every bump
+is one line in `CHANGELOG.md`. Workstreams rebase onto the new version.
 
 Seed and policy documents in the live Capella bucket are derived from `fixtures/seed/`. Editing one there is a contract
 change, and a re-seed overwrites the live edit, so diff first (`siab-capella seed --diff`).

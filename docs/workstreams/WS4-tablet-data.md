@@ -1,6 +1,6 @@
 # WS4: Tablet data layer: Couchbase Lite, the Swift ledger, replication to the box and device-to-device sync
 
-**Milestone:** M1  **Depends on:** WS1 (reducer rules and fixtures), contracts v0.3.1 (CC3, CC4, CC5, CC6, CC7); WS3 for the live tasks  **Label:** `ws:4-tablet-data`  **Agent type:** ws-design
+**Milestone:** M1  **Depends on:** WS1 (reducer rules and fixtures), contracts v0.4.0 (CC3, CC4, CC5, CC6, CC7, CC8); WS3 for the live tasks  **Label:** `ws:4-tablet-data`  **Agent type:** ws-design
 **Issue:** #15
 
 The blueprint. The architect (`ws-architect`) writes it before any code is dispatched; the PR is judged against it.
@@ -58,7 +58,9 @@ public struct Product: Codable, Identifiable { ... }
 public struct Trip: Codable, Identifiable { ... }
 
 public enum Ledger {
-  public static func reduce(transactions: [Transaction], resolutions: [ExceptionDoc]) -> LedgerState
+  public static func reduce(transactions: [Transaction], resolutions: [ExceptionDoc], store: String) -> LedgerState
+  // store: the store custodian id (Custodian.store in Phase 0; each fixture carries it as `store`). Rule 1 needs it
+  // to tell a store root from a blind movement; the reducer is pure and reads no registry (#59, ports/ledger.md).
   public static func exceptions(for state: LedgerState, detector: String, trip: String, box: String?) -> [ExceptionDoc]
   public static func conservation(state: LedgerState, store: String, inventory: [Inventory]?) -> [ConservationRow]
   // ConservationRow mirrors WS1's row (sku, opening_on_hand, received, left_store, untraced, returned_to_store,
@@ -137,6 +139,8 @@ box's pairing QR (camera; WS6 reuses the scanner view) and a "Rebuild derived st
   the same missing `prev_txn` are a fork, and four more blind-movement fixtures, one of them a blind `sale`, which
   is what `sell` writes with no record). No new change of its own. If the Swift port needs a fixture the Python
   one did not (an edge case the port hits), file a `contract-change` for the fixture rather than diverging.
+- CC8 (#70, contracts 0.4.0): resolutions bind to the branches they were written for, and `returned_to_store` counts every
+  unit the store holds; the Swift port implements the same text (README rules 2, 3, 7) and passes the six new fixtures.
 
 ## Exit criteria
 

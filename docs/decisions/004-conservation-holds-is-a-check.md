@@ -13,6 +13,8 @@ on-hand of 12. Phase 0's acceptance is "the conservation query holding", which m
    HQ only). Dangling roots count as released, so a unit mid-replication never turns a row red on stage. Rejected:
    checking that no unit is counted under two states, which only a broken reducer can violate and the fixtures
    already pin.
+   `returned_to_store` counts every unit the store holds, untraced ones included, so the row partitions the units
+   (contracts 0.4.0, decision 006).
 2. **What it costs.** The row gains a required field, `untraced`, so every implementation and the HQ screen change
    (contracts 0.2.0). A failing row writes no exception in Phase 0: the exception schema is per unit, and per-SKU
    gaps go to Eventing in Phase 2; the HQ screen shows the reason (`overdrawn by N`, `N untraced`).

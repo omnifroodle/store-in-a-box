@@ -1,0 +1,195 @@
+{
+  "name": "untraced-unit-returned",
+  "description": "untraced-unit continued to the end of the trip: tablet-a packs one pair of socks; tablet-b checks in a second pair it has no record of (no pack for it ever arrives); and at close tablet-a checks that pair in from the box to the store, an expected check-in. #009 is untraced (its only root is the unknown check-in) and held by the store. returned_to_store counts every unit the store holds, untraced or not, so the row still partitions the units: left_store 1 + untraced 1 == returned_to_store 1 + in_custody 1 + sold 0 + disputed 0. store_on_hand counts the returned pair as on the shelf; whether the opening count already had it is what untraced flags, so holds is false in both modes. The unexpected check-in keeps its exception; the store check-in gets none. A build that counts only left_store units under returned_to_store gives returned_to_store 0 and store_on_hand 9, and loses the unit from the row.",
+  "order_independent": true,
+  "trip": "trip-2026-10-18-riverfest",
+  "box": "box-07",
+  "store": "store-richmond",
+  "inventory": [
+    {
+      "_id": "inventory::store-richmond::SOC-WOOL-M",
+      "v": 1,
+      "type": "inventory",
+      "store": "store-richmond",
+      "sku": "SOC-WOOL-M",
+      "opening_on_hand": 10,
+      "received": 0,
+      "as_of": "2026-10-17T00:00:00Z"
+    }
+  ],
+  "transactions": [
+    {
+      "_id": "txn::1792328431000-0000-tablet-a",
+      "v": 1,
+      "type": "transaction",
+      "trip": "trip-2026-10-18-riverfest",
+      "box": "box-07",
+      "kind": "check_out",
+      "unit_id": "SOC-WOOL-M#001",
+      "sku": "SOC-WOOL-M",
+      "from_custodian": "store-richmond",
+      "to_custodian": "box-07",
+      "prev_txn": null,
+      "from_allocation": null,
+      "to_allocation": "alloc::1792328401000-0000-tablet-a",
+      "device": "tablet-a",
+      "hlc": "1792328431000-0000-tablet-a",
+      "device_clock": "2026-10-18T13:00:31Z",
+      "box_clock": null,
+      "basket": null,
+      "price": null,
+      "tender": null
+    },
+    {
+      "_id": "txn::1792334100000-0000-tablet-b",
+      "v": 1,
+      "type": "transaction",
+      "trip": "trip-2026-10-18-riverfest",
+      "box": "box-07",
+      "kind": "check_in",
+      "unit_id": "SOC-WOOL-M#009",
+      "sku": "SOC-WOOL-M",
+      "from_custodian": "unknown",
+      "to_custodian": "box-07",
+      "prev_txn": null,
+      "from_allocation": null,
+      "to_allocation": null,
+      "device": "tablet-b",
+      "hlc": "1792334100000-0000-tablet-b",
+      "device_clock": "2026-10-18T14:35:00Z",
+      "box_clock": null,
+      "basket": null,
+      "price": null,
+      "tender": null
+    },
+    {
+      "_id": "txn::1792337400000-0000-tablet-a",
+      "v": 1,
+      "type": "transaction",
+      "trip": "trip-2026-10-18-riverfest",
+      "box": "box-07",
+      "kind": "check_in",
+      "unit_id": "SOC-WOOL-M#009",
+      "sku": "SOC-WOOL-M",
+      "from_custodian": "box-07",
+      "to_custodian": "store-richmond",
+      "prev_txn": "txn::1792334100000-0000-tablet-b",
+      "from_allocation": null,
+      "to_allocation": null,
+      "device": "tablet-a",
+      "hlc": "1792337400000-0000-tablet-a",
+      "device_clock": "2026-10-18T15:30:00Z",
+      "box_clock": null,
+      "basket": null,
+      "price": null,
+      "tender": null
+    }
+  ],
+  "resolutions": [],
+  "expected": {
+    "units": {
+      "SOC-WOOL-M#001": {
+        "sku": "SOC-WOOL-M",
+        "holder": "box-07",
+        "allocation": "alloc::1792328401000-0000-tablet-a",
+        "state": "held",
+        "last_txn": "txn::1792328431000-0000-tablet-a"
+      },
+      "SOC-WOOL-M#009": {
+        "sku": "SOC-WOOL-M",
+        "holder": "store-richmond",
+        "allocation": null,
+        "state": "held",
+        "last_txn": "txn::1792337400000-0000-tablet-a"
+      }
+    },
+    "counts": [
+      {
+        "custodian": "box-07",
+        "sku": "SOC-WOOL-M",
+        "qty": 1
+      },
+      {
+        "custodian": "store-richmond",
+        "sku": "SOC-WOOL-M",
+        "qty": 1
+      }
+    ],
+    "allocation_counts": {
+      "alloc::1792328401000-0000-tablet-a": 1
+    },
+    "forks": [],
+    "exceptions": {
+      "detector": "tablet-a",
+      "docs": [
+        {
+          "_id": "exc::tablet-a::SOC-WOOL-M#009::5c1dfb92",
+          "v": 1,
+          "type": "exception",
+          "trip": "trip-2026-10-18-riverfest",
+          "box": "box-07",
+          "kind": "unexpected_check_in",
+          "unit_id": "SOC-WOOL-M#009",
+          "sku": "SOC-WOOL-M",
+          "dispute_key": "SOC-WOOL-M#009|txn::1792334100000-0000-tablet-b",
+          "fork_txn": null,
+          "transactions": [
+            "txn::1792334100000-0000-tablet-b"
+          ],
+          "branches": [
+            {
+              "txn": "txn::1792334100000-0000-tablet-b",
+              "device": "tablet-b",
+              "kind": "check_in",
+              "to_custodian": "box-07",
+              "hlc": "1792334100000-0000-tablet-b"
+            }
+          ],
+          "proposed_resolution": {
+            "action": "review",
+            "note": "Checked in by a device that did not hold it. Confirm where the unit is."
+          },
+          "status": "open",
+          "resolution": null,
+          "detected_by": "tablet-a"
+        }
+      ]
+    },
+    "conservation": {
+      "with_inventory": [
+        {
+          "sku": "SOC-WOOL-M",
+          "opening_on_hand": 10,
+          "received": 0,
+          "left_store": 1,
+          "untraced": 1,
+          "returned_to_store": 1,
+          "store_on_hand": 10,
+          "in_custody": {
+            "box-07": 1
+          },
+          "sold": 0,
+          "disputed": 0,
+          "holds": false
+        }
+      ],
+      "venue_only": [
+        {
+          "sku": "SOC-WOOL-M",
+          "opening_on_hand": null,
+          "received": null,
+          "left_store": 1,
+          "untraced": 1,
+          "returned_to_store": 1,
+          "store_on_hand": null,
+          "in_custody": {
+            "box-07": 1
+          },
+          "sold": 0,
+          "disputed": 0,
+          "holds": false
+        }
+      ]
+    }
+  }
+}

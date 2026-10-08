@@ -29,8 +29,9 @@ In Phase 0 a tablet's access is its box's set, granted by Edge Server, not by Ap
 
 ## `ledger/<scenario>.json`: the custody ledger reducer
 
-Format: `schemas/fixtures/ledger.schema.json`. An implementation runs
-`reduce(transactions, resolutions)`, then `exceptions_for(state, expected.exceptions.detector, trip, box)` and
+Format: `schemas/fixtures/ledger.schema.json`. An implementation runs `reduce(transactions, resolutions, store)`
+(the store custodian is what tells a store root from a blind movement, rule 1), then
+`exceptions_for(state, expected.exceptions.detector, trip, box)` and
 `conservation(state, store, inventory)` (once with `inventory`, when it is not null, and once with `null` for the
 venue-only rows), and compares with `expected`. When `order_independent` is true, it must get the same answer for
 every order of `transactions` (WS1's runner re-runs each with the array shuffled). `detected_at` is left out of the
@@ -51,17 +52,29 @@ The rules (decision 001; `ports/ledger.md` restates them as an interface):
    `prev_txn` alone.
 2. A fork is two or more movements with the same `(unit_id, predecessor)`, the predecessor being a transaction id,
    in the input or not: two dangling roots whose `prev_txn` name the same missing transaction are a fork, found
-   before that transaction arrives and unchanged by its arrival (its `fork_txn` and `dispute_key` name the missing
-   transaction). A blind movement with no predecessor is in no fork: what it continues is unknown until the
-   movement that gave its `from_custodian` custody arrives. A root fork is two or more store roots of one unit (two
+   before that transaction arrives (its `fork_txn` and `dispute_key` name the missing transaction); its arrival
+   adds no branch of its own, though a blind movement that now continues it does (rule 1). A blind movement with
+   no predecessor is in no fork: what it continues is unknown until the movement that gave its `from_custodian`
+   custody arrives (`null-root-double-take-no-pack`). A root fork is two or more store roots of one unit (two
    packs, or a pack and an HQ sale). A `check_in` with `prev_txn` null never joins any fork (rule 6 covers it).
 3. An unresolved fork makes the unit `disputed`: `holder`, `allocation` and `last_txn` are null and it is counted
-   under `disputed`, not under any custodian or allocation. Only HQ resolves: a resolution counts only when
-   `resolution.by` is `hq`, and any other is ignored everywhere (tablet-to-tablet sync never runs the App Services
-   sync function, so the reducer must enforce this itself). A resolution settles the fork of its `unit_id` whose
-   branches include `resolution.chosen_txn`; that branch becomes canonical, and the other branches and their
-   descendants are ignored for holder and counts. The fork stays in `forks` with `resolved_by` set to the resolution's
-   id.
+   under `disputed`, not under any custodian or allocation. Only HQ resolves: a resolution counts only when its
+   `status` is `resolved` and `resolution.by` is `hq`, and any other is ignored everywhere (tablet-to-tablet sync
+   never runs the App Services sync function, so the reducer must enforce this itself). A resolution *matches* the
+   fork whose `dispute_key` (`<unit_id>|<predecessor or "root">`) and sorted branches equal its own `dispute_key`
+   and `transactions`; it *settles* that fork when `resolution.chosen_txn` is one of the branches. The chosen
+   branch becomes canonical, and the other branches and their descendants are *set aside*: ignored for holder,
+   counts, forks and exceptions, so a fork among set-aside movements is not reported
+   (`fork-inside-set-aside-branch`). The fork stays in `forks` with `resolved_by` set to the resolution's id. A
+   resolution binds to the branches it was written for: a new branch at a settled fork makes a fork the
+   resolution does not match, so the fork is open again, the unit is `disputed` and rule 7 writes a new document
+   (`third-branch-at-resolved-fork`). When several counting resolutions match one fork, the one with the greatest
+   `resolution.at` settles it, ties going to the greatest `_id`; HQ writes `resolution.at` in UTC with a `Z`
+   suffix and whole seconds, so comparing the strings compares the instants (`two-resolutions-one-fork`). A
+   matching resolution whose `chosen_txn` is null or names no branch settles nothing: the unit stays `disputed`,
+   `resolved_by` is null, and under rule 7 nothing new is written; HQ edits the resolution to choose a branch
+   (`resolution-without-choice`; `chosen_txn` null is how HQ closes an `unexpected_check_in`, which has no branch
+   to choose).
 4. Otherwise the unit's leaf is the canonical movement with no successor; when several chains exist (dangling roots,
    or a null-`prev_txn` check-in beside a pack), the leaf with the greatest `hlc` wins. `holder` is
    `leaf.to_custodian`, `allocation` is `leaf.to_allocation`, `last_txn` is the leaf's id, and `state` is `sold` when
@@ -73,8 +86,9 @@ The rules (decision 001; `ports/ledger.md` restates them as an interface):
    the end of a trip is expected). The movement stands (the physical scan is the stronger evidence) and an exception of kind
    `unexpected_check_in` attaches the check-in and, when the input has it, its predecessor.
 7. `exceptions_for` only creates: a new branch at the same fork gives a new id (a different hash). It emits one
-   exception per unresolved fork and one per unexpected check-in, and leaves out any whose `dispute_key` and
-   `transactions` match a resolution in the input (an HQ resolution, per rule 3).
+   exception per unresolved fork in `forks` and one per unexpected check-in, and leaves out any whose
+   `dispute_key` and `transactions` match a resolution that counts (rule 3), whether or not that resolution chose
+   a branch.
 
 What `expected` holds, and in what order (so two implementations produce identical output):
 
@@ -113,7 +127,9 @@ What `expected` holds, and in what order (so two implementations produce identic
     another kind of root: a store root, or a dangling root (the predecessor has not arrived, whether `prev_txn`
     names it or a blind movement would imply it, rule 1). So a unit mid-replication never turns a row false.
     `left_store + untraced` is the number of distinct units of the SKU in the ledger.
-  - `returned_to_store`: of the `left_store` units, those held by the store.
+  - `returned_to_store`: units of the SKU held by the store, untraced ones included (`untraced-unit-returned`: an
+    untraced unit the box brought back is on the shelf; whether the opening count already had it is what
+    `untraced` flags).
   - `in_custody`: held units per holder other than the store, only holders with at least one.
   - `sold`, `disputed`: units in those states.
   - True by construction, so not a check:
