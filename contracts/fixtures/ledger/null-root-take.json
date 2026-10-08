@@ -1,6 +1,6 @@
 {
-  "name": "dangling-predecessor",
-  "description": "Only a check-in has arrived; the movement it names as its predecessor has not. Not an error and not a fork: the box holds the unit.",
+  "name": "null-root-take",
+  "description": "tablet-b takes #005 off the box's table before the pack of it has replicated, so it writes the take with no predecessor. Release by the store is presumed for any root other than an unknown check-in: the row holds and nothing turns red on stage while the pack is in flight.",
   "order_independent": true,
   "trip": "trip-2026-10-18-riverfest",
   "box": "box-07",
@@ -8,22 +8,22 @@
   "inventory": null,
   "transactions": [
     {
-      "_id": "txn::1792328600000-0000-tablet-b",
+      "_id": "txn::1792329400000-0000-tablet-b",
       "v": 1,
       "type": "transaction",
       "trip": "trip-2026-10-18-riverfest",
       "box": "box-07",
-      "kind": "check_in",
-      "unit_id": "JKT-RAIN-M-BLU#001",
+      "kind": "check_out",
+      "unit_id": "JKT-RAIN-M-BLU#005",
       "sku": "JKT-RAIN-M-BLU",
-      "from_custodian": "tablet-b",
-      "to_custodian": "box-07",
-      "prev_txn": "txn::1792328500000-0000-tablet-b",
-      "from_allocation": "alloc::1792328450000-0000-tablet-b",
-      "to_allocation": "alloc::1792328400000-0000-tablet-a",
+      "from_custodian": "box-07",
+      "to_custodian": "tablet-b",
+      "prev_txn": null,
+      "from_allocation": null,
+      "to_allocation": "alloc::1792329300000-0000-tablet-b",
       "device": "tablet-b",
-      "hlc": "1792328600000-0000-tablet-b",
-      "device_clock": "2026-10-18T13:03:20Z",
+      "hlc": "1792329400000-0000-tablet-b",
+      "device_clock": "2026-10-18T13:16:40Z",
       "box_clock": null,
       "basket": null,
       "price": null,
@@ -33,24 +33,23 @@
   "resolutions": [],
   "expected": {
     "units": {
-      "JKT-RAIN-M-BLU#001": {
+      "JKT-RAIN-M-BLU#005": {
         "sku": "JKT-RAIN-M-BLU",
-        "holder": "box-07",
-        "allocation": "alloc::1792328400000-0000-tablet-a",
+        "holder": "tablet-b",
+        "allocation": "alloc::1792329300000-0000-tablet-b",
         "state": "held",
-        "last_txn": "txn::1792328600000-0000-tablet-b"
+        "last_txn": "txn::1792329400000-0000-tablet-b"
       }
     },
     "counts": [
       {
-        "custodian": "box-07",
+        "custodian": "tablet-b",
         "sku": "JKT-RAIN-M-BLU",
         "qty": 1
       }
     ],
     "allocation_counts": {
-      "alloc::1792328400000-0000-tablet-a": 1,
-      "alloc::1792328450000-0000-tablet-b": 0
+      "alloc::1792329300000-0000-tablet-b": 1
     },
     "forks": [],
     "exceptions": {
@@ -69,7 +68,7 @@
           "returned_to_store": 0,
           "store_on_hand": null,
           "in_custody": {
-            "box-07": 1
+            "tablet-b": 1
           },
           "sold": 0,
           "disputed": 0,
