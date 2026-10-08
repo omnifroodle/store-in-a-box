@@ -101,7 +101,9 @@ HLC: string "<unix_ms:13 digits>-<counter:4 hex>-<device_id>", compared lexicogr
    *root fork*), except that a `check_in` with `prev_txn == null` never joins a root fork (rule 6 covers it). Two
    dangling roots with different missing predecessors are not a fork.
 3. An unresolved fork makes the unit `disputed`: holder `null`, counted under `disputed`, not under any custodian
-   or allocation. A resolution naming `chosen_txn` makes that branch canonical; the other branches and their
+   or allocation. Only HQ resolves: a resolution counts only when `resolution.by == "hq"` and any other is ignored
+   (peer-to-peer sync never runs the App Services sync function, so the reducer enforces it; fixture
+   `non-hq-resolution-ignored`). A resolution naming `chosen_txn` makes that branch canonical; the other branches and their
    descendants are ignored for holder and counts.
 4. Otherwise the unit's *leaf* is the movement with no successor; when several chains exist (dangling roots), the
    leaf with the greatest `hlc` wins. Holder is `leaf.to_custodian`, allocation `leaf.to_allocation`, state `sold`

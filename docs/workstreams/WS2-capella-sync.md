@@ -82,7 +82,8 @@ contract the Node harness tests against `contracts/fixtures/sync/`; the implemen
   may change (compare every other field to `oldDoc`); `channel("trip:" + doc.trip)`.
 - `transaction`: same writer and access rules; **immutable**: any update (`oldDoc` not null) is forbidden;
   `hq`-written transactions may carry `box: null`; `channel("trip:" + doc.trip)`.
-- `exception`: same writer and access rules on create; on update only `hq` may write and only `status` and
+- `exception`: same writer and access rules on create, and a create by a user other than `hq` must have `status`
+  `open` (`only hq may resolve`); on update only `hq` may write and only `status` and
   `resolution` may change; `channel("trip:" + doc.trip)`.
 
 **Node harness** (`sync/tests/harness.mjs`): loads a function file, provides `channel`, `requireUser`,
