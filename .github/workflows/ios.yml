@@ -1,0 +1,45 @@
+name: iOS
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  siabcore:
+    name: SIABCore (iOS simulator)
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - name: Xcode and simulators
+        run: |
+          xcodebuild -version
+          xcrun simctl list devices available iPhone
+      - name: Pick the simulator
+        # The blueprint's destination is an iPhone 16; a runner image without one falls back to its first iPhone.
+        run: |
+          if xcrun simctl list devices available | grep -q "iPhone 16 ("; then
+            name="iPhone 16"
+          else
+            name=$(xcrun simctl list devices available | grep -m1 -oE "iPhone [^(]+" | sed 's/ *$//')
+          fi
+          echo "Using $name"
+          echo "SIM_NAME=$name" >> "$GITHUB_ENV"
+      - uses: actions/cache@v5
+        with:
+          path: ~/Library/Caches/org.swift.swiftpm
+          key: swiftpm-${{ runner.os }}-${{ hashFiles('app/SIABCore/Package.swift', 'app/SIABCore/Package.resolved') }}
+      - name: Test SIABCore (LedgerFixtureTests over contracts/fixtures/ledger)
+        run: |
+          set -o pipefail
+          xcodebuild test -project app/StoreInABox.xcodeproj -scheme SIABCore \
+            -destination "platform=iOS Simulator,name=$SIM_NAME" | tee xcodebuild.log
+          grep -E "^(PASS|FAIL) " xcodebuild.log
+      - name: Build the app
+        run: |
+          xcodebuild build -project app/StoreInABox.xcodeproj -scheme StoreInABox \
+            -destination "platform=iOS Simulator,name=$SIM_NAME" CODE_SIGNING_ALLOWED=NO
