@@ -3,6 +3,10 @@
 One line per version, newest first: version, date, what was added (additive) or changed (breaking). The first
 version line must match `VERSION` (`scripts/check_contracts.py` checks it).
 
+- 0.3.0 (2026-10-08): a blind movement (prev_txn null from a custodian other than the store: the writer had no
+  record of the unit) continues the movement that gave its from_custodian custody instead of forming a root fork
+  with the pack (#32, CC6 #33, decision 005); rules 1 and 2. Fixtures `null-root-take-pack-arrives`,
+  `null-root-double-take` and `null-root-take-returned`. A changed rule, so a minor bump.
 - 0.2.0 (2026-10-08): conservation `holds` is a check, not an identity (#27, CC5 #29): the row gains `untraced`;
   `holds` is `untraced == 0` at the venue and also `store_on_hand >= 0` with inventory; fixtures `overpacked` and
   `untraced-unit` are the first with `holds: false`. A new required field, so a minor bump (decision 004).
