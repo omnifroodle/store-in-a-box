@@ -95,6 +95,44 @@ On every clerk- or audience-facing model call. Cheap to switch on; changing them
 - MCP Server, read-only, for an HQ "ask the ledger" assistant.
 - Agent Memory for per-venue memory ("last time at Riverfest it rained").
 
+### R9. A distributed Agent Catalog: the agent is packed into the box with the stock (Phase 1 to 3) — idea
+
+- **Story:** a store manager changes the cross-sell prompt at HQ; it syncs to the box overnight; the next morning the
+  tablets use it with no network. The agent, its prompts and its tool versions travel like custody: allocated to a
+  trip, synced down, used offline, accounted for on the way back.
+- **Product facts it builds on** (Agent Catalog docs, 2026-10-09): `agentc publish` writes the catalog into the cluster
+  as ordinary collections in an `agent_catalog` scope (`tool_catalog`, `tool_metadata`, `prompt_catalog`,
+  `prompt_metadata`); a catalog version is a git commit (`catalog_id`); items carry annotations you filter on; the
+  catalog stores definitions and does not run them; the documented consumer is a Python SDK. `.sqlpp` and
+  semantic-search tools are declarative; Python-function and HTTP tools are code or network calls.
+- **Our design (not a product feature):**
+  - **Catalog in through the same pipe as inventory.** Link the `agent_catalog` collections to the App Endpoint and
+    route them by channel (region, trip). HQ publishes; devices only read. A trip pins a `catalog_id`, so each device
+    knows which version it runs.
+  - **Execution follows the tool kind.** On the tablet, a small Swift "catalog runner" executes the declarative tools
+    natively (Couchbase Lite runs SQL++ and has vector search) with an on-device model doing the reasoning (Apple's
+    on-device model on iOS 26, as in fieldproof). On the box, Python tools run under a Python agent against Edge
+    Server and a small local model behind an OpenAI-compatible endpoint ("one API, three tiers",
+    `docs/architecture/edge-server-box.md`). In Capella: anything that needs the cloud (Columnar, larger models,
+    semantic caching, R4).
+  - **Annotations say where a tool may run:** for example `runs_on: tablet|box|cloud` and `needs: online`. A
+    disconnected device filters to what it can run and degrades gracefully, as the Community Edition build drops the
+    mesh.
+  - **Activity flows back up.** Agent-activity records written on the device as documents sync to HQ when the link
+    returns: what an agent suggested offline, with its `catalog_id` and model. The same provenance rule as the ledger.
+- **First agent: the offline cross-sell (upsell) advisor** (`docs/architecture/hybrid-upsell.md`), which is already a
+  cross-sell agent in all but name: its prompt from the catalog, a semantic-search tool over the products in custody,
+  a SQL++ tool for "only what this tablet holds", the on-device model.
+- **Guards:** read-only routing of the catalog; each item's content hash checked against the pinned `catalog_id`;
+  Edge Server 1.1 cannot make collections read-only per device (#50), so the tablet app must also refuse to write
+  catalog documents; a missing or unverified catalog falls back to the built-in upsell (no agent).
+- **Step one is a spike** (small, `any` plus a Capella dev cluster): publish a two-tool catalog (one `.sqlpp`, one
+  semantic search) and one prompt with `agentc`, inspect the published documents, and decide whether their shape is
+  stable and documented enough for a non-Python runner to read. If it is not, the alternative is our own
+  `agent_catalog` export (a script that reads the catalog through the SDK and writes a documented device shape).
+- **Needs:** R1 (the catalog itself); WS4's Couchbase Lite collections and channels; the Phase 1 on-device vector
+  index; a Python agent runtime on the box.
+
 ### Open questions
 
 - **R0.** Which AIDP parts are available on the demo's Capella cluster and support tier (AI Functions need a paid
@@ -102,6 +140,8 @@ On every clerk- or audience-facing model call. Cheap to switch on; changing them
   self-managed Server Enterprise Edition?
 - Does Agent Catalog's local JSON catalog work on the box with no connection (R1)?
 - Does semantic caching hash the system prompt exactly (R4)?
+- Is the published Agent Catalog document shape stable and documented enough for a Swift runner to read on the
+  tablet (R9's spike)? Does Agent Catalog have, or plan, a non-Python consumer?
 
 ## Deferred elsewhere
 
