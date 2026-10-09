@@ -84,8 +84,8 @@ statement, on a tablet with the radio off, is the point.
 - Price-sensitivity by tier: a bundle offer that the pricing agent proposed and HQ approved.
 - Re-ranking by a small model on the tablet itself where the hardware allows.
 - **Couchbase AI Data Plane (possible, not in the demo).** A Data Processing workflow could embed the catalog in the
-  cluster, so the vectors sync down and the tablet searches them offline; workflows are started, not run on write,
-  so a catalog change means a re-run before the trip syncs. With the uplink up, the reason line could go to a Model
+  cluster, so the vectors sync down and the tablet searches them offline; until it is checked whether a running workflow
+  picks up later writes (#110), a catalog change means a re-run before the trip syncs. With the uplink up, the reason line could go to a Model
   Service deployment with semantic caching and guardrails. The ranking would still depend on nothing but the
   tablet. See [ai-data-plane](ai-data-plane.md) (R4, R6, R7).
 - **The advisor as a catalogued agent (our design on Agent Catalog, possible).** Its prompt and its two tools (a

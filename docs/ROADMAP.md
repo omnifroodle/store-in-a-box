@@ -19,7 +19,7 @@ self-managed cluster) before blueprinting (open question R0 below).
 |---|---|---|
 | Model Service | Deploy LLMs and embedding models, or bring OpenAI or Amazon Bedrock models | Enterprise support only. Per deployment: standard caching (exact prompt and parameters), semantic caching (the prompt is embedded and a close match within a score threshold is returned; needs a deployed embedding model), a combined mode chosen per request with the `X-cb-cache` header (`standard`, `semantic`, `none`), a TTL (default 4,000 s, 3,600 to 604,800), async processing, guardrails, jailbreak detection, keyword filters (up to 10). Changing these after deployment invalidates the deployment's API keys. |
 | AI Functions | SQL++ functions: `ai_summary`, `ai_classification`, `ai_extraction`, `ai_sentiment`, `ai_masked`, `ai_translation`, `ai_similarity`, `ai_corrected_grammar`, `ai_generated_text`, `ai_completion` | On Capella: a paid cluster on Couchbase Server 8.0+, multiple availability zones, Developer Pro or Enterprise support. Backed by a Model Service model, OpenAI or Bedrock. |
-| Data Processing (vectorization) | Workflows you start over data already in the cluster, or PDFs, images and JSON from S3 | Enterprise support only. Does not vectorize on write. 100 MB per file, 10,000 files per workflow. |
+| Data Processing (vectorization) | Workflows you start over data already in the cluster, or PDFs, images and JSON from S3 | Enterprise support only. You stop and re-run workflows; each creates two Eventing functions on the cluster. The docs do not say whether documents written after a run starts are vectorized. 100 MB per file, 10,000 files per workflow. |
 | Agent Catalog | A versioned store of tools and prompts (not a runtime; your framework runs the tools); git is the version source | Tools: Python functions (`@agentc.catalog.tool`), `.sqlpp` query files with a YAML header, YAML semantic-search tools over a vector index, YAML OpenAPI/HTTP tools. Prompts in `.prompt` files. `agentc` CLI (`init`, `add`, `index`, `publish`, `clean`); the catalog is local JSON under `.agent-catalog/` and is published to an `agent_catalog` scope. Helpers for LangChain, LangGraph and LlamaIndex. |
 | Agent Tracer | Audit of agent activity: tool calls, results, handoffs, model outputs | Logs to `./agent-activity` by default. |
 | Agent Memory | Persistent per-user memory across sessions | Enterprise support only. |
@@ -84,7 +84,8 @@ Each is one statement, like the conservation query.
 - **Shows:** "embedded in the cluster, searched offline on the tablet": a workflow embeds the catalog, the vectors sync
   down, and the tablet's on-device vector search (Phase 1 upsell) uses them. A second workflow vectorizes ordinance
   PDFs from S3 for the compliance agent.
-- **Note:** workflows are started, not triggered on write; re-run after catalog changes.
+- **Note:** whether a running workflow picks up later writes is not documented (#110); until checked, re-run after
+  catalog changes.
 
 ### R7. Guardrails, jailbreak detection and keyword filters (any phase) — idea
 
