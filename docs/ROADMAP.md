@@ -5,14 +5,15 @@ entry says what it shows, which Couchbase feature carries it, what it needs, whe
 and what is still unknown. Status is **idea** until the architect blueprints it into `docs/workstreams/`.
 
 The product page and the architecture notes describe the AI Data Plane items below as possibilities, not as part of
-the demo. The demo runs on a self-managed Couchbase cluster for now (owner, 2026-10-09).
+the demo. The demo runs on Capella; the AI Data Plane is also offered on self-managed Couchbase Server Enterprise
+Edition, which matters to anyone running the repo on their own cluster.
 
 ## Couchbase AI Data Plane (AIDP)
 
 Facts checked against Couchbase's documentation on 2026-10-09. The AI Data Plane (formerly Capella AI Services) is
 offered self-managed with Couchbase Server Enterprise Edition or fully managed on Capella; several parts need an
-Enterprise support tier. Confirm per-feature availability on a self-managed cluster before blueprinting (open question
-R0 below).
+Enterprise support tier. Confirm per-feature availability on the demo's Capella cluster (and, for readers, on a
+self-managed cluster) before blueprinting (open question R0 below).
 
 | Part | What it is | Notes |
 |---|---|---|
@@ -96,8 +97,9 @@ On every clerk- or audience-facing model call. Cheap to switch on; changing them
 
 ### Open questions
 
-- **R0.** Which AIDP parts run on the self-managed cluster the demo uses, and on which support tier? (AI Functions'
-  documented requirements are Capella's.)
+- **R0.** Which AIDP parts are available on the demo's Capella cluster and support tier (AI Functions need a paid
+  cluster on Server 8.0+ with multiple availability zones and Developer Pro or Enterprise support), and which on
+  self-managed Server Enterprise Edition?
 - Does Agent Catalog's local JSON catalog work on the box with no connection (R1)?
 - Does semantic caching hash the system prompt exactly (R4)?
 
