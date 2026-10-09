@@ -138,6 +138,12 @@ both sides attached ([conflict-free-ledger](conflict-free-ledger.md)).
 - Fleet dispatcher across boxes and weekends.
 - Shrinkage patterns across trips, as suggestions with evidence.
 - XDCR between regions for a national chain.
+- **Couchbase AI Data Plane (possible, not in the demo):** Agent Catalog for every agent's tools and prompts, a
+  reconciliation assistant that drafts (never writes) resolutions, semantic caching on the terrible link,
+  AI Functions in SQL++, embeddings through Data Processing, guardrails on audience-facing model calls, and (our
+  design on Agent Catalog) an agent packed into the box with the stock, its catalog synced down like inventory. Each
+  stays inside the agent output contract and HQ's authority. See [ai-data-plane](ai-data-plane.md) and
+  [`docs/ROADMAP.md`](../ROADMAP.md).
 
 ## Alternatives and trade-offs
 
