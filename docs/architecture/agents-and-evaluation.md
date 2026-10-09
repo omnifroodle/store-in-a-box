@@ -100,7 +100,12 @@ them.
 ## Possible enhancements
 
 - Per-jurisdiction permit templates the agent fills, replacing free-form applications.
-- AI Functions in SQL++ for server-side summaries where a connection is assumed.
+- **Couchbase AI Data Plane (possible, not in the demo).** Agent Catalog could hold every agent's tools (the
+  conservation query as a `.sqlpp` tool, HQ's API as an OpenAPI tool, the ordinances as a semantic-search tool) and
+  prompts, versioned with git, so each output carries the exact versions; Agent Tracer would show which tools the
+  compliance agent called. A semantic cache in front of compliance questions must key on the jurisdiction, so one
+  Richmond never answers for the other, and a cached claim still passes the freshness and jurisdiction checks.
+  See [ai-data-plane](ai-data-plane.md) (R1, R4, R7).
 - Social signal as a first-class research input once platform access and cost are settled.
 - A fleet dispatcher once there is more than one box.
 - Shrinkage patterns across trips, as suggestions with evidence, never accusations.

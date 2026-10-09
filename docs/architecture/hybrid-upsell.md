@@ -83,6 +83,15 @@ statement, on a tablet with the radio off, is the point.
 - Visual search: photograph an item the customer is wearing, find what in custody goes with it.
 - Price-sensitivity by tier: a bundle offer that the pricing agent proposed and HQ approved.
 - Re-ranking by a small model on the tablet itself where the hardware allows.
+- **Couchbase AI Data Plane (possible, not in the demo).** A Data Processing workflow could embed the catalog in the
+  cluster, so the vectors sync down and the tablet searches them offline; workflows are started, not run on write,
+  so a catalog change means a re-run before the trip syncs. With the uplink up, the reason line could go to a Model
+  Service deployment with semantic caching and guardrails. The ranking would still depend on nothing but the
+  tablet. See [ai-data-plane](ai-data-plane.md) (R4, R6, R7).
+- **The advisor as a catalogued agent (our design on Agent Catalog, possible).** Its prompt and its two tools (a
+  semantic search over the products in custody, a SQL++ query for what this tablet holds) published in Agent
+  Catalog, synced down by channel with the trip and run on the tablet with an on-device model; a missing catalog
+  falls back to the built-in advisor. Starts with a spike. See [ai-data-plane](ai-data-plane.md) (R9).
 
 ## Alternatives and trade-offs
 

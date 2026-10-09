@@ -32,6 +32,7 @@ becomes an exception with both sales attached. No resolver, no node choosing bet
 | Product page | `site/`, published to GitHub Pages by `.github/workflows/pages.yml` |
 | Deck | `deck/`, not started |
 | Status | Spec and architecture notes complete. Phase 0 not started. |
+| Roadmap | [`docs/ROADMAP.md`](docs/ROADMAP.md): enhancements to build when budget allows, including the Couchbase AI Data Plane possibilities, which are not part of the demo |
 
 ## Layout
 

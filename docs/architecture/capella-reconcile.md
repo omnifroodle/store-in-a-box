@@ -69,7 +69,12 @@ that as a question to settle.
 
 ## Possible enhancements
 
-- AI Functions in SQL++ for summaries and classification on the server side, where a connection is assumed.
+- **Couchbase AI Data Plane (possible, not in the demo).** At rejoin, a reconciliation assistant could draft a
+  proposed resolution for each open exception with both branches as evidence, stored as advice and never as the
+  resolution: HQ still decides (decisions 007 and 008). `ai_summary` in SQL++ could put a one-line summary beside
+  each dispute on the queue, and, once closes exist, a checker could explain a manifest that does not match HQ's
+  count. AI Functions need a paid cluster on Server 8.0 or later with multiple availability zones and Developer Pro
+  or Enterprise support. See [ai-data-plane](ai-data-plane.md) (R2, R3, R5).
 - Shrinkage patterns across trips as suggestions with evidence, never accusations.
 - A fleet dispatcher across boxes and weekends, once there is more than one box.
 - Kiosk home-delivery orders fulfilled from the warehouse when the box phones home.
