@@ -46,3 +46,11 @@ merge, a staged oversell that becomes an exception, and the conservation query h
 for a first showing is the end of Phase 1.
 
 Open questions that should be settled before Phase 0 are listed at the end of the spec.
+
+## Couchbase Lite edition
+
+The tablet app (`app/`) builds against Couchbase Lite **Community Edition** by default. Device-to-device sync (the
+Multipeer Replicator) needs **Enterprise Edition**, which is used only when whoever builds the app opts in with
+`SIAB_CBL_EDITION=enterprise` (see [`app/README.md`](app/README.md)); without it the app still sells and syncs with
+the box, and its Diagnostics screen shows the mesh as unavailable. Checking that your use of Couchbase Lite
+Enterprise Edition is covered by its licence is your responsibility.

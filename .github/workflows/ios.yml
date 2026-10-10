@@ -10,9 +10,17 @@ permissions:
 
 jobs:
   siabcore:
-    name: SIABCore (iOS simulator)
+    # Both Couchbase Lite editions: Community Edition is the default build; Enterprise Edition (the Multipeer
+    # Replicator) is the opt-in the demo uses (app/README.md, "Couchbase Lite edition").
+    name: SIABCore (iOS simulator, ${{ matrix.edition }})
     runs-on: macos-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        edition: [community, enterprise]
+    env:
+      SIAB_CBL_EDITION: ${{ matrix.edition }}
     steps:
       - uses: actions/checkout@v7
       - name: Xcode and simulators
@@ -32,13 +40,21 @@ jobs:
       - uses: actions/cache@v5
         with:
           path: ~/Library/Caches/org.swift.swiftpm
-          key: swiftpm-${{ runner.os }}-${{ hashFiles('app/SIABCore/Package.swift', 'app/SIABCore/Package.resolved') }}
+          key: swiftpm-${{ runner.os }}-${{ matrix.edition }}-${{ hashFiles('app/SIABCore/Package.swift', 'app/SIABCore/Package.resolved') }}
       - name: Test SIABCore (LedgerFixtureTests over contracts/fixtures/ledger)
         run: |
           set -o pipefail
+          # A hung test fails after a minute instead of holding the job to its timeout.
           xcodebuild test -project app/StoreInABox.xcodeproj -scheme SIABCore \
-            -destination "platform=iOS Simulator,name=$SIM_NAME" | tee xcodebuild.log
+            -destination "platform=iOS Simulator,name=$SIM_NAME" \
+            -test-timeouts-enabled YES -default-test-execution-time-allowance 60 | tee xcodebuild.log
           grep -E "^(PASS|FAIL) " xcodebuild.log
+      - name: Check the edition that was built
+        # The test bundle and the resolved package must be the edition this job asked for.
+        run: |
+          if [ "$SIAB_CBL_EDITION" = enterprise ]; then want=couchbase-lite-swift-ee; else want=couchbase-lite-swift; fi
+          ls ~/Library/Developer/Xcode/DerivedData/StoreInABox-*/SourcePackages/checkouts/
+          test -d ~/Library/Developer/Xcode/DerivedData/StoreInABox-*/SourcePackages/checkouts/$want
       - name: Build the app
         run: |
           xcodebuild build -project app/StoreInABox.xcodeproj -scheme StoreInABox \
