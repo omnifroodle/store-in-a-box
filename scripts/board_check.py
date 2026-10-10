@@ -40,7 +40,9 @@ SEEN_MARKER = "[foreman: seen]"  # a comment containing this acknowledges every 
 
 def is_test_path(path: str) -> bool:
     """True for a file under any test directory, top-level or nested (`tests/x.py`, `web/tests/x.mjs`)."""
-    return any(part.lower() in TEST_DIRS for part in PurePosixPath(path).parts[:-1])  # Swift uses `Tests/`
+    # Swift uses `Tests/` and test targets named `<Name>Tests/` (`StoreInABoxTests/`, `SIABCoreTests/`).
+    return any(part.lower() in TEST_DIRS or (part.endswith("Tests") and len(part) > 5)
+               for part in PurePosixPath(path).parts[:-1])
 
 
 def is_non_code(path: str) -> bool:
@@ -310,6 +312,7 @@ Owned:
     assert is_test_path("tests/a.py") and is_test_path("viewer/tests/a.mjs") and is_test_path("a/b/__tests__/c.ts")
     assert not is_test_path("src/tests.py") and not is_test_path("tests")
     assert is_test_path("app/SIABCore/Tests/SIABCoreTests/LedgerTests.swift")
+    assert is_test_path("app/StoreInABoxTests/SellViewModelTests.swift") and not is_test_path("src/Contests/a.py")
     assert is_non_code("app/StoreInABox.xcodeproj/project.pbxproj") and is_non_code("app/SIABCore/Package.resolved")
     assert is_non_code("app/SIABCore/Tests/SIABCoreTests/Fixtures/ledger") and not is_non_code("app/project.yml")
     files = [

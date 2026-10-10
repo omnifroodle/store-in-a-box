@@ -37,10 +37,14 @@ Owned by this workstream:
 
 Named edits in neighbours' code:
 - `app/StoreInABox/App/AppModel.swift`: register the four screens and the scanner in the composition root.
-- `app/StoreInABox/App/ContentView.swift` (or the root view WS4 created): the tab bar with Sell, Shelf, Custody,
-  Exceptions and the gear.
+- `app/StoreInABox/App/RootView.swift` (the root view WS4 created): the tab bar with Sell, Shelf, Custody, Exceptions
+  and the gear.
 - `app/StoreInABox/Resources/Info.plist`: `NSCameraUsageDescription` if WS4 did not add it.
-- `app/StoreInABox.xcodeproj/project.pbxproj`: add the new files and the test target.
+- `app/project.yml`: the new sources and the test target (XcodeGen generates `app/StoreInABox.xcodeproj/` from it;
+  the generated `app/StoreInABox.xcodeproj/project.pbxproj` and
+  `app/StoreInABox.xcodeproj/xcshareddata/xcschemes/StoreInABox.xcscheme` follow).
+- `.github/workflows/ios.yml`: run `StoreInABoxTests` in both editions (exit criterion 2). Accepted at the gate on
+  #118 (#115).
 
 ## Interfaces
 
