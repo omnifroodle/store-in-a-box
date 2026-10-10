@@ -50,8 +50,10 @@ enum ScanParser {
 
 /// Drops repeat reads of a label still in front of the camera. Time is passed in, so tests use virtual time.
 struct ScanDebouncer {
-    var window = ScanConfig.debounceSeconds
+    var window: TimeInterval
     private var lastSeen: [String: TimeInterval] = [:]
+
+    init(window: TimeInterval = ScanConfig.debounceSeconds) { self.window = window }
 
     /// True when `payload` should be taken as a new scan. Every sighting restarts its window, so a label held in
     /// view is one scan however long it stays there.
