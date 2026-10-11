@@ -9,7 +9,8 @@ struct BasketLine: Identifiable, Equatable {
     let name: String
     let price: Money
     /// The record does not have this unit held by this device or its box (rule 8 flags the sale; it stands).
-    let disagrees: Bool
+    /// Recomputed whenever the ledger state changes before the tender (a pull from another tablet).
+    var disagrees: Bool
 }
 
 /// The tenders shown at the till (decision D6). Nothing is charged.
@@ -38,11 +39,22 @@ final class SellViewModel: ObservableObject {
     private let catalog: ProductCatalog
     private let scheduler: Scheduling
     private var confirmations = 0
+    private var subscription: AnyCancellable?
 
     init(store: CustodyStoring, catalog: ProductCatalog, scheduler: Scheduling = MainQueueScheduler()) {
         self.store = store
         self.catalog = catalog
         self.scheduler = scheduler
+        let identity = store.identity
+        subscription = store.state.sink { [weak self] state in
+            guard let self else { return }
+            let checked = basket.map { line in
+                var line = line
+                line.disagrees = RecordCheck.saleDisagrees(line.unit, state: state, identity: identity)
+                return line
+            }
+            if checked != basket { basket = checked }
+        }
     }
 
     var total: Money {
@@ -66,21 +78,16 @@ final class SellViewModel: ObservableObject {
         basket.removeAll { $0.unit == unit }
     }
 
-    /// Sells every line in one batch: the same new basket id on each sale, the line's price, and a tender of
-    /// `kind` for the basket's total. On success the basket clears and the confirmation shows for two seconds. On
-    /// failure nothing was written and the basket stays.
+    /// Sells every line in one batch (`CustodyStore.sell(basket:)`): the same new basket id on each sale, the
+    /// line's price, and a tender of `kind` for the basket's total. The screens see the basket once, committed. On
+    /// success the basket clears and the confirmation shows for two seconds. On failure nothing was written and the
+    /// basket stays.
     func tender(kind: TenderKind) throws {
         guard !basket.isEmpty else { throw SellError.emptyBasket }
         let lines = basket
         let total = total
-        let basketID = UUID().uuidString.lowercased()
-        let tender = Tender(kind: kind.kind, amount: total)
-        let store = store
-        try store.inBatch {
-            for line in lines {
-                try store.sell(unit: line.unit, tender: tender, price: line.price, basket: basketID)
-            }
-        }
+        try store.sell(basket: lines.map { SaleLine(unit: $0.unit, price: $0.price) },
+                       tender: Tender(kind: kind.kind, amount: total), id: UUID().uuidString.lowercased())
         basket = []
         confirmation = SaleConfirmation(count: lines.count, total: total)
         confirmations += 1

@@ -52,8 +52,8 @@ struct SilentFeedback: ScanFeedback {
 }
 
 /// `CustodyStore`'s write semantics, simplified, over the real reducer: each write is a transaction from what this
-/// fake's ledger knows of the unit; the state is `Ledger.reduce` over everything written or "pulled". A batch
-/// publishes once at the end, and a batch that throws keeps none of its writes.
+/// fake's ledger knows of the unit; the state is `Ledger.reduce` over everything written or "pulled". A basket is one
+/// batch: it publishes once at the end, and a basket that throws keeps none of its sales.
 final class FakeCustodyStore: CustodyStoring {
     enum Failure: Error { case injected }
     struct Call: Equatable { var name: String; var unit: String; var from: String?; var to: String?; var actingFor: String? }
@@ -62,11 +62,11 @@ final class FakeCustodyStore: CustodyStoring {
     private let subject: CurrentValueSubject<LedgerState, Never>
     private(set) var written: [Transaction] = []
     private(set) var calls: [Call] = []
+    /// Basket sales, one per `sell(basket:)`.
     private(set) var batches = 0
     private var pulled: [Transaction] = []
-    private var pending: [Transaction]?
     private var ms: Int64 = 1_792_328_400_000
-    /// Make the next `sell` throw.
+    /// Make the next basket sale throw part-way, after its first line was made.
     var failNextSell = false
 
     init(identity: DeviceIdentity = TestData.tabletA) {
@@ -101,29 +101,35 @@ final class FakeCustodyStore: CustodyStoring {
                            prev: known?.lastTxn, device: identity.device, fromAllocation: known?.allocation))
     }
 
-    func sell(unit: String, tender: Tender, price: Money, basket: String?) throws -> Transaction {
-        calls.append(Call(name: "sell", unit: unit))
-        if failNextSell { failNextSell = false; throw Failure.injected }
-        let known = currentState.units[unit]
-        var txn = make(.sale, unit, from: known?.holder ?? identity.box, to: Custodian.customer, prev: known?.lastTxn,
-                       device: identity.device, fromAllocation: known?.allocation)
-        txn.basket = basket
-        txn.price = price
-        txn.tender = tender
-        return record(txn)
+    func sell(basket lines: [SaleLine], tender: Tender, id: String?) throws -> [Transaction] {
+        batches += 1
+        let basket = id ?? UUID().uuidString.lowercased()
+        var sales: [Transaction] = []
+        for line in lines {
+            calls.append(Call(name: "sell", unit: line.unit))
+            if failNextSell, !sales.isEmpty || lines.count == 1 { failNextSell = false; throw Failure.injected }
+            let known = currentState.units[line.unit]
+            var txn = make(.sale, line.unit, from: known?.holder ?? identity.box, to: Custodian.customer,
+                           prev: known?.lastTxn, device: identity.device, fromAllocation: known?.allocation)
+            txn.basket = basket
+            txn.price = line.price
+            txn.tender = tender
+            sales.append(txn)
+        }
+        written += sales
+        publish()
+        return sales
     }
 
-    func inBatch(_ work: () throws -> Void) throws {
-        batches += 1
-        pending = []
-        defer { pending = nil }
-        try work()
-        written += pending ?? []
-        publish()
+    /// A basket of one, for tests that need a sale.
+    @discardableResult
+    func sell(unit: String, tender: Tender, price: Money, basket: String?) throws -> Transaction {
+        try sell(basket: [SaleLine(unit: unit, price: price)], tender: tender, id: basket)[0]
     }
 
     private func record(_ txn: Transaction) -> Transaction {
-        if pending != nil { pending!.append(txn) } else { written.append(txn); publish() }
+        written.append(txn)
+        publish()
         return txn
     }
 

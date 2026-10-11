@@ -87,6 +87,25 @@ final class SellViewModelTests: XCTestCase {
         XCTAssertEqual(kinds, [.foreignMovement], "the ledger flags it; the sale stands")
     }
 
+    /// #119 item 5: the tag follows the record between the scan and the tender, both ways.
+    func testTagFollowsCustodyChangesBeforeTheTender() throws {
+        let pack = store.pull(.checkOut, "JKT-RAIN-M-BLU#005", from: Custodian.store, to: "box-07", device: "tablet-b")
+        model.add(scan: TestData.scan("JKT-RAIN-M-BLU#005"))
+        model.add(scan: TestData.scan("JKT-RAIN-M-BLU#006"))
+        XCTAssertEqual(model.basket.map(\.disagrees), [false, true], "on the box: agrees; no record: disagrees")
+
+        // tablet-b takes #005 off the box, and the pack for #006 arrives.
+        let take = store.pull(.checkOut, "JKT-RAIN-M-BLU#005", from: "box-07", to: "tablet-b", device: "tablet-b",
+                              prev: pack.id)
+        store.pull(.checkOut, "JKT-RAIN-M-BLU#006", from: Custodian.store, to: "box-07", device: "tablet-b")
+        XCTAssertEqual(model.basket.map(\.disagrees), [true, false])
+
+        // tablet-b puts #005 back.
+        store.pull(.checkIn, "JKT-RAIN-M-BLU#005", from: "tablet-b", to: "box-07", device: "tablet-b", prev: take.id)
+        XCTAssertEqual(model.basket.map(\.disagrees), [false, false])
+        XCTAssertEqual(model.basket.map(\.unit), ["JKT-RAIN-M-BLU#005", "JKT-RAIN-M-BLU#006"], "same lines, same order")
+    }
+
     func testUnknownSKUIsRefused() {
         XCTAssertEqual(model.add(scan: TestData.scan("PCK-DAY-20#001")), .failure(.unknownSKU("PCK-DAY-20")))
         XCTAssertTrue(model.basket.isEmpty)
