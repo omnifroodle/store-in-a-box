@@ -143,6 +143,72 @@ final class SyncCoordinatorTests: XCTestCase {
         XCTAssertEqual(sync.box, .error("the box certificate does not match the pairing QR"))
     }
 
+    func testCertificateRetryBacksOffToThirtySeconds() {
+        XCTAssertEqual((0..<8).map { SyncCoordinator.certificateRetryDelayMs(attempt: $0) },
+                       [1_000, 2_000, 4_000, 8_000, 16_000, 30_000, 30_000, 30_000])
+    }
+
+    /// #108: a pinned pairing whose box is not up yet keeps trying for the certificate (virtual time: the waits are
+    /// recorded, not slept), reads offline with the reason meanwhile, and starts the box replicator once it answers.
+    @MainActor
+    func testUnreachableBoxAgentIsRetriedUntilItAnswers() async throws {
+        var pairing = Self.pairing
+        pairing.certSHA256 = ReplicationTests.fingerprint
+        var attempts = 0
+        var waits: [Int64] = []
+        var seen: [(BoxLink, String?)] = []
+        weak var probe: SyncCoordinator?
+        let sync = SyncCoordinator(database: database, pairing: pairing, identity: NoIdentity(), clock: FakeClock(),
+                                   fetch: { _ in
+                                       attempts += 1
+                                       if attempts <= 3 { throw URLError(.cannotConnectToHost) }
+                                       return Data(ReplicationTests.pem.utf8)
+                                   },
+                                   sleep: { ms in
+                                       waits.append(ms)
+                                       if let probe { seen.append((probe.box, probe.boxReason)) }
+                                   })
+        probe = sync
+        sync.startsReplicators = false
+        sync.start()
+        for _ in 0..<500 where !sync.hasBoxReplicator { await Task.yield() }
+        defer { sync.stop() }
+
+        XCTAssertEqual(attempts, 4)
+        XCTAssertEqual(waits, [1_000, 2_000, 4_000])
+        XCTAssertEqual(seen.map(\.0), Array(repeating: .offline(lastSeenMs: nil), count: 3), "offline, not an error")
+        XCTAssertTrue(seen[0].1?.hasPrefix("could not fetch the box certificate: ") ?? false)
+        XCTAssertTrue(seen[0].1?.hasSuffix("(retrying in 1 s)") ?? false)
+        XCTAssertTrue(sync.hasBoxReplicator, "the box replicator was built once the certificate matched")
+        XCTAssertNil(sync.boxReason)
+        XCTAssertEqual(sync.box, .offline(lastSeenMs: nil))
+    }
+
+    /// `stop()` during a wait between attempts: no further attempt, no replicator.
+    @MainActor
+    func testStopDuringCertificateBackoffStopsRetrying() async throws {
+        var pairing = Self.pairing
+        pairing.certSHA256 = ReplicationTests.fingerprint
+        var attempts = 0
+        var waiting = false
+        let sync = SyncCoordinator(database: database, pairing: pairing, identity: NoIdentity(), clock: FakeClock(),
+                                   fetch: { _ in attempts += 1; throw URLError(.cannotConnectToHost) },
+                                   sleep: { _ in
+                                       waiting = true
+                                       // Waits until cancelled, as Task.sleep does.
+                                       while !Task.isCancelled { await Task.yield() }
+                                       throw CancellationError()
+                                   })
+        sync.startsReplicators = false
+        sync.start()
+        for _ in 0..<100 where !waiting { await Task.yield() }
+        XCTAssertTrue(waiting)
+        sync.stop()
+        for _ in 0..<100 { await Task.yield() }
+        XCTAssertEqual(attempts, 1)
+        XCTAssertFalse(sync.hasBoxReplicator)
+    }
+
     /// `stop()` while the certificate is being fetched: the late answer starts nothing and reports nothing.
     @MainActor
     func testStopDuringCertificateFetchStartsNothing() async throws {

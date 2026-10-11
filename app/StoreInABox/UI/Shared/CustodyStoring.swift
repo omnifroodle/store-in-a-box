@@ -14,26 +14,12 @@ protocol CustodyStoring: AnyObject {
     func checkOut(unit: String, from: String, to: String, actingFor box: String?) throws -> Transaction
     @discardableResult
     func checkIn(unit: String) throws -> Transaction
+    /// The whole basket in one batch, published once (WS4's `CustodyStore.sell(basket:tender:id:)`, #114).
     @discardableResult
-    func sell(unit: String, tender: Tender, price: Money, basket: String?) throws -> Transaction
-    /// Runs `work` as one batch: every write inside it commits together, or none of them does.
-    func inBatch(_ work: () throws -> Void) throws
+    func sell(basket: [SaleLine], tender: Tender, id: String?) throws -> [Transaction]
 }
 
-extension CustodyStore: CustodyStoring {
-    /// `CustodyStore` has no basket call yet (#114), so this wraps its per-unit writes in an outer
-    /// `Database.inBatch`. Couchbase Lite nests batches, so the inner ones commit only with the outer one. If the
-    /// outer batch fails, the store has already published states that include the rolled-back writes, so this
-    /// rebuilds from what was actually saved.
-    func inBatch(_ work: () throws -> Void) throws {
-        do {
-            try database.inBatch(using: work)
-        } catch {
-            _ = try? rebuild()
-            throw error
-        }
-    }
-}
+extension CustodyStore: CustodyStoring {}
 
 /// Runs work later on the main actor. Tests use a fake with virtual time.
 protocol Scheduling {

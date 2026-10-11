@@ -8,7 +8,7 @@ struct ExceptionsView: View {
         VStack(alignment: .leading, spacing: 20) {
             ModeHeader(text: "EXCEPTIONS: \(model.disputes.count) OPEN", detail: "Read only. HQ resolves.")
             if model.disputes.isEmpty {
-                Label("No open disputes", systemImage: "checkmark.circle").font(Stage.body).foregroundStyle(.secondary)
+                Label("No open disputes", systemImage: "checkmark.circle").font(Stage.body).foregroundStyle(Stage.muted)
             }
             ScrollView {
                 VStack(spacing: 16) {
@@ -31,7 +31,7 @@ private struct DisputeCard: View {
                     .font(Stage.bodyBold)
                 Text(row.unit).font(Stage.body.monospaced())
                 Spacer()
-                Text(row.kind.rawValue).font(Stage.small.monospaced()).foregroundStyle(.secondary)
+                Text(row.kind.rawValue).font(Stage.small.monospaced()).foregroundStyle(Stage.muted)
             }
             if let note = row.note { Text(note).font(Stage.body) }
             ViewThatFits(in: .horizontal) {
@@ -55,7 +55,7 @@ private struct SideView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(roleText).font(Stage.small.weight(.semibold)).foregroundStyle(.secondary)
+            Text(roleText).font(Stage.small.weight(.semibold)).foregroundStyle(Stage.muted)
             Text(side.device).font(Stage.bodyBold)
             Text(side.kind.rawValue.replacingOccurrences(of: "_", with: " ")).font(Stage.body)
             Text("\(side.from) → \(side.to)").font(Stage.small.monospaced())
@@ -63,7 +63,7 @@ private struct SideView: View {
         }
         .padding(12)
         .frame(minWidth: 240, alignment: .leading)
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(.secondary.opacity(0.6), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Stage.muted, lineWidth: 1))
     }
 
     private var roleText: String {

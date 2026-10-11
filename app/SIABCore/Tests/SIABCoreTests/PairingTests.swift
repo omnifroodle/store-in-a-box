@@ -48,6 +48,9 @@ final class PairingTests: XCTestCase {
             ("edge_url", "http://192.0.2.10:59840/retail"), ("edge_url", "ws:///retail"), ("edge_url", "not a url"),
             ("user", ""), ("peer_group", ""),
             ("cert_sha256", "AB" + String(repeating: "0", count: 62)), ("cert_sha256", "abc"),
+            // #108: a trailing newline is not part of the value (`$` matched before it).
+            ("trip", "trip-2026-10-18-riverfest\n"), ("cert_sha256", String(repeating: "ab", count: 32) + "\n"),
+            ("device", "tablet-a\n"), ("box", "box-07\n"),
         ]
         for (field, value) in cases {
             XCTAssertThrowsError(try PairingPayload.decode(Self.text([field: value])), "\(field)=\(value)") { error in

@@ -10,7 +10,8 @@ struct ShelfView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             ModeHeader(text: "SHELF", detail: "Live counts: \(device) and \(box)")
-            TextField("Filter by SKU or name", text: $model.filter)
+            TextField("Filter by SKU or name", text: $model.filter,
+                      prompt: Text("Filter by SKU or name").foregroundStyle(Stage.muted))
                 .font(Stage.body)
                 .textFieldStyle(.roundedBorder)
                 .autocorrectionDisabled()
@@ -21,7 +22,7 @@ struct ShelfView: View {
                 Text(sizeClass == .regular ? "Box (\(box))" : "Box").frame(width: column, alignment: .trailing)
             }
             .font(Stage.small.weight(.semibold))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Stage.muted)
             ScrollView {
                 LazyVStack(spacing: 8) {
                     ForEach(model.rows) { row in ShelfRowView(row: row, column: column) }
@@ -43,7 +44,7 @@ private struct ShelfRowView: View {
                 Text(row.name).font(Stage.bodyBold)
                 Text(row.sku + (row.price.map { "  ·  " + Stage.money($0) } ?? ""))
                     .font(Stage.small.monospaced())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Stage.muted)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             count(row.here, id: "here")
@@ -57,7 +58,7 @@ private struct ShelfRowView: View {
     private func count(_ value: Int, id: String) -> some View {
         Text("\(value)")
             .font(Stage.count)
-            .foregroundStyle(value == 0 ? .secondary : .primary)
+            .foregroundStyle(value == 0 ? Stage.muted : Color.primary)
             .contentTransition(.numericText(value: Double(value)))
             .frame(width: column, alignment: .trailing)
             .accessibilityIdentifier("shelf-\(row.sku)-\(id)")

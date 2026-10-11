@@ -200,6 +200,46 @@ final class CustodyStoreTests: XCTestCase {
         XCTAssertEqual(seen.last, 1)
     }
 
+    /// #114: a basket is one batch and one published state. A failure inside the batch (after the first sale was
+    /// saved) keeps no sale and publishes nothing; a basket that names a unit twice is refused before any write.
+    func testABasketIsOneBatchAndOnePublishedState() throws {
+        struct Injected: Error {}
+        let pack = try pulledPack()
+        try store.rebuild()
+        let units = [Self.unit, "JKT-RAIN-M-BLU#002", "HAT-BEANIE-OS#001"]
+        let lines = units.map { SaleLine(unit: $0, price: Money(cents: 12900)) }
+        let tender = Tender(kind: .cardSimulated, amount: Money(cents: 38700))
+        var published: [Int] = []
+        let token = store.state.dropFirst().sink { published.append($0.transactions.values.filter { $0.kind == .sale }.count) }
+        defer { token.cancel() }
+
+        var writes = 0
+        store.afterTransactionWrite = {
+            writes += 1
+            if writes == 2 { throw Injected() }
+        }
+        XCTAssertThrowsError(try store.sell(basket: lines, tender: tender))
+        XCTAssertEqual(writes, 2, "the failure is inside the batch, after one sale was saved")
+        XCTAssertEqual(count(store.transactions), 1, "only the pulled pack: the basket rolled back")
+        XCTAssertEqual(published, [], "nothing published for a basket that did not commit")
+
+        XCTAssertThrowsError(try store.sell(basket: lines + [lines[0]], tender: tender)) { error in
+            XCTAssertEqual(error as? CustodyStore.Failure, .sameUnitTwice)
+        }
+        XCTAssertEqual(count(store.transactions), 1)
+
+        store.afterTransactionWrite = nil
+        let sales = try store.sell(basket: lines, tender: tender, id: "5b0c1c55-63a1-4a4e-9c3f-0e6d7b8a9f10")
+        XCTAssertEqual(count(store.transactions), 4)
+        XCTAssertEqual(published, [3], "one state, with the whole basket in it")
+        XCTAssertEqual(sales.map(\.unitID), units)
+        XCTAssertTrue(sales.allSatisfy { $0.basket == "5b0c1c55-63a1-4a4e-9c3f-0e6d7b8a9f10" && $0.tender == tender })
+        XCTAssertEqual(sales[0].prevTxn, pack.id, "the packed unit continues its chain")
+        XCTAssertEqual(sales[0].fromCustodian, "box-07")
+        XCTAssertEqual(Set(sales.map(\.id)).count, 3, "each sale has its own hlc")
+        XCTAssertTrue(units.allSatisfy { store.currentState.units[$0]?.state == .sold })
+    }
+
     func testPairingPayloadDecodesPortExample() throws {
         let url = try XCTUnwrap(Bundle.module.url(forResource: "box-agent", withExtension: "md"))
         let doc = try String(contentsOf: url, encoding: .utf8)

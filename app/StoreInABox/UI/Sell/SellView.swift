@@ -8,6 +8,8 @@ struct SellView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             ModeHeader(text: "SELLING", detail: "Scan each unit into the basket, then take the tender")
+            // In the flow under the header, never over it (#119 item 3): the mode stays named while it shows.
+            if let done = model.confirmation { confirmationBanner(done) }
             AdaptiveStack {
                 ScannerPanel(station: station) { model.add(scan: $0) }
                     .frame(maxWidth: 420)
@@ -15,7 +17,6 @@ struct SellView: View {
             }
         }
         .padding(24)
-        .overlay(alignment: .top) { confirmationBanner }
         .animation(.easeInOut, value: model.confirmation)
         .alert("Sale not recorded", isPresented: .constant(failure != nil), presenting: failure) { _ in
             Button("OK") { failure = nil }
@@ -26,7 +27,7 @@ struct SellView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Basket").font(Stage.bodyBold)
             if model.basket.isEmpty {
-                Text("Empty: scan a unit label").font(Stage.body).foregroundStyle(.secondary)
+                Text("Empty: scan a unit label").font(Stage.body).foregroundStyle(Stage.muted)
             }
             ScrollView {
                 VStack(spacing: 10) {
@@ -61,19 +62,17 @@ struct SellView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    @ViewBuilder private var confirmationBanner: some View {
-        if let done = model.confirmation {
-            Label("Sold \(done.count) \(done.count == 1 ? "unit" : "units") · \(Stage.money(done.total))",
-                  systemImage: "checkmark.seal.fill")
-                .font(Stage.header)
-                .foregroundStyle(.white)
-                .padding(.horizontal, 28)
-                .padding(.vertical, 16)
-                .background(Color.green.opacity(0.9), in: Capsule())
-                .padding(.top, 12)
-                .transition(.move(edge: .top).combined(with: .opacity))
-                .accessibilityIdentifier("sale-confirmation")
-        }
+    private func confirmationBanner(_ done: SaleConfirmation) -> some View {
+        Label("Sold \(done.count) \(done.count == 1 ? "unit" : "units") · \(Stage.money(done.total))",
+              systemImage: "checkmark.seal.fill")
+            .font(Stage.header)
+            .foregroundStyle(.white)
+            .padding(.horizontal, 28)
+            .padding(.vertical, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Stage.confirmed, in: RoundedRectangle(cornerRadius: 16))
+            .transition(.move(edge: .top).combined(with: .opacity))
+            .accessibilityIdentifier("sale-confirmation")
     }
 }
 
@@ -81,19 +80,21 @@ private struct BasketRow: View {
     let line: BasketLine
     let remove: () -> Void
 
+    /// The name, price and remove button on the first line; the unit and the tag each get the row's full width
+    /// below, so neither wraps in an iPad's portrait column (#119 item 4).
     var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 12) {
                 Text(line.name).font(Stage.bodyBold)
-                Text(line.unit).font(Stage.small).foregroundStyle(.secondary)
-                if line.disagrees { RecordDisagreesTag() }
+                Spacer(minLength: 8)
+                Text(Stage.money(line.price)).font(Stage.bodyBold).monospacedDigit()
+                Button(role: .destructive, action: remove) {
+                    Label("Remove", systemImage: "minus.circle.fill").labelStyle(.iconOnly).font(.system(size: 28))
+                }
+                .accessibilityLabel("Remove \(line.unit)")
             }
-            Spacer()
-            Text(Stage.money(line.price)).font(Stage.bodyBold).monospacedDigit()
-            Button(role: .destructive, action: remove) {
-                Label("Remove", systemImage: "minus.circle.fill").labelStyle(.iconOnly).font(.system(size: 28))
-            }
-            .accessibilityLabel("Remove \(line.unit)")
+            Text(line.unit).font(Stage.small).foregroundStyle(Stage.muted).lineLimit(1).minimumScaleFactor(0.7)
+            if line.disagrees { RecordDisagreesTag() }
         }
         .padding(12)
         .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))

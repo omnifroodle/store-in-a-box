@@ -25,9 +25,12 @@ enum ScanRejection: Error, Equatable {
 }
 
 enum ScanConfig {
-    /// One label is one scan: the camera reports a label many times a second, so the same payload is taken again
-    /// only after it has been out of sight this long. A tuning constant for stage light (blueprint, Verification).
-    static let debounceSeconds: TimeInterval = 1.5
+    /// One label is one scan: the camera reports a label many times a second while it is in view, so the label counts
+    /// as gone only after no sighting for this long. Tuning constants for stage light (blueprint, Verification).
+    static let goneSeconds: TimeInterval = 0.5
+    /// And a label scans again no sooner than this after it was last taken, so a camera that loses a held label for
+    /// a moment does not take it twice.
+    static let repeatSeconds: TimeInterval = 1.0
 }
 
 enum ScanParser {
@@ -48,19 +51,30 @@ enum ScanParser {
     }
 }
 
-/// Drops repeat reads of a label still in front of the camera. Time is passed in, so tests use virtual time.
+/// Drops repeat reads of a label still in front of the camera, and takes a deliberate second scan of the same label
+/// (moved away and back) as a second scan (#119 item 9). Time is passed in, so tests use virtual time.
 struct ScanDebouncer {
-    var window: TimeInterval
+    var gone: TimeInterval
+    var repeatAfter: TimeInterval
     private var lastSeen: [String: TimeInterval] = [:]
+    private var lastTaken: [String: TimeInterval] = [:]
 
-    init(window: TimeInterval = ScanConfig.debounceSeconds) { self.window = window }
+    init(gone: TimeInterval = ScanConfig.goneSeconds, repeatAfter: TimeInterval = ScanConfig.repeatSeconds) {
+        self.gone = gone
+        self.repeatAfter = repeatAfter
+    }
 
-    /// True when `payload` should be taken as a new scan. Every sighting restarts its window, so a label held in
-    /// view is one scan however long it stays there.
+    /// True when `payload` should be taken as a new scan: the first sighting, or the first after the label was out
+    /// of view for `gone`, at least `repeatAfter` after it was last taken. A label held in view is one scan however
+    /// long it stays there.
     mutating func admit(_ payload: String, at now: TimeInterval) -> Bool {
-        let fresh = lastSeen[payload].map { now - $0 >= window } ?? true
-        lastSeen = lastSeen.filter { now - $0.value < window }
+        let returned = lastSeen[payload].map { now - $0 >= gone } ?? true
+        let fresh = returned && (lastTaken[payload].map { now - $0 >= repeatAfter } ?? true)
         lastSeen[payload] = now
+        if fresh { lastTaken[payload] = now }
+        let forget = max(gone, repeatAfter)
+        lastSeen = lastSeen.filter { now - $0.value < forget || $0.key == payload }
+        lastTaken = lastTaken.filter { now - $0.value < forget || $0.key == payload }
         return fresh
     }
 }

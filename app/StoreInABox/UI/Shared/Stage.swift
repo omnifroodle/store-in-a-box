@@ -2,9 +2,20 @@ import SIABCore
 import SwiftUI
 
 /// Stage typography: read from the back of a room. Body text is at least 20 pt, counts at least 44 pt, the mode
-/// header at least 28 pt bold, and the status bar at least 17 pt. Colour never carries information alone: every
-/// coloured mark also has a word and an icon.
+/// header at least 28 pt bold, and the status bar and tab labels at least 17 pt. The colour scheme is a fixed,
+/// high-contrast light one (dark text on white reads best on a projector and under stage light), whatever the
+/// device's setting, and secondary text is a dark grey rather than the system's faint one. Colour never carries
+/// information alone: every coloured mark also has a word and an icon.
 enum Stage {
+    /// The app's colour scheme, set at the root (#119 item 6).
+    static let colorScheme = ColorScheme.light
+    /// Secondary text (subtitles, SKU lines, zero counts): at least 7:1 against the background and the row fills,
+    /// where the system's `.secondary` is about 3.5:1. Adapts if the scheme is ever dark.
+    static let muted = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 0.82, alpha: 1)
+                                                                       : UIColor(white: 0.27, alpha: 1) })
+    /// The sale confirmation: white on a dark green, about 7:1 (the system green with white is about 2:1).
+    static let confirmed = Color(red: 0.0, green: 0.42, blue: 0.18)
+    static let tab = Font.system(size: 20, weight: .semibold)
     static let body = Font.system(size: 22)
     static let bodyBold = Font.system(size: 22, weight: .semibold)
     static let small = Font.system(size: 20)
@@ -35,7 +46,7 @@ struct ModeHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(text).font(Stage.header).accessibilityIdentifier("mode-header")
-            if let detail { Text(detail).font(Stage.small).foregroundStyle(.secondary) }
+            if let detail { Text(detail).font(Stage.small).foregroundStyle(Stage.muted) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -47,6 +58,8 @@ struct RecordDisagreesTag: View {
         Label("record disagrees", systemImage: "exclamationmark.triangle.fill")
             .font(Stage.small.weight(.semibold))
             .foregroundStyle(.black)
+            .lineLimit(1)
+            .fixedSize()  // never wraps: the row puts it on its own line when it does not fit beside the unit
             .padding(.horizontal, 10)
             .padding(.vertical, 4)
             .background(Stage.amber, in: Capsule())
