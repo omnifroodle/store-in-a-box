@@ -3,7 +3,7 @@
 The Phase 0 demo, run twice the same way. Every command below is copied from a merged README or port doc (cited per
 step); every number only a live run can give is a placeholder that names the `needs-verification` issue that fills
 it. This runbook has not yet been rehearsed (task 4 of WS7, #18, `[owner-present]`): until the rehearsal issue
-(#116) records a run, treat each step as "as designed", not "as observed".
+(#124) records a run, treat each step as "as designed", not "as observed".
 
 The acceptance checklist is [`phase0-acceptance.md`](phase0-acceptance.md); the labels and scripts are described in
 [`scripts/demo/README.md`](../../scripts/demo/README.md); putting everything back between runs is
@@ -181,7 +181,7 @@ pack's chain ends in the tablet's sale). The uplink is still cut from beat 2.
   window, or scrolled out of view) and bring it up at step 3. If the rehearsal finds that unworkable, the fallback
   is the last paragraph above ("or use it"), spoken. Whichever the rehearsal picks, edit this bullet and send any
   change to the words above to the note as a `for-foreman` issue, so the two stay one text. Decided at: *the
-  rehearsal (#116)*.
+  rehearsal (#124)*.
 - **Step 1, fire the staged sale.** In the HQ stage control pick `JKT-RAIN-M-BLU#001`, or from a terminal:
   `scripts/demo/stage_oversell.sh 'JKT-RAIN-M-BLU#001'`. It prints the transaction id and the dispute to expect
   (`oversell`, `JKT-RAIN-M-BLU#001|root`).
