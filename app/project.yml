@@ -49,16 +49,30 @@ targets:
     dependencies:
       - package: SIABCore
         product: SIABCore
+  StoreInABoxTests:
+    # The screens' view-model tests (WS6), hosted in the app so they can `@testable import StoreInABox`.
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: StoreInABoxTests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.storeinabox.tests
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: StoreInABox
 schemes:
   StoreInABox:
     build:
       targets:
         StoreInABox: all
+        StoreInABoxTests: [test]
     run:
       config: Debug
     test:
       config: Debug
       targets:
+        - StoreInABoxTests
         - package: SIABCore/SIABCoreTests
   SIABCore:
     build:

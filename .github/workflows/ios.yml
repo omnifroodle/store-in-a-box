@@ -59,3 +59,20 @@ jobs:
         run: |
           xcodebuild build -project app/StoreInABox.xcodeproj -scheme StoreInABox \
             -destination "platform=iOS Simulator,name=$SIM_NAME" CODE_SIGNING_ALLOWED=NO
+      - name: Pick the iPad simulator
+        # WS6's blueprint names an iPad (10th generation); a runner image without one falls back to its first iPad.
+        run: |
+          if xcrun simctl list devices available | grep -q "iPad (10th generation) ("; then
+            name="iPad (10th generation)"
+          else
+            name=$(xcrun simctl list devices available | grep -m1 -E "^ +iPad" | sed -E 's/^ +(.+) \([0-9A-F-]{36}\).*$/\1/')
+          fi
+          echo "Using $name"
+          echo "IPAD_NAME=$name" >> "$GITHUB_ENV"
+      - name: Test the app (StoreInABoxTests, the screens' view models)
+        run: |
+          set -o pipefail
+          xcodebuild test -project app/StoreInABox.xcodeproj -scheme StoreInABox \
+            -destination "platform=iOS Simulator,name=$IPAD_NAME" -only-testing:StoreInABoxTests \
+            -test-timeouts-enabled YES -default-test-execution-time-allowance 60 | tee app-tests.log
+          grep -E "Executed [0-9]+ tests" app-tests.log | tail -1

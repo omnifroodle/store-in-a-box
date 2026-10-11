@@ -5,7 +5,7 @@ import os
 import SIABCore
 
 /// The composition root: opens the database, loads the pairing and wires SIABCore's services (the custody store and
-/// the sync coordinator). Kept small so WS6 can register its screens here without touching SIABCore.
+/// the sync coordinator), then registers the screens and the scanner (WS6) over them.
 @MainActor
 final class AppModel: ObservableObject {
     static let log = Logger(subsystem: "com.example.storeinabox", category: "ledger")
@@ -13,16 +13,23 @@ final class AppModel: ObservableObject {
     @Published private(set) var state: LedgerState = .empty(store: Custodian.store)
     @Published private(set) var sync: SyncCoordinator?
     @Published private(set) var problem: String?
+    /// Sell, Shelf, Custody, Exceptions and the scanner; nil until this device is paired.
+    @Published private(set) var screens: Screens?
     private(set) var database: Database?
     private(set) var custody: CustodyStore?
     private var pairings: PairingStore?
+    private var catalog: StoreProductCatalog?
     private var subscriptions: Set<AnyCancellable> = []
 
     init() {
+        // Hosting StoreInABoxTests: open nothing, so no unit test starts a replicator or touches the app's database
+        // (a simulator that was paired by hand would otherwise sync during the tests).
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil { return }
         do {
             let database = try Database(name: "storeinabox")
             try CustodyStore.prepare(database)
             self.database = database
+            catalog = StoreProductCatalog(database: database)
             let pairings = PairingStore(database: database)
             self.pairings = pairings
             if let pairing = try pairings.load() { try start(pairing) }
@@ -50,7 +57,7 @@ final class AppModel: ObservableObject {
     }
 
     private func start(_ pairing: PairingPayload) throws {
-        guard let database else { return }
+        guard let database, let catalog else { return }
         sync?.stop()
         subscriptions = []
         let custody = try CustodyStore(database: database, identity: pairing.identity, clock: SystemClock())
@@ -69,6 +76,7 @@ final class AppModel: ObservableObject {
         self.custody = custody
         self.sync = sync
         identity = pairing.identity
+        screens = Screens(store: custody, catalog: catalog)
         sync.start()
     }
 
