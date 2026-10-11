@@ -219,6 +219,11 @@ WHERE p.category_family IN $complements
 ORDER BY d LIMIT 20;
 <span class="c">-- keyword half: MATCH(p.tags, "waterproof socks pack-cover"), same filters</span>
 <span class="c">-- fused by rank, then joined to this custodian's allocations</span></pre>
+    <aside class="possible">
+      <p class="tag">Capella AI Data Plane · possible, not in this demo</p>
+      <p>A vectorization workflow could embed the catalog in the cluster for the tablet to search offline, and with the uplink up the reason line could come from a hosted model whose semantic cache answers a close-enough question without calling the model again.<sup><a href="#fn12">12</a></sup></p>
+      <p>Or pack the advisor itself into the box with the stock: its prompt and tools kept in Agent Catalog, synced down with the trip, run on the tablet. Our design, not a product feature, and it starts with a spike.<sup><a href="#fn13">13</a></sup></p>
+    </aside>
     <a class="more" href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/hybrid-upsell.md">How the upsell advisor works →</a>
   </div>
   <figure class="card">
@@ -273,6 +278,10 @@ ORDER BY d LIMIT 20;
     <p>Before the trip, an agent finds what the venue requires: licence, tax registration, tent inspection, organiser permit. Each claim is retrieved with the jurisdiction as a hard filter, drafted with the passage it came from, ground-checked by a second model, and tested for freshness and jurisdiction match by code that is not a model at all.</p>
     <div class="bignum"><span>3</span> checks, three states. Verified, needs confirmation, not found. Never a bare percentage.<sup><a href="#fn7">7</a></sup></div>
     <p>We poison one source before the demo. Watch the agent catch it. Then the clerk calls the county from the parking lot, and that phone call becomes a source for next time.</p>
+    <aside class="possible">
+      <p class="tag">Capella AI Data Plane · possible, not in this demo</p>
+      <p>Agent Catalog could version every tool and prompt the agent uses, so each claim names the exact version that made it. A cache in front of compliance questions would key on the jurisdiction, so Richmond, Virginia never answers for Richmond, California.<sup><a href="#fn13">13</a></sup></p>
+    </aside>
     <a class="more" href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/agents-and-evaluation.md">How the agent proves its work →</a>
   </div>
   <figure class="card">
@@ -356,6 +365,10 @@ function (doc, oldDoc, meta) {
     <h2>Once it syncs, it is just data. Then it is the next trip.</h2>
     <p>Data a tablet wrote in a field with no signal is ordinary Capella data when it lands: SQL++ for the conservation query and the exception queue, Columnar for the venue scorer, Search for the compliance agent's retrieval, Eventing for reorders, AI Services and Agent Catalog for the agents. The explainer writes the end-of-day narrative. The retrospective is evidence for the scorer's next run.</p>
     <div class="bignum"><span>5</span> agents before the trip, three on the box, two after. None calls another. They read and write documents.<sup><a href="#fn10">10</a></sup></div>
+    <aside class="possible">
+      <p class="tag">Capella AI Data Plane · possible, not in this demo</p>
+      <p>At rejoin, an assistant could draft a resolution for each exception with both branches as its evidence, and <code>ai_summary</code> in SQL++ could put one line beside each dispute on HQ's queue. The assistant would advise. HQ would still decide.<sup><a href="#fn14">14</a></sup></p>
+    </aside>
     <a class="more" href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/capella-reconcile.md">How Capella reconciles and plans →</a>
   </div>
 </section>
@@ -416,6 +429,7 @@ function (doc, oldDoc, meta) {
       <div><dt>Loyalty</dt><dd>Signed QR (retailer key, validity window), salted phone hash, per-member allowance reserved in Capella and split like inventory.</dd></div>
       <div><dt>Compliance</dt><dd>Hybrid retrieval with jurisdiction filter, second-model ground check, deterministic freshness and jurisdiction checks, 20-site gold set, zero false verifieds to ship.</dd></div>
       <div><dt>Seed data</dt><dd>300 to 500 outdoor-apparel SKUs with embeddings, two stores, 18 months of synthetic sales, three past pop-ups, three to four real jurisdictions' ordinance text.</dd></div>
+      <div><dt>Room to grow</dt><dd>The Capella AI Data Plane could add hosted models with semantic caching and guardrails, AI Functions in SQL++, vectorization workflows, and Agent Catalog for every agent's prompts as well as its tools. Possibilities, not part of this demo.<sup><a href="#fn12">12</a></sup></dd></div>
       <div><dt>Not in scope</dt><dd>Real payments, PCI, receipt printing, filing permits, social media ingestion beyond an optional labelled feed, fleet optimisation.</dd></div>
       <div><dt>Status</dt><dd>Spec complete. Build in phases; Phase 0 is sync and custody with no AI. See the spec for acceptance criteria.</dd></div>
     </dl>
@@ -460,6 +474,9 @@ function (doc, oldDoc, meta) {
     <li id="fn9">Checked on 2026-10-07: Couchbase Edge Server 1.1 has no application hook for conflict resolution, and Capella App Services rejects a conflicting push from a client and leaves the resolution to Couchbase Lite on that client. So custody is never left to a resolver: movements are immutable and forks are found by the ledger on every node (decision 001). Everything that is not custody or money is last-write-wins.</li>
     <li id="fn10">Before: venue scorer, compliance checker, research agent, packing planner, plus the explainer and retrospective after; on the box: clerk copilot, upsell reason line, briefing. Counted from the spec's agent roster; the v1 cut is smaller and listed there.</li>
     <li id="fn11">The Phase 0 box is a macOS laptop (decision 002). Edge Server 1.1 supports ARM64 Linux on Ubuntu 22.04 and later, and the demo's Raspberry Pi runs Debian Trixie, so the Pi is best-effort until one of those changes. Whether a Pi carries the small model at demo-acceptable latency is settled before Phase 1.</li>
+    <li id="fn12">The Capella AI Data Plane is not part of this demo; its items are possibilities, listed in the roadmap (<code>docs/ROADMAP.md</code>). The Model Service and Data Processing need Enterprise support. Semantic caching needs a deployed embedding model and returns a cached answer when a new prompt is close enough to an earlier one. Data Processing runs as workflows you stop and re-run; the docs do not say whether a running workflow picks up documents written after it started. Sources: <a href="https://docs.couchbase.com/ai/get-started/intro.html">AI Data Plane overview</a>, <a href="https://docs.couchbase.com/ai/build/model-service/configure-value-adds.html">Model Service caching</a>, <a href="https://docs.couchbase.com/ai/build/model-service/deploy-llm-model.html">deploying an LLM</a> (guardrails), <a href="https://docs.couchbase.com/ai/build/vectorization-service/data-processing.html">Data Processing</a>, all checked 9 October 2026.</li>
+    <li id="fn13">Agent Catalog is a versioned store of an agent's tools and prompts, with git as the version source; it publishes them to an <code>agent_catalog</code> scope in the cluster and does not run them. Keying a cache on the jurisdiction is our design rule, not a product guarantee. Syncing the catalog to the tablets and running its tools there is our design on top of Agent Catalog, not a product feature; step one is a spike to see whether the published documents can be read outside Python. Source: <a href="https://docs.couchbase.com/ai/build/integrate-agent-with-catalog.html">Agent Catalog docs</a>, checked 9 October 2026.</li>
+    <li id="fn14">Not part of this demo. A drafted resolution would be stored as advice, never as the resolution: HQ is the authority on disputes and orders its own decisions (decisions 007 and 008). AI Functions such as <code>ai_summary</code> need a paid Capella cluster on Couchbase Server 8.0 or later with multiple availability zones and Developer Pro or Enterprise support. Source: <a href="https://docs.couchbase.com/ai/build/ai-functions.html">AI Functions docs</a>, checked 9 October 2026.</li>
   </ol>
   <p>Store in a Box is a demo built to show Couchbase Lite, device-to-device sync, Couchbase Edge Server, Capella App Services and Capella working together. Couchbase, Capella and Couchbase Lite are trademarks of Couchbase, Inc. The retailer, the venues and the ordinance figures on this page are illustrative. Sample product data is synthetic.</p>
 </footer>

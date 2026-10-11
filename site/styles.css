@@ -81,6 +81,10 @@ figcaption { font-family: var(--heading); font-size: .85rem; text-transform: upp
 pre.query { max-width: 100%; background: var(--ink); color: var(--cream); font-family: var(--mono); font-size: .82rem; line-height: 1.45; padding: 16px; border-radius: 6px; overflow-x: auto; border-left: 6px solid var(--label); margin: 12px 0; }
 pre.query .c { color: #B8AE9A; }
 pre.query .k { color: var(--label); }
+/* Possible enhancements: not part of the demo, so a dashed tape outline, never the solid ink of a feature. */
+.possible { max-width: 60ch; margin: 14px 0; padding: 10px 14px; background: var(--creamDeep); border: 2px dashed var(--tape); border-radius: 4px; font-size: .95rem; }
+.possible .tag { margin: 0 0 4px; font-family: var(--heading); font-weight: 600; text-transform: uppercase; letter-spacing: .12em; font-size: .8rem; color: var(--tape); }
+.possible p { margin: 4px 0; }
 hr.tape { border: 0; height: 18px; max-width: var(--maxw); margin: 0 auto; background:
   repeating-linear-gradient(135deg, var(--label) 0 14px, var(--ink) 14px 16px); opacity: .9; border-radius: 2px; }
 
