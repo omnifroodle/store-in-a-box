@@ -30,6 +30,7 @@ Owned by this workstream:
 
 Named edits in neighbours' code:
 - `ports/README.md`: append one line pointing at `ports/ledger.md` as implemented by `SIABCore`.
+- `README.md`: one short section on the Couchbase Lite edition switch and the licence disclaimer (#100, #106).
 
 WS6 later owns `app/StoreInABox/UI/` and makes named edits in `app/StoreInABox/App/`; keep the app target's
 composition root (`App/AppModel.swift`) small so WS6 can add screens without touching `SIABCore`.

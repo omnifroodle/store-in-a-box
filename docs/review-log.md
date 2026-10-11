@@ -19,3 +19,6 @@ From 2026-10-08 to 2026-10-12 the reviewer runs on Sonnet as a trial (the owner 
 | #82 contracts 0.5.0 (CC9) and WS1 update, Sonnet | 1 | 0 | 0 | #83 (rule-8 fixture gap: a non-hq writer moving stock from the store; a closed foreign movement reappears when its predecessor arrives; stale text) | no |
 | #87 contracts 0.6.0 (CC10) and WS1 update, Sonnet (an audit: merged before the gate reported) | 1 | 0 | 0 | #88 (kind-match reverse unpinned; acts_for vs "hq has no box"; stale text; no unit test for the rule 7 split) | no |
 | #102 WS4 Swift data layer (SIABCore), Sonnet | 1 | 0 | 0 | #104 (8 items: the one-batch test cannot catch two batches; unpinned box config path; malformed pairing QR traps; silent decode skips; two undefined custody cases for the architect) | no |
+| #107 WS4b sync, Diagnostics, pairing, CE/EE switch, Sonnet | 1 | 0 | 0 | #108 (Package.resolved pins EE; no retry on pinned-cert pairing; unpinned-path edges) | no |
+| #112 WS9 AI Data Plane possibilities (docs and page), Sonnet | 1 | 0 | 0 | #113 (a claim misattributed to the Data Processing page, fixed before merge in 667c611; four claims stronger than their sources) | no |
+| #118 WS6 clerk screens, Sonnet | 1 | 0 | 0 | #119 (high-contrast default missing; banner overlap; tag wraps on iPad portrait); four files outside the literal Files list accepted (#115) | no |
