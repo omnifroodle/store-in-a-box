@@ -50,6 +50,45 @@ def test_reset_with_yes_runs_the_three_steps_in_order(tmp_path):
     assert "Rebuild derived state" in r.stdout
 
 
+def _fakes(tmp_path, reset_output=""):
+    log = tmp_path / "calls.log"
+    uv = tmp_path / "uv"
+    uv.write_text(f'#!/bin/sh\necho "uv $*" >> "{log}"\ncase "$*" in *reset-trip*) echo "{reset_output}";; esac\n')
+    uv.chmod(0o755)
+    curl = tmp_path / "curl"
+    curl.write_text(f'#!/bin/sh\necho "curl $*" >> "{log}"\n')
+    curl.chmod(0o755)
+    return log, {"PATH": f"{tmp_path}:{os.environ['PATH']}", "SIAB_TRIP": "", "SIAB_BOX_STATUS_URL": ""}
+
+
+def test_reset_reads_dotenv_like_the_python_tools(tmp_path):
+    # Not exported: the quotes and the `export ` prefix must not reach the command line.
+    for line in ('SIAB_TRIP="trip-2026-10-18-riverfest"', "export SIAB_TRIP='trip-2026-10-18-riverfest'",
+                 "  export SIAB_TRIP = trip-2026-10-18-riverfest  "):
+        log, env = _fakes(tmp_path, "reset-trip x: 3 change(s)")
+        env.pop("SIAB_TRIP")
+        env.pop("SIAB_BOX_STATUS_URL")
+        (tmp_path / ".env").write_text(f"# c\n{line}\nSIAB_BOX_STATUS_URL=\"http://box.invalid:1/\"\n")
+        log.unlink(missing_ok=True)
+        r = run(RESET, "--yes", env=env, cwd=tmp_path)
+        assert r.returncode == 0, r.stderr
+        assert log.read_text().splitlines() == [
+            "uv run python -m siab_capella reset-trip --trip trip-2026-10-18-riverfest --yes",
+            "uv run python -m siab_capella seed --yes",
+            "curl -fsS --max-time 5 -X POST http://box.invalid:1/bytes/reset",
+        ]
+
+
+def test_reset_stops_when_reset_trip_finds_nothing(tmp_path):
+    log, env = _fakes(tmp_path, "reset-trip x: 0 change(s), 3 already in place\nnothing to do")
+    env["SIAB_TRIP"] = "trip-typo"
+    r = run(RESET, "--yes", env=env, cwd=tmp_path)
+    assert r.returncode == 1
+    assert "found no documents" in r.stderr
+    assert "Done in Capella" not in r.stdout
+    assert log.read_text().splitlines() == ["uv run python -m siab_capella reset-trip --trip trip-typo --yes"]
+
+
 class StubHq(BaseHTTPRequestHandler):
     seen: list = []
 

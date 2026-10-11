@@ -13,8 +13,30 @@ if [[ "${1:-}" != "--yes" || $# -ne 1 ]]; then
   exit 2
 fi
 
-# .env is read the way the Python tools read it: the process environment wins. It is never sourced or printed.
-dotenv() { [[ -f .env ]] && sed -n "s/^$1=//p" .env | tail -n 1 || true; }
+# .env is read the way siab_capella.config.read_dotenv reads it: the process environment wins; lines are trimmed, a
+# leading `export ` and one layer of matching quotes are dropped, the last assignment wins. Never sourced or printed.
+dotenv() {
+  local want="$1" raw line key value found=""
+  [[ -f .env ]] || return 0
+  while IFS= read -r raw || [[ -n "$raw" ]]; do
+    line="${raw#"${raw%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
+    [[ -z "$line" || "$line" == \#* || "$line" != *=* ]] && continue
+    line="${line#export }"
+    key="${line%%=*}"
+    key="${key#"${key%%[![:space:]]*}"}"
+    key="${key%"${key##*[![:space:]]}"}"
+    [[ "$key" == "$want" ]] || continue
+    value="${line#*=}"
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+    if [[ ${#value} -ge 2 && "${value:0:1}" == "${value: -1}" && ( "${value:0:1}" == "'" || "${value:0:1}" == '"' ) ]]; then
+      value="${value:1:${#value}-2}"
+    fi
+    found="$value"
+  done < .env
+  printf '%s' "$found"
+}
 
 trip="${SIAB_TRIP:-$(dotenv SIAB_TRIP)}"
 box="${SIAB_BOX_STATUS_URL:-$(dotenv SIAB_BOX_STATUS_URL)}"
@@ -25,7 +47,14 @@ if [[ -z "$trip" ]]; then
   exit 1
 fi
 
-uv run python -m siab_capella reset-trip --trip "$trip" --yes
+reset_out="$(uv run python -m siab_capella reset-trip --trip "$trip" --yes)"
+printf '%s\n' "$reset_out"
+if [[ "$reset_out" == *"nothing to do"* ]]; then
+  echo "reset_rehearsal.sh: reset-trip found no documents for trip '$trip'; stopping before the seed and the byte reset." >&2
+  echo "  Check SIAB_TRIP spells the trip id exactly. If the trip really is already clear, run the seed and" >&2
+  echo "  POST /bytes/reset by hand (docs/runbook/reset.md)." >&2
+  exit 1
+fi
 uv run python -m siab_capella seed --yes
 curl -fsS --max-time 5 -X POST "$box/bytes/reset"
 echo
