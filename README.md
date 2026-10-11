@@ -31,7 +31,7 @@ becomes an exception with both sales attached. No resolver, no node choosing bet
 | Architecture | [`docs/architecture/overview.md`](docs/architecture/overview.md) and one note per component; the custody pattern is [`docs/architecture/conflict-free-ledger.md`](docs/architecture/conflict-free-ledger.md) |
 | Product page | `site/`, published to GitHub Pages by `.github/workflows/pages.yml` |
 | Deck | `deck/`, not started |
-| Status | Spec and architecture notes complete. Phase 0 not started. |
+| Status | Spec and architecture notes complete. Phase 0 is built and its runbook is drafted: [`docs/runbook/phase0.md`](docs/runbook/phase0.md); the live rehearsal is outstanding. |
 
 ## Layout
 
