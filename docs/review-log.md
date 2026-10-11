@@ -22,3 +22,6 @@ From 2026-10-08 to 2026-10-12 the reviewer runs on Sonnet as a trial (the owner 
 | #107 WS4b sync, Diagnostics, pairing, CE/EE switch, Sonnet | 1 | 0 | 0 | #108 (Package.resolved pins EE; no retry on pinned-cert pairing; unpinned-path edges) | no |
 | #112 WS9 AI Data Plane possibilities (docs and page), Sonnet | 1 | 0 | 0 | #113 (a claim misattributed to the Data Processing page, fixed before merge in 667c611; four claims stronger than their sources) | no |
 | #118 WS6 clerk screens, Sonnet | 1 | 0 | 0 | #119 (high-contrast default missing; banner overlap; tag wraps on iPad portrait); four files outside the literal Files list accepted (#115) | no |
+| #123 HQ hardening (Host, Origin, Content-Type), Sonnet | 1 | 0 | 0 | #127 (a deep-nested JSON body still gives 500; case-sensitive Host match; checks skip if the port is unset) | no |
+| #128 WS7 labels, scripts, runbook, Sonnet | 2 | 1 (reset_rehearsal.sh kept quotes from .env, so a quoted SIAB_TRIP reset nothing and printed "Done") | 1 | #129 (wording; unit reuse across beats; QR quiet zone; "already clear" vs wrong trip id) | no |
+| #134 app polish (stage UX, basket batch, CE Package.resolved, pairing edges), Sonnet | 1 | 0 | 0 | #135 (stale retry reason on a cert mismatch; accent contrast about 4:1; camera session rebuilt on tab switch) | no |
