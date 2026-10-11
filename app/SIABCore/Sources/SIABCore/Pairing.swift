@@ -40,14 +40,14 @@ public struct PairingPayload: Codable, Equatable {
         }
         try check("device", device, HLC.isDeviceID(device))
         try check("box", box, HLC.isDeviceID(box))
-        try check("trip", trip, trip.range(of: #"^trip-[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9-]+$"#,
-                                            options: .regularExpression) != nil)
+        // Whole-string matches: `$` would also accept a trailing newline (#108).
+        try check("trip", trip, trip.wholeMatch(of: #/trip-[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9-]+/#) != nil)
         let url = URLComponents(string: edgeURL)
         try check("edge_url", edgeURL, ["ws", "wss"].contains(url?.scheme) && !(url?.host ?? "").isEmpty)
         try check("user", user, !user.isEmpty)
         try check("peer_group", peerGroup, !peerGroup.isEmpty)
         if let cert = certSHA256 {
-            try check("cert_sha256", cert, cert.range(of: "^[0-9a-f]{64}$", options: .regularExpression) != nil)
+            try check("cert_sha256", cert, cert.wholeMatch(of: #/[0-9a-f]{64}/#) != nil)
         }
     }
 

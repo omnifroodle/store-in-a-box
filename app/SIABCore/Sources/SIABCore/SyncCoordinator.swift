@@ -131,12 +131,19 @@ public final class SyncCoordinator: ObservableObject {
     @Published public var peers: [PeerLink] = []
 
     public typealias Fetch = (URL) async throws -> Data
+    /// Waits the given number of milliseconds; throws when cancelled. Tests pass virtual time.
+    public typealias Sleep = (Int64) async throws -> Void
+    /// The waits between attempts to fetch the box certificate: doubling from 1 s, then every 30 s (#108).
+    public static func certificateRetryDelayMs(attempt: Int) -> Int64 { min(1_000 << min(attempt, 5), 30_000) }
+
     public let pairing: PairingPayload
     let database: Database
     let identityProvider: TLSIdentityProvider
     let clock: Clock
     let fetch: Fetch
+    let sleep: Sleep
     private var replicator: Replicator?
+    private var certificateTask: Task<Void, Never>?
     private var tokens: [ListenerToken] = []
     private var lastSeenMs: Int64?
     private var peerTable: [String: PeerLink] = [:]
@@ -144,17 +151,21 @@ public final class SyncCoordinator: ObservableObject {
     private var generation = 0
     /// Tests build the box replicator without starting it: its pending ids work, and nothing touches the network.
     var startsReplicators = true
+    /// Whether the box replicator has been built (tests).
+    var hasBoxReplicator: Bool { replicator != nil }
     #if COUCHBASE_ENTERPRISE
     private var multipeer: MultipeerReplicator?
     #endif
 
     public init(database: Database, pairing: PairingPayload, identity: TLSIdentityProvider,
-                clock: Clock = SystemClock(), fetch: @escaping Fetch = { try await URLSession.shared.data(from: $0).0 }) {
+                clock: Clock = SystemClock(), fetch: @escaping Fetch = { try await URLSession.shared.data(from: $0).0 },
+                sleep: @escaping Sleep = { try await Task.sleep(nanoseconds: UInt64($0) * 1_000_000) }) {
         self.database = database
         self.pairing = pairing
         self.identityProvider = identity
         self.clock = clock
         self.fetch = fetch
+        self.sleep = sleep
     }
 
     deinit { stop() }
@@ -167,22 +178,50 @@ public final class SyncCoordinator: ObservableObject {
         guard let expected = pairing.certSHA256 else { return startBox(pinned: nil) }
         guard let agent = pairing.agentURL else { return box = .error("no box agent address in the pairing payload") }
         let started = generation
-        Task { @MainActor in
-            do {
-                let pem = try await fetch(agent.appendingPathComponent("cert.pem"))
-                guard started == generation else { return }  // stopped (or restarted) while fetching
-                guard let cert = Replication.pinnedCertificate(pem: pem, expected: expected) else {
-                    return box = .error("the box certificate does not match the pairing QR")
-                }
-                startBox(pinned: cert)
-            } catch {
-                if started == generation { box = .error("could not fetch the box certificate: \(error.localizedDescription)") }
+        let sleep = sleep
+        // The box may be off or out of range at launch: an unreachable agent is retried with backoff (the box link
+        // reads offline meanwhile, with the reason), so box replication starts once the box is up (#108). Holds the
+        // coordinator only while a fetch is in flight.
+        certificateTask = Task { @MainActor [weak self] in
+            var attempt = 0
+            while let delay = await self?.fetchCertificate(from: agent, expected: expected, started: started,
+                                                           attempt: attempt) {
+                attempt += 1
+                do { try await sleep(delay) } catch { return }  // cancelled: stopped
             }
+        }
+    }
+
+    /// One attempt at the box certificate. Starts the box replicator on a match; a certificate that does not match
+    /// the pairing QR is an error and is not retried. Returns how long to wait before the next attempt, or nil when
+    /// there is none (done, refused, or stopped meanwhile).
+    @MainActor
+    private func fetchCertificate(from agent: URL, expected: String, started: Int, attempt: Int) async -> Int64? {
+        guard started == generation else { return nil }
+        do {
+            let pem = try await fetch(agent.appendingPathComponent("cert.pem"))
+            guard started == generation else { return nil }  // stopped (or restarted) while fetching
+            guard let cert = Replication.pinnedCertificate(pem: pem, expected: expected) else {
+                box = .error("the box certificate does not match the pairing QR")
+                return nil
+            }
+            boxReason = nil
+            startBox(pinned: cert)
+            return nil
+        } catch {
+            guard started == generation else { return nil }
+            let delay = Self.certificateRetryDelayMs(attempt: attempt)
+            box = .offline(lastSeenMs: lastSeenMs)
+            boxReason = "could not fetch the box certificate: \(error.localizedDescription) (retrying in \(delay / 1000) s)"
+            Self.log.info("\(self.boxReason ?? "", privacy: .public)")
+            return delay
         }
     }
 
     public func stop() {
         generation += 1
+        certificateTask?.cancel()
+        certificateTask = nil
         tokens.forEach { $0.remove() }
         tokens = []
         replicator?.stop()

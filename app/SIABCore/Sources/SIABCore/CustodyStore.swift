@@ -26,10 +26,22 @@ struct UnitRecord: Codable, Equatable {
     enum CodingKeys: String, CodingKey { case sku, holder, allocation, state, lastTxn = "last_txn", latestTxn = "latest_txn" }
 }
 
+/// One line of a basket sale: the unit and the price it sells at.
+public struct SaleLine: Equatable {
+    public var unit: String
+    public var price: Money
+    public init(unit: String, price: Money) { self.unit = unit; self.price = price }
+}
+
 /// The only writer to `store.*`. Every write is one `inBatch` (the transaction and the allocation it opens or
 /// closes); the ledger state is recomputed after every local write and on every change to `store.transaction` or
 /// `store.exception`, and `local.unit_state` is rewritten from it. Call from the main thread.
 public final class CustodyStore {
+    public enum Failure: Error, Equatable {
+        /// A basket names the same unit on two lines.
+        case sameUnitTwice
+    }
+
     public static let storeScope = "store"
     public static let localScope = "local"
     public static let replicatedCollections = ["product", "trip", "allocation", "transaction", "exception"]
@@ -51,7 +63,7 @@ public final class CustodyStore {
     private let subject: CurrentValueSubject<LedgerState, Never>
     private var tokens: [ListenerToken] = []
     private(set) var lastHLC: HLC?
-    /// Test seam: runs inside the write batch right after the transaction is saved.
+    /// Test seam: runs inside the write batch right after each transaction is saved.
     var afterTransactionWrite: (() throws -> Void)?
 
     /// Recomputed on any `store.transaction` or `store.exception` change.
@@ -144,12 +156,26 @@ public final class CustodyStore {
     /// with no record, a blind sale from the box. `basket` defaults to a new basket of one.
     @discardableResult
     public func sell(unit: String, tender: Tender, price: Money, basket: String? = nil) throws -> Transaction {
-        let known = try known(unit)
-        let txn = movement(.sale, unit: unit, from: known?.holder ?? identity.box, to: Custodian.customer,
-                           prev: known?.latest?.id, fromAllocation: known?.allocation, toAllocation: nil,
-                           basket: basket ?? UUID().uuidString.lowercased(), price: price, tender: tender)
-        try commit(txn)
-        return txn
+        try sell(basket: [SaleLine(unit: unit, price: price)], tender: tender, id: basket)[0]
+    }
+
+    /// A whole basket: one `sale` per line, each as `sell(unit:)` would write it, all sharing the basket id `id` (a
+    /// new one when nil) and the tender. One `inBatch` for every line, so the basket commits whole or not at all, and
+    /// the state is published once, after the commit: a subscriber never sees part of a basket. The units must be
+    /// distinct.
+    @discardableResult
+    public func sell(basket lines: [SaleLine], tender: Tender, id: String? = nil) throws -> [Transaction] {
+        guard !lines.isEmpty else { return [] }
+        guard Set(lines.map(\.unit)).count == lines.count else { throw Failure.sameUnitTwice }
+        let basket = id ?? UUID().uuidString.lowercased()
+        let txns = try lines.map { line -> Transaction in
+            let known = try known(line.unit)
+            return movement(.sale, unit: line.unit, from: known?.holder ?? identity.box, to: Custodian.customer,
+                            prev: known?.latest?.id, fromAllocation: known?.allocation, toAllocation: nil,
+                            basket: basket, price: line.price, tender: tender)
+        }
+        try commit(txns)
+        return txns
     }
 
     /// Writes the exception documents this device's detector owes for the current state, only those whose id does
@@ -258,9 +284,17 @@ public final class CustodyStore {
 
     /// One batch: the transaction and the allocations it opens or closes, nothing else.
     private func commit(_ txn: Transaction, allocations changed: [Allocation] = []) throws {
+        try commit([txn], allocations: changed)
+    }
+
+    /// One batch for the transactions (a basket's sales) and the allocations they open or close, then one rebuild:
+    /// nothing is published until the batch has committed, and nothing at all when it throws.
+    private func commit(_ txns: [Transaction], allocations changed: [Allocation] = []) throws {
         try database.inBatch {
-            try save(txn, id: txn.id, in: transactions)
-            try afterTransactionWrite?()
+            for txn in txns {
+                try save(txn, id: txn.id, in: transactions)
+                try afterTransactionWrite?()
+            }
             for alloc in changed { try save(alloc, id: alloc.id, in: allocations) }
         }
         try rebuild()
