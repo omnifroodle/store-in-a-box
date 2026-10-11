@@ -5,8 +5,13 @@ shows its statements), the presenter (the left half of the split screen).
 
 The HQ app runs on the presenter's laptop against the Capella cluster: `python -m siab_hq serve [--trip ID] [--port N]`.
 It listens on `127.0.0.1` only (no authentication in Phase 0), port `SIAB_HQ_PORT` (default `8788`). Every response
-has `Cache-Control: no-store`; errors are `{"error": "<why>"}` with `400` (a request HQ will not write), `404` (unknown
-path, trip or dispute), `405` or `500` (Capella unreachable). Timestamps are RFC 3339 in UTC to the second. Every
+has `Cache-Control: no-store`; errors are `{"error": "<why>"}` with `400` (a request HQ will not write), `403` (see below), `404` (unknown
+path, trip or dispute), `405`, `415` (see below) or `500` (Capella unreachable). Timestamps are RFC 3339 in UTC to the second. Because
+a loopback server is reachable from any web page the presenter has open, every request is checked before routing: the
+`Host` header must be `127.0.0.1:<port>` or `localhost:<port>` (else `403`, which stops DNS rebinding), an `Origin`
+header, when sent, must be `http://` plus one of those (else `403`), and every `POST` must be `Content-Type:
+application/json` (else `415`; a cross-site form cannot send it). A `POST` body is a JSON object whose fields have the
+types below; a field of the wrong type is `400` with the reason, never `500`. Every
 endpoint takes `trip` (query parameter for a `GET`, body field for a `POST`); it defaults to the served trip
 (`--trip`, else `SIAB_TRIP`).
 

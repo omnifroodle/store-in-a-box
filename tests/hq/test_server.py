@@ -202,27 +202,106 @@ def test_reconcile_endpoints_unknown_paths_and_trips(kit):
     assert route(app, "GET", f"/api/conservation?trip={other['trip']}")[0] == 200
 
 
-def test_http_server_on_loopback(kit):
-    app = kit.app(kit.hq(kit.fixture("oversell-hq")))
-
-    async def exchange(request: bytes) -> bytes:
+def _exchange(app, build) -> bytes:
+    """Serve the app on a free loopback port, send ``build(port)`` and return the raw reply."""
+    async def run() -> bytes:
         server = await serve(app, 0)
         port = server.sockets[0].getsockname()[1]
         assert server.sockets[0].getsockname()[0] == "127.0.0.1"
         reader, writer = await asyncio.open_connection("127.0.0.1", port)
-        writer.write(request)
+        writer.write(build(port))
         await writer.drain()
         reply = await reader.read()
         writer.close()
         server.close()
         await server.wait_closed()
         return reply
+    return asyncio.run(run())
 
-    reply = asyncio.run(exchange(b"GET /api/reconcile/status HTTP/1.1\r\nHost: x\r\n\r\n"))
+
+def _request(method, path, port, *, host=None, origin=None, ctype="application/json", body=b""):
+    lines = [f"{method} {path} HTTP/1.1", f"Host: {host if host is not None else f'127.0.0.1:{port}'}"]
+    if origin is not None:
+        lines.append(f"Origin: {origin}")
+    if ctype is not None and method == "POST":
+        lines.append(f"Content-Type: {ctype}")
+    lines.append(f"Content-Length: {len(body)}")
+    return ("\r\n".join(lines) + "\r\n\r\n").encode() + body
+
+
+def _status(reply: bytes) -> int:
+    return int(reply.split(b" ", 2)[1])
+
+
+def test_http_server_on_loopback(kit):
+    app = kit.app(kit.hq(kit.fixture("oversell-hq")))
+    reply = _exchange(app, lambda port: _request("GET", "/api/reconcile/status", port))
     head, _, body = reply.partition(b"\r\n\r\n")
     assert head.startswith(b"HTTP/1.1 200 OK") and b"Cache-Control: no-store" in head
     assert json.loads(body)["last_run"] is None
     payload = json.dumps({"unit_id": "JKT-RAIN-M-BLU#999"}).encode()
-    reply = asyncio.run(exchange(b"POST /api/stage/hq-sale HTTP/1.1\r\nContent-Length: "
-                                 + str(len(payload)).encode() + b"\r\n\r\n" + payload))
+    reply = _exchange(app, lambda port: _request("POST", "/api/stage/hq-sale", port, body=payload))
     assert reply.startswith(b"HTTP/1.1 400 Bad Request")
+
+
+def test_post_without_json_content_type_is_refused(kit):
+    """A cross-site form can send text/plain without a preflight; HQ must not act on it."""
+    app = kit.app(kit.hq(kit.fixture("pack-and-sell")))
+    payload = json.dumps({"unit_id": "JKT-RAIN-M-BLU#001"}).encode()
+    for ctype in ("text/plain", "application/x-www-form-urlencoded", "multipart/form-data; boundary=x", None):
+        reply = _exchange(app, lambda port, c=ctype: _request("POST", "/api/stage/hq-sale", port, ctype=c,
+                                                              body=payload))
+        assert _status(reply) == 415, ctype
+    assert app.hq.status.exceptions_written == 0  # nothing ran
+    ok = _exchange(app, lambda port: _request("POST", "/api/stage/hq-sale", port,
+                                              ctype="application/json; charset=utf-8", body=payload))
+    assert _status(ok) == 200
+
+
+def test_a_request_for_another_host_is_refused(kit):
+    """DNS rebinding: the page's origin is the attacker's name, resolving to 127.0.0.1."""
+    app = kit.app(kit.hq(kit.fixture("oversell-hq")))
+    for host in ("evil.example:8788", "evil.example", "127.0.0.1", "127.0.0.1:1", "0.0.0.0:%d", ""):
+        reply = _exchange(app, lambda port, h=host: _request("GET", "/api/tree", port,
+                                                              host=h % port if "%d" in h else h))
+        assert _status(reply) == 403, host
+    assert _status(_exchange(app, lambda port: _request("GET", "/api/tree", port, host=f"localhost:{port}"))) == 200
+    # a POST to the wrong host is refused whatever its body
+    reply = _exchange(app, lambda port: _request("POST", "/api/reconcile/run", port, host="evil.example:80",
+                                                 body=b"{}"))
+    assert _status(reply) == 403
+
+
+def test_a_foreign_origin_is_refused(kit):
+    app = kit.app(kit.hq(kit.fixture("oversell-hq")))
+    for origin in ("http://evil.example", "null", "https://127.0.0.1", "http://127.0.0.1:1"):
+        reply = _exchange(app, lambda port, o=origin: _request("POST", "/api/reconcile/run", port, origin=o,
+                                                               body=b"{}"))
+        assert _status(reply) == 403, origin
+    reply = _exchange(app, lambda port: _request("POST", "/api/reconcile/run", port,
+                                                 origin=f"http://127.0.0.1:{port}", body=b"{}"))
+    assert _status(reply) == 200
+    reply = _exchange(app, lambda port: _request("POST", "/api/reconcile/run", port, body=b"{}"))  # no Origin
+    assert _status(reply) == 200
+
+
+def test_malformed_values_are_400_not_500(kit):
+    app = kit.app(kit.hq(kit.fixture("pack-and-sell")))
+    bad = [
+        ("/api/stage/hq-sale", {}), ("/api/stage/hq-sale", {"unit_id": ["a"]}),
+        ("/api/stage/hq-sale", {"unit_id": {"a": 1}}), ("/api/stage/hq-sale", {"unit_id": 7}),
+        ("/api/stage/hq-sale", {"unit_id": "JKT-RAIN-M-BLU#001", "price": [1]}),
+        ("/api/stage/hq-sale", {"unit_id": "JKT-RAIN-M-BLU#001", "price": {"cents": "5", "currency": "USD"}}),
+        ("/api/stage/hq-sale", {"unit_id": "JKT-RAIN-M-BLU#001", "trip": ["t"]}),
+        ("/api/exceptions/resolve", {"dispute_key": ["x"], "transactions": ["a"]}),
+        ("/api/exceptions/resolve", {"dispute_key": "x", "transactions": "a"}),
+        ("/api/exceptions/resolve", {"dispute_key": "x", "transactions": [["a"]]}),
+        ("/api/exceptions/resolve", {"dispute_key": "x", "transactions": [{"a": 1}]}),
+        ("/api/exceptions/resolve", {"dispute_key": "x", "transactions": ["a"], "chosen_txn": ["a"]}),
+        ("/api/exceptions/resolve", {"dispute_key": "x", "transactions": ["a"], "trip": 5}),
+        ("/api/exceptions/close-superseded", {"trip": {"a": 1}}),
+        ("/api/reconcile/run", {"trip": 3}),
+    ]
+    for path, body in bad:
+        status, reply = _post(app, path, body)
+        assert status == 400 and reply["error"], (path, body, status, reply)

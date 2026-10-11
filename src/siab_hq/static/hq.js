@@ -32,13 +32,27 @@ async function refresh(name) {
   if (fresh && kept && [...fresh.options].some((o) => o.value === kept)) fresh.value = kept;
 }
 
+function panelError(name, message) {
+  const el = document.getElementById(name);
+  const old = el.querySelector(":scope > .panel-error");
+  if (old) old.remove();
+  if (!message) return;
+  const p = document.createElement("p");
+  p.className = "panel-error fails";
+  p.textContent = message;
+  el.prepend(p);
+}
+
+// One panel failing must not stop the others: each is refreshed on its own, the failing one shows its error.
 async function refreshAll() {
-  try {
-    for (const name of PANELS) await refresh(name);
-    showError("");
-  } catch (e) {
-    showError(String(e.message || e));
-  }
+  const results = await Promise.allSettled(PANELS.map((name) => refresh(name)));
+  const failures = [];
+  results.forEach((r, i) => {
+    const message = r.status === "rejected" ? String((r.reason && r.reason.message) || r.reason) : "";
+    panelError(PANELS[i], message);
+    if (message) failures.push(message);
+  });
+  showError(failures.join("; "));
 }
 
 async function post(path, body) {

@@ -27,8 +27,8 @@ from .queries import TripNotFound
 from .reconcile import FORK_KINDS, BadRequest, Hq, NotFound, Snapshot, queue, stageable
 
 Response = tuple[int, str, bytes]
-REASONS = {200: "OK", 400: "Bad Request", 404: "Not Found", 405: "Method Not Allowed", 500: "Internal Server Error",
-           502: "Bad Gateway"}
+REASONS = {200: "OK", 400: "Bad Request", 403: "Forbidden", 404: "Not Found", 405: "Method Not Allowed",
+           415: "Unsupported Media Type", 500: "Internal Server Error", 502: "Bad Gateway"}
 STATIC = {"/": ("index.html", "text/html; charset=utf-8"), "/hq.js": ("hq.js", "text/javascript; charset=utf-8"),
           "/hq.css": ("hq.css", "text/css; charset=utf-8")}
 LIVE_HEADER = "trip open: live view, nothing settled"
@@ -44,6 +44,7 @@ class App:
     hq: Hq
     box_status_url: str = ""
     http_get: Callable[[str], Any] = _http_get
+    port: int | None = None  # set by serve(): the port the Host header and Origin must name
     _names: dict[str, str | None] = field(default_factory=dict)
 
     def product_name(self, sku: str) -> str | None:
@@ -329,6 +330,8 @@ def route(app: App, method: str, target: str, body: bytes = b"") -> Response:
                 raise BadRequest("the body is not JSON") from None
             if not isinstance(req, dict):
                 raise BadRequest("the body is a JSON object")
+            if req.get("trip") is not None and not isinstance(req["trip"], str):
+                raise BadRequest("trip must be a string")
             trip = req.get("trip") or trip
             if path == "/api/exceptions/resolve":
                 return _json(app.hq.resolve(trip, req.get("dispute_key"), req.get("transactions"),
@@ -336,7 +339,9 @@ def route(app: App, method: str, target: str, body: bytes = b"") -> Response:
             if path == "/api/exceptions/close-superseded":
                 return _json(app.hq.close_superseded(trip))
             if path == "/api/stage/hq-sale":
-                return _json(app.hq.stage_hq_sale(trip, req.get("unit_id"), req.get("price")))
+                if not isinstance(req.get("unit_id"), str) or not req["unit_id"]:
+                    raise BadRequest("unit_id is required and is a string")
+                return _json(app.hq.stage_hq_sale(trip, req["unit_id"], req.get("price")))
             app.hq.run_once()
             return _json(app.hq.status.to_json())
         return _error(405, "method not allowed")
@@ -348,6 +353,29 @@ def route(app: App, method: str, target: str, body: bytes = b"") -> Response:
 
 # ---------------------------------------------------------------- the server
 
+LOOPBACK_HOSTS = ("127.0.0.1", "localhost")
+
+
+def check_request(app: App, method: str, headers: dict[str, str]) -> Response | None:
+    """Refuse what a web page on another site, or a rebound DNS name, could send to a loopback server.
+
+    The ``Host`` header must be the server's own loopback host and port (a rebound name carries its own); an
+    ``Origin``, when sent, must be the server's own origin; a POST must say ``Content-Type: application/json``, which
+    a cross-site form cannot send without a CORS preflight this server never answers. ``app.port`` unset (route
+    called directly, as most tests do) skips the checks that need to know it."""
+    if app.port is not None:
+        own = {f"{h}:{app.port}" for h in LOOPBACK_HOSTS}
+        if headers.get("host", "") not in own:
+            return _error(403, "Host is not this server's own loopback host and port")
+        origin = headers.get("origin")
+        if origin is not None and origin not in {f"http://{h}" for h in own}:
+            return _error(403, "Origin is not this server's own origin")
+    if method == "POST":
+        media = headers.get("content-type", "").partition(";")[0].strip().lower()
+        if media != "application/json":
+            return _error(415, "POST needs Content-Type: application/json")
+    return None
+
 async def handle(app: App, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
     try:
         head = await reader.readuntil(b"\r\n\r\n")
@@ -357,6 +385,8 @@ async def handle(app: App, reader: asyncio.StreamReader, writer: asyncio.StreamW
         length = int(headers.get("content-length") or 0)
         if len(parts) != 3 or not 0 <= length <= MAX_BODY:
             status, ctype, body = _error(400, "bad request")
+        elif (refused := check_request(app, parts[0].upper(), headers)) is not None:
+            status, ctype, body = refused
         else:
             data = await reader.readexactly(length) if length else b""
             try:
@@ -377,5 +407,7 @@ async def handle(app: App, reader: asyncio.StreamReader, writer: asyncio.StreamW
 
 async def serve(app: App, port: int, host: str = "127.0.0.1") -> asyncio.Server:
     """Loopback only in Phase 0: the HQ app has no authentication."""
-    return await asyncio.start_server(lambda r, w: handle(app, r, w), host, port, limit=16 * 1024)
+    server = await asyncio.start_server(lambda r, w: handle(app, r, w), host, port, limit=16 * 1024)
+    app.port = server.sockets[0].getsockname()[1]
+    return server
 
