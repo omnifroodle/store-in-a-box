@@ -16,7 +16,7 @@ struct CustodyView: View {
                             .frame(maxWidth: .infinity, minHeight: 52)
                     }
                     .buttonStyle(.bordered)
-                    .tint(selected ? .accentColor : .secondary)
+                    .tint(selected ? .accentColor : .primary)
                     .accessibilityAddTraits(selected ? .isSelected : [])
                     .accessibilityIdentifier("custody-mode-\(mode.rawValue)")
                 }
@@ -53,17 +53,30 @@ private struct CustodyLineRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(line.mode.title).font(Stage.bodyBold)
-                Text(line.unit).font(Stage.body.monospaced())
-                Spacer()
-                if line.disagrees { RecordDisagreesTag() }
+            // The tag beside the unit when the row is wide enough, else on its own line (#119 item 4).
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    scanned
+                    Spacer(minLength: 12)
+                    if line.disagrees { RecordDisagreesTag() }
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    scanned
+                    if line.disagrees { RecordDisagreesTag() }
+                }
             }
-            Text(allocationText).font(Stage.small).foregroundStyle(.secondary)
+            Text(allocationText).font(Stage.small).foregroundStyle(Stage.muted)
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private var scanned: some View {
+        HStack {
+            Text(line.mode.title).font(Stage.bodyBold)
+            Text(line.unit).font(Stage.body.monospaced()).lineLimit(1).minimumScaleFactor(0.7)
+        }
     }
 
     /// "fills box-07's allocation, opened 14:02:11": an allocation's id is `alloc::<hlc of its opening>`.

@@ -20,7 +20,8 @@ struct ScannerPanel: View {
                     .accessibilityLabel("Camera: point it at a unit label")
             }
             #if DEBUG
-            TextField("Type a label: SKU#serial", text: $typed)
+            TextField("Type a label: SKU#serial", text: $typed,
+                      prompt: Text("Type a label: SKU#serial").foregroundStyle(Stage.muted))
                 .font(Stage.body)
                 .textFieldStyle(.roundedBorder)
                 .textInputAutocapitalization(.characters)
