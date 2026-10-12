@@ -34,6 +34,7 @@ header line (milestone, depends on, label, agent type) and the Rules block. A bl
 Rules:
 - A blueprint that implies more than about 1,500 changed lines of code (tests and fixtures not counted) is split into
   two workstream issues.
+- Read `docs/notes/` (shared notes from earlier agents) before writing a blueprint.
 - Do not edit code, tests or `contracts/`. You write only under `docs/workstreams/` and file issues.
 - When the reviewer disputes a blueprint, you get an issue. Answer it there and amend the blueprint; the open PR is
   still judged against the blueprint as it was dispatched.

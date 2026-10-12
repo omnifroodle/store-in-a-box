@@ -9,7 +9,7 @@ later comment containing `[foreman: seen]`), open PRs that edit files outside th
 and local branches left behind after a merge, and the local default branch being behind origin.
 Lists as information: open `needs-verification` issues per milestone (a milestone with one open cannot be tagged), open
 PRs over the size cap (code lines only: tests and fixtures are not counted), worktrees with no PR, open `blog-worthy`
-issues and draft posts waiting (set DRAFTS_DIR below).
+issues and draft posts waiting (set DRAFTS_DIR below), and notes in `docs/notes/` waiting for the follow-up sweep.
 Exits 1 when something needs attention. Needs only the standard library and `gh`.
 """
 
@@ -27,6 +27,7 @@ from pathlib import Path, PurePosixPath
 GH = shutil.which("gh") or "/opt/homebrew/bin/gh"
 DRAFTS_DIR = None  # e.g. Path("blog/content/posts"); posts without `draft: false` are listed as waiting
 BLUEPRINTS_DIR = Path("docs/workstreams")
+NOTES_DIR = "docs/notes"  # shared notes any PR may add (FOREMAN.md, "Shared notes"); outside every Files list
 MAX_PR_LINES = 1500  # code lines (additions + deletions) above which a blueprint should have been split (FOREMAN.md)
 TEST_DIRS = {"tests", "test", "__tests__"}  # any directory with one of these names, at any depth, is always allowed
 FIXTURE_DIRS = {"fixtures", "testdata", "golden", "goldens", "snapshots", "__snapshots__"}
@@ -90,10 +91,16 @@ def blueprint_files(text: str) -> list[str] | None:
 
 
 def outside(changed: list[str], allowed: list[str]) -> list[str]:
-    """The changed paths that are not under (or matched by) any allowed path, and are not tests."""
+    """The changed paths that are not under (or matched by) any allowed path, and are not tests or shared notes."""
     return [c for c in changed
-            if not is_test_path(c)
+            if not is_test_path(c) and not c.startswith(NOTES_DIR + "/")
             and not any(c == a or c.startswith(a + "/") or fnmatch(c, a) for a in allowed)]
+
+
+def waiting_notes() -> list[str]:
+    """Note files in NOTES_DIR on the current checkout (its README is not a note)."""
+    d = Path(NOTES_DIR)
+    return sorted(f.name for f in d.glob("*.md") if f.name != "README.md") if d.is_dir() else []
 
 
 def _ts(stamp: str) -> datetime:
@@ -242,6 +249,9 @@ def check(repo: str) -> int:
             print(f"blog-worthy: #{i['number']} {i['title'][:60]} (info)")
     for name in draft_posts():
         print(f"draft waiting: {name} (info)")
+    notes = waiting_notes()
+    if notes:
+        print(f"{len(notes)} note(s) in {NOTES_DIR}/ waiting for the follow-up sweep: {' '.join(notes)} (info)")
 
     branch = default_branch(repo)
     merged_heads = {p["headRefName"] for p in prs}
@@ -301,6 +311,7 @@ Owned:
         "README.md",
         "tests/test_area.py",              # top-level tests
         "web/tests/area.test.mjs",         # nested tests
+        "docs/notes/2026-01-10-ci-xcode.md",  # shared notes are always allowed
         "src/neighbour/routes.py",         # NOT listed
         "config/other/office.yaml",        # bare name only resolves against its own bullet's path
         "src/elsewhere.py",                # mentioned outside the Files section
