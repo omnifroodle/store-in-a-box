@@ -28,6 +28,17 @@ is no inbox of files in the repo (a note written on a branch stays invisible to 
 answers by commenting and closing the issue (or applying a `contract-change`). When the owner defers a note, swap
 `for-foreman` for `deferred` so it stops showing as inbox on every pass.
 
+## Shared notes (`docs/notes/`)
+The inbox is for things that need the foreman: a decision, a contract change, an edit outside the Files list, a
+blocker. A fact that only needs to be *known* goes in a shared note instead, so it reaches the next agent without
+waiting for the foreman: a toolchain quirk, an API that behaves differently from its docs, why an approach was dropped,
+where a fixture came from. Any agent may add one file per note, `docs/notes/YYYY-MM-DD-<topic>.md`, in its own PR; the
+directory is outside every Files list and `board_check.py` allows it. One file per note, never a shared file, so
+parallel PRs do not conflict. Notes land with the PR that wrote them, which is also when the code they describe lands.
+Every dispatched agent reads `docs/notes/` before starting. In the follow-up sweep the foreman folds each note that
+still matters into the blueprint, decision, architecture doc or agent definition where it belongs, and deletes the
+note in the same commit (git history keeps it). The format is in `docs/notes/README.md`.
+
 ## The loop
 0. Read the inbox: `gh issue list --label for-foreman --state open`.
 0a. Cross-project mailbox: read `inbox/storeinabox/` in the foreman breakroom and act on `status: open` notes. Rules are in
@@ -57,7 +68,7 @@ answers by commenting and closing the issue (or applying a `contract-change`). W
    enough for the gate to mean something. When two architects run in parallel, name the owner of each shared
    interface in both prompts.
 3. For each ready issue, dispatch an agent in its own git worktree on branch `ws<N>/<topic>` with the prompt:
-   "Read `docs/workstreams/WS<N>-*.md`, `contracts/`, `ports/`. Fake neighbours. Open one PR."
+   "Read `docs/workstreams/WS<N>-*.md`, `contracts/`, `ports/`, `docs/notes/`. Fake neighbours. Open one PR."
    Pick the agent type with `subagent_type`:
    - `ws-design`: the custody model and conflicts (allocations, allowances, split and merge, the conflict resolver, clocks, the conservation query), sync topology (sync function, channels and revocation, Edge Server config, peer-to-peer replication), agents and provenance (output contract, provenance checks, compliance eval, upsell search, on-box prompts) and clerk-facing UX (anything the audience sees on stage), and any work where the agent must make judgement calls the blueprint does not
      settle.
@@ -76,7 +87,8 @@ answers by commenting and closing the issue (or applying a `contract-change`). W
 
 **Recurring steps** (every few passes, or when the counts in `board_check.py` grow):
 - **Follow-up sweep.** The gate files one follow-up issue per PR, every time. Batch the open follow-ups by area into a
-  few `ws-mechanical` (or `ws-design`) dispatches, so they do not pile up behind new work.
+  few `ws-mechanical` (or `ws-design`) dispatches, so they do not pile up behind new work. In the same pass, fold
+  the notes in `docs/notes/` into the docs they belong in and delete them (see "Shared notes").
 - **Owner verification session.** Nearly every PR adds `needs-verification` issues and many need the owner's eyes or
   ears. Schedule a session with the owner whose only job is to work through the ones only the owner can check: the
   owner runs or watches each check, the foreman records what was seen in the issue and closes it (or files a bug).

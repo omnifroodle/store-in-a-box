@@ -15,3 +15,4 @@ which device or service). Write "none" if nothing.
 List each note or question below **and** file it as an issue with the `for-foreman` label
 (use the "Note for the foreman" template). Do not leave notes only in PR comments: they can be posted after a merge
 and nothing notifies the foreman. Link the issue numbers here, or write "none".
+Facts that only need to be known (no decision) go in `docs/notes/` instead; list any notes this PR adds.

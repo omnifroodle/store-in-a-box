@@ -29,6 +29,9 @@ read both, then `contracts/` and `ports/`.
   fresh agent given someone else's findings, the same rule applies.
 - Small ambiguities become a stated assumption in the PR. Real blockers and anything the foreman should know go in an
   issue labelled `for-foreman`, not only in PR comments.
+- Read `docs/notes/` before starting. A fact the next agent should know but the foreman need not act on (a
+  toolchain quirk, a service that differs from its docs, why an approach was dropped) goes in a new
+  `docs/notes/YYYY-MM-DD-<topic>.md` in your PR (format in `docs/notes/README.md`); that directory is always allowed.
 - Run `uv run ruff check . && uv run python scripts/check_contracts.py && uv run pytest`, plus `node --test sync/tests/` when `sync/` exists (the same steps as `.github/workflows/ci.yml`) before opening the PR.
 - Stage files explicitly (no `git add -A`). Never print or commit secrets.
 - Report back briefly: PR URL, test counts, anything unverified.
