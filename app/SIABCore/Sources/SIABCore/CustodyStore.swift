@@ -233,7 +233,8 @@ public final class CustodyStore {
     public func rebuild() throws -> LedgerState {
         let (txns, txnDrops): ([Transaction], [Drop]) = try all(transactions)
         let (excs, excDrops): ([ExceptionDoc], [Drop]) = try all(exceptions)
-        let drops = try dropLog.record(excDrops + txnDrops, now: Self.rfc3339(clock.nowMs())) { self.source(of: $0) }
+        // Best effort: the log never fails the rebuild (DropLog.record does not throw).
+        let drops = dropLog.record(excDrops + txnDrops, now: Self.rfc3339(clock.nowMs())) { self.source(of: $0) }
         observe(txns.map(\.hlc) + excs.compactMap { $0.detectedBy == identity.device ? $0.detectedAt : nil })
         let state = Ledger.reduce(transactions: txns, resolutions: excs, store: identity.store)
         var latest: [String: Transaction] = [:]
@@ -247,6 +248,14 @@ public final class CustodyStore {
                                         state: unit.state, lastTxn: unit.lastTxn,
                                         latestTxn: unit.lastTxn ?? latest[unitID]?.id)
                 if try load(id: unitID, from: unitStates) != record { try save(record, id: unitID, in: unitStates) }
+            }
+            // A unit no longer in the state (its movements were dropped) has no record: the write path then treats
+            // it as the screens do, as a unit this device does not know (a blind movement, which rule 1 links).
+            let query = try database.createQuery("SELECT META().id AS id FROM `\(Self.localScope)`.`unit_state`")
+            for row in try query.execute().allResults() {
+                guard let id = row.string(forKey: "id"), state.units[id] == nil,
+                      let stale = try unitStates.document(id: id) else { continue }
+                try unitStates.delete(document: stale)
             }
         }
         subject.send(state)
@@ -293,12 +302,25 @@ public final class CustodyStore {
 
     struct Known { var holder: String?; var allocation: String?; var latest: Transaction? }
 
-    /// What this device knows of a unit, from `local.unit_state`; nil when it has no record.
+    /// What this device knows of a unit, from `local.unit_state`; nil when it has no record, or when the movement the
+    /// record names no longer passes rule 0 (replaced by an invalid revision since the last rebuild): a dropped
+    /// document never refuses a scan, it makes the unit one this device does not know.
     func known(_ unit: String) throws -> Known? {
         guard let record: UnitRecord = try load(id: unit, from: unitStates) else { return nil }
-        let latest: Transaction? = try record.latestTxn.flatMap { try load(id: $0, from: transactions) }
+        var latest: Transaction?
+        if let id = record.latestTxn {
+            guard let valid = try validTransaction(id) else { return nil }
+            latest = valid
+        }
         if record.state == .disputed { return Known(holder: latest?.toCustodian, allocation: latest?.toAllocation, latest: latest) }
         return Known(holder: record.holder, allocation: record.allocation, latest: latest)
+    }
+
+    /// `store.transaction`'s document `id` through rule 0: nil when it is missing or would be dropped.
+    func validTransaction(_ id: String) throws -> Transaction? {
+        guard let doc = try transactions.document(id: id),
+              let body = try? JSONDecoder().decode([String: JSONValue].self, from: Data(doc.toJSON().utf8)) else { return nil }
+        return DocumentCheck.ingest([(id, body)], collection: "transaction", as: Transaction.self).accepted.first
     }
 
     func activeAllocation(custodian: String, sku: String, parent: String? = nil,

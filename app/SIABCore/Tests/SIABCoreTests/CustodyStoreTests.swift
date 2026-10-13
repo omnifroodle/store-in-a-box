@@ -289,7 +289,8 @@ final class CustodyStoreTests: XCTestCase {
         XCTAssertTrue(drops.first?.detail.contains("transfer") ?? false)
         XCTAssertEqual(published.last, drops, "published after the rebuild")
 
-        let logged = try XCTUnwrap(try store.dropLog.collection.document(id: "transaction::\(bad)"))
+        let logged = try XCTUnwrap(try store.dropLog.collection.document(id: DropRecord.key(collection: "transaction", id: bad)))
+        XCTAssertEqual(logged.string(forKey: "id"), bad)
         XCTAssertEqual(logged.string(forKey: "code"), "invalid_value")
         XCTAssertEqual(logged.string(forKey: "source"), "peer")
         XCTAssertEqual(try logEntries(), drops)
@@ -355,6 +356,114 @@ final class CustodyStoreTests: XCTestCase {
         let later = (0..<200).map { Drop(id: "txn::later-\($0)", collection: "transaction", code: .rule, detail: "x") }
         _ = try fresh.record(later, now: "2026-10-18T14:00:00.000Z") { _ in "peer" }
         XCTAssertEqual(Set(try logEntries().map(\.id)), Set(later.map(\.id)))
+    }
+
+    // MARK: - Gate findings on #189: a dropped document never stops the ledger or refuses a scan
+
+    /// Gate finding 1: a dropped document's id longer than the drop log could key (Couchbase Lite ids are at most
+    /// 240 bytes) used to make `rebuild()` throw. Ids of 227, 228 and 240 bytes in both collections are saved into
+    /// the real database; a 1000-byte id (which Couchbase Lite itself refuses to store) goes through the log.
+    func testLongIDsNeverWedgeTheRebuild() throws {
+        var saved = 0
+        for length in [227, 228, 240] {
+            for (collection, prefix) in [(store.transactions, "txn::"), (store.exceptions, "exc::")] {
+                let id = prefix + String(repeating: "x", count: length - prefix.utf8.count)
+                XCTAssertEqual(id.utf8.count, length)
+                try collection.save(document: MutableDocument(id: id, json: #"{"type": "nonsense"}"#))
+                saved += 1
+            }
+        }
+        XCTAssertNoThrow(try store.rebuild())
+        XCTAssertEqual(store.currentDrops.count, saved, "every one counted")
+        XCTAssertTrue(store.currentDrops.allSatisfy { $0.code == .wrongType })
+        XCTAssertEqual(Set(try logEntries().map(\.id)), Set(store.currentDrops.map(\.id)), "and logged, by their real ids")
+
+        let take = try store.checkOut(unit: "HAT-BEANIE-OS#001", from: "box-07", to: "tablet-a")
+        XCTAssertNotNil(store.currentState.transactions[take.id], "a scan of another unit commits and is reduced")
+        store = nil
+        store = try CustodyStore(database: database, identity: DeviceIdentity(device: "tablet-a", box: "box-07",
+                                                                              trip: Self.trip), clock: clock)
+        XCTAssertEqual(store.currentDrops.count, saved, "the app starts on this database")
+
+        let long = Drop(id: "txn::" + String(repeating: "y", count: 995), collection: "transaction", code: .rule, detail: "x")
+        XCTAssertThrowsError(try store.transactions.save(document: MutableDocument(id: long.id, json: "{}")),
+                             "Couchbase Lite refuses a 1000-byte id, so only a log entry can carry one")
+        let recorded = store.dropLog.record([long], now: "2026-10-18T14:00:00.000Z") { _ in "peer" }
+        XCTAssertEqual(recorded.map(\.id), [long.id])
+        XCTAssertTrue(try logEntries().contains { $0.id == long.id }, "the entry is stored under a bounded key")
+        XCTAssertLessThanOrEqual(DropRecord.key(collection: "exception", id: long.id).utf8.count, 240)
+    }
+
+    /// Nothing the log does fails a rebuild: a write that throws leaves the drops counted and published, and the
+    /// failure is logged once.
+    func testDropLogFailureNeverFailsTheRebuild() throws {
+        struct Injected: Error {}
+        let bad = try pulledRaw(take(ms: 1_792_328_500_000)) { $0["v"] = 2 }
+        store.dropLog.beforeWrite = { throw Injected() }
+        XCTAssertNoThrow(try store.rebuild())
+        XCTAssertNoThrow(try store.rebuild())
+        XCTAssertEqual(store.currentDrops.map(\.id), [bad])
+        XCTAssertEqual(store.dropLog.failuresLogged.count, 1, "logged once, not on every rebuild")
+        XCTAssertEqual(try logEntries(), [], "the write rolled back")
+        store.dropLog.beforeWrite = nil
+        try store.rebuild()
+        XCTAssertEqual(try logEntries().map(\.id), [bad], "and the next good write stores it")
+    }
+
+    /// Gate finding 2: when the movement a unit's record names is replaced by an invalid revision, the unit is one
+    /// this device does not know: scans and sales of it still succeed (blind), never a DecodingError.
+    func testAUnitWhoseLatestMovementIsDroppedCanStillBeScannedAndSold() throws {
+        let pack = try pulledPack()
+        try store.rebuild()
+        XCTAssertEqual(store.currentState.units[Self.unit]?.holder, "box-07")
+        try pulledRaw(pack) { $0["kind"] = "transfer" }
+
+        // Before any rebuild (the window between a pull and its change notification): still no refusal.
+        let early = try store.checkOut(unit: Self.unit, from: "box-07", to: "tablet-a")
+        XCTAssertNil(early.prevTxn, "the dropped pack is not a predecessor")
+        XCTAssertEqual(store.currentDrops.map(\.id), [pack.id])
+
+        let price = Money(cents: 12900)
+        let sale = try store.sell(unit: "JKT-RAIN-M-BLU#002", tender: Tender(kind: .cash, amount: price), price: price)
+        XCTAssertEqual(store.currentState.units["JKT-RAIN-M-BLU#002"]?.state, .sold)
+        XCTAssertNotNil(store.currentState.transactions[sale.id])
+        XCTAssertEqual(store.currentState.units[Self.unit]?.holder, "tablet-a")
+    }
+
+    func testAStaleRecordIsRemovedAndComesBackWithAValidRevision() throws {
+        let pack = try pulledPack()
+        try store.rebuild()
+        try pulledRaw(pack) { $0["kind"] = "transfer" }
+        try store.rebuild()
+        XCTAssertNil(store.currentState.units[Self.unit])
+        XCTAssertNil(try store.unitStates.document(id: Self.unit), "no record for a unit the state does not have")
+        let price = Money(cents: 12900)
+        let sale = try store.sell(unit: Self.unit, tender: Tender(kind: .cash, amount: price), price: price)
+        XCTAssertNil(sale.prevTxn, "a blind sale from the box, which rule 1 links")
+        XCTAssertEqual(sale.fromCustodian, "box-07")
+
+        // The pack gets a valid revision again: the unit is known through it, and the sale continues it.
+        try pulledRaw(pack) { _ in }
+        try store.rebuild()
+        XCTAssertEqual(store.currentDrops, [])
+        XCTAssertEqual(store.currentState.units[Self.unit]?.state, .sold)
+        XCTAssertNotNil(try store.unitStates.document(id: Self.unit))
+        let returned = try store.checkIn(unit: Self.unit)
+        XCTAssertEqual(returned.prevTxn, sale.id)
+    }
+
+    /// Gate finding 3: ids that differ only by Unicode normalisation are two Couchbase Lite documents and two drops
+    /// (as in the reference), and a key that is `_` followed by a combining mark is metadata.
+    func testIDsAndKeysAreComparedByCodePoint() throws {
+        for id in ["txn::\u{e9}", "txn::e\u{301}"] {
+            try store.transactions.save(document: MutableDocument(id: id, json: #"{"type": "nonsense"}"#))
+        }
+        XCTAssertEqual(store.transactions.count, 2)
+        let pack = try pulledRaw(take(ms: 1_792_328_500_000)) { $0["_\u{301}x"] = 1 }
+        try store.rebuild()
+        XCTAssertEqual(store.currentDrops.count, 2)
+        XCTAssertEqual(try logEntries().count, 2)
+        XCTAssertNotNil(store.currentState.transactions[pack], "the _-key is ignored, the movement reduced")
     }
 
     func testPairingPayloadDecodesPortExample() throws {
