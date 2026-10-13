@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import stat
 
 import jsonschema
@@ -113,6 +114,12 @@ def test_bad_values_refused(kit, tmp_path):
             render_config.render(_template(), {**kit.ENV, name: value}, tmp_path)
 
 
+def test_ports_are_validated_at_render_time(kit, tmp_path):
+    for name, value in (("EDGE_PORT", "abc"), ("SIAB_PROXY_PORT", "99999"), ("SIAB_BOX_PORT", "0")):
+        with pytest.raises(RenderError, match=name):
+            render_config.render(_template(), {**kit.ENV, name: value}, tmp_path)
+
+
 def test_write_config_users_and_agent_credentials(kit, tmp_path):
     out = tmp_path / "edge" / "config.json"
     paths = render_config.write(out, kit.ENV, fake_bcrypt)
@@ -138,3 +145,52 @@ def test_cli_render_config(kit, tmp_path, monkeypatch, capsys):
     assert cli.main(["render-config", "--out", str(tmp_path / "y.json")]) == 2
     assert "SIAB_TRIP" in capsys.readouterr().err
     assert not (tmp_path / "y.json").exists()
+
+
+def _stub_box(tmp_path):
+    """A copy of run.sh in a throwaway repo with a stub Edge Server binary and the real siab_box package."""
+    import os
+    import sys
+
+    box = tmp_path / "box"
+    (box / ".edge-server").mkdir(parents=True)
+    run = box / "run.sh"
+    run.write_text((render_config.REPO_ROOT / "box" / "run.sh").read_text(encoding="utf-8"), encoding="utf-8")
+    run.chmod(0o755)
+    stub = box / ".edge-server" / "couchbase-edge-server"
+    stub.write_text("#!/bin/sh\nexit 0\n")
+    stub.chmod(0o755)
+    py = tmp_path / ".venv" / "bin" / "python"
+    py.parent.mkdir(parents=True)
+    py.write_text(f'#!/bin/sh\nexec "{sys.executable}" "$@"\n')
+    py.chmod(0o755)
+    return box, tmp_path / ".env", {**os.environ, "SIAB_CAFFEINATED": "1", "SIAB_STARTUP_WAIT": "0"}
+
+
+def _env_file(kit, **override):
+    return "".join(f"{k}={v}\n" for k, v in {**kit.ENV, **override}.items())
+
+
+@pytest.mark.skipif(not shutil.which("htpasswd"), reason="needs htpasswd")
+def test_edge_only_restart_does_not_split_the_device_passwords(kit, tmp_path):
+    """The agent runs with the old device password; restarting only Edge Server after a .env change must not
+    re-render users.json, or Edge Server and the pairing page would disagree."""
+    import subprocess
+
+    box, env_file, env = _stub_box(tmp_path)
+    env_file.write_text(_env_file(kit, EDGE_TABLET_A_PASSWORD="ta-1"), encoding="utf-8")
+    run = ["bash", str(box / "run.sh"), "--edge-only"]
+    first = subprocess.run(run, env=env, capture_output=True, text=True, check=False, timeout=60)
+    users_file = box / ".edge-server" / "users.json"
+    assert users_file.exists(), first.stderr
+    before = users_file.read_text(encoding="utf-8")
+    env_file.write_text(_env_file(kit, EDGE_TABLET_A_PASSWORD="ta-2-changed"), encoding="utf-8")
+    second = subprocess.run(run, env=env, capture_output=True, text=True, check=False, timeout=60)
+    assert users_file.read_text(encoding="utf-8") == before
+    assert "render-config" in second.stderr  # the operator is told what to do
+
+
+def test_run_sh_renders_on_every_start_with_the_agent():
+    """In both mode the agent restarts too, so a changed .env password must reach users.json."""
+    text = (render_config.REPO_ROOT / "box" / "run.sh").read_text(encoding="utf-8")
+    assert '[[ "$mode" == both || ! -f "$edge_dir/config.json" ]]' in text

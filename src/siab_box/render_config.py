@@ -16,7 +16,7 @@ import subprocess
 from collections.abc import Callable, Mapping
 from pathlib import Path
 
-from .settings import DEFAULTS, DEVICES, REPO_ROOT, SettingsError, Target, edge_tls
+from .settings import DEFAULTS, DEVICES, REPO_ROOT, SettingsError, Target, _port, edge_tls
 
 TEMPLATE = REPO_ROOT / "box" / "edge-server" / "config.json.tmpl"
 AGENT_USER = "siab-agent"
@@ -52,6 +52,8 @@ def values(env: Mapping[str, str], edge_dir: Path) -> dict[str, str]:
     try:
         out["SIAB_ENDPOINT_PATH"] = Target.parse(env["APP_SERVICES_PUBLIC_URL"]).path
         edge_tls(env)
+        for port_name in ("EDGE_PORT", "SIAB_BOX_PORT", "SIAB_PROXY_PORT"):
+            _port(env, port_name)
     except SettingsError as exc:
         raise RenderError(str(exc)) from exc
     out["SIAB_EDGE_DIR"] = str(edge_dir.resolve())

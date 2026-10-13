@@ -21,12 +21,15 @@ box/
    `SIAB_BOX_*`).
 2. `box/install/install.sh`: downloads the Edge Server 1.1.0 macOS zip from packages.couchbase.com, checks it against
    the vendor's published sha256, and unpacks it into `box/.edge-server/`. Nothing is installed outside the checkout.
-3. `box/run.sh`: renders `box/.edge-server/config.json` if it is missing, starts Edge Server and the agent, and keeps
+3. `box/run.sh`: renders `box/.edge-server/config.json` (and `users.json`) from `.env` on every start (with `--edge-only` only if it is missing, see below), starts Edge Server and the agent, and keeps
    the laptop awake (`caffeinate -i`). Both logs stream to the terminal and to `box/logs/`. One Ctrl-C stops both; it
    exits non-zero if either dies. `--edge-only` and `--agent-only` start one of them.
 4. The status page is `http://<box>:8787/`; each device pairs from `http://<box>:8787/pair/<device>`.
 
-Changed a password or a port in `.env`? `uv run python -m siab_box render-config` and restart `run.sh`.
+Changed a password or a port in `.env`? Restart `box/run.sh` (no flag): it re-renders the Edge Server config and restarts
+the agent, so both hold the new values. If you run the halves in two terminals, `--edge-only` does not re-render an
+existing config (the running agent would keep the old device passwords and the pairing page would disagree with
+Edge Server): run `uv run python -m siab_box render-config`, then restart both halves.
 `uv run python -m siab_box dev` runs the agent alone against an Edge Server you started yourself, with placeholders
 for whatever is unset.
 

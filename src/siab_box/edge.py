@@ -8,12 +8,15 @@ render-config writes to `box/.edge-server/agent.json`.
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import Callable
 from pathlib import Path
 
 import httpx
 
 from .clock import Clock, iso
+
+log = logging.getLogger(__name__)
 
 POLL_INTERVAL = 2.0
 
@@ -109,6 +112,10 @@ class EdgeMonitor:
         except (httpx.HTTPStatusError, ValueError) as exc:
             self.state = "unknown"
             self.last_error = f"unexpected answer from Edge Server: {exc}"
+        except Exception as exc:  # noqa: BLE001 - an odd answer must never end the poll loop (and the proxy with it)
+            log.exception("Edge Server poll failed unexpectedly")
+            self.state = "unknown"
+            self.last_error = f"unexpected answer from Edge Server: {exc.__class__.__name__}"
         finally:
             self.checked_at = self.clock.now()
 

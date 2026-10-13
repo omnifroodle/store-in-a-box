@@ -81,6 +81,18 @@ def test_refused_agent_user(clock):
     assert monitor.up and monitor.state == "unknown" and "render-config" in monitor.last_error
 
 
+def test_unexpected_answer_does_not_kill_the_monitor(clock):
+    def handler(request):
+        if request.url.path == "/":
+            return httpx.Response(200, json={"vendor": "not an object"})  # .get on a str: AttributeError
+        return httpx.Response(200, json=[])
+
+    monitor = _monitor(clock, handler)
+    asyncio.run(monitor.poll_once())
+    assert monitor.state == "unknown" and "unexpected answer" in monitor.last_error
+    assert monitor.checked_at == clock.now()
+
+
 def test_poll_runs_on_virtual_time(clock):
     async def main():
         calls = []

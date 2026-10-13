@@ -39,8 +39,16 @@ edge_bin="$edge_dir/couchbase-edge-server"
 
 if [[ "$mode" != agent ]]; then
   [[ -x "$edge_bin" ]] || { echo "run.sh: no Edge Server; run box/install/install.sh first" >&2; exit 1; }
-  if [[ ! -f "$edge_dir/config.json" ]]; then
+  # Both halves must hold the same device passwords. The agent reads them from .env once, when it starts, and
+  # serves them on the pairing page; Edge Server reads them from users.json. So the config is re-rendered on every
+  # start only when this script starts the agent too (a changed password in .env then reaches both). With
+  # --edge-only the agent keeps running with the old passwords, so an existing config is left alone: after a
+  # password change run `render-config` and restart both halves.
+  if [[ "$mode" == both || ! -f "$edge_dir/config.json" ]]; then
     (cd "$repo" && "${py[@]}" -m siab_box render-config --out "$edge_dir/config.json")
+  else
+    echo "run.sh: keeping the existing Edge Server config (the agent may still hold the old device passwords)." >&2
+    echo "run.sh: after changing .env, run 'uv run python -m siab_box render-config' and restart both halves." >&2
   fi
   if [[ "${EDGE_TLS:-off}" == on && ! -f "$edge_dir/cert.pem" ]]; then
     ip="$(cd "$repo" && "${py[@]}" -c 'from siab_box.agent import lan_ip; print(lan_ip())')"
@@ -96,7 +104,7 @@ dead() { # prints the name of the first process that has exited, if any
   return 1
 }
 
-sleep 5
+sleep "${SIAB_STARTUP_WAIT:-5}"
 if which="$(dead)"; then
   echo "run.sh: $which exited within 5 s; see box/logs/" >&2
   exit 1
