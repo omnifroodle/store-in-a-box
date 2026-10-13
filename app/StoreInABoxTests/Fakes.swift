@@ -76,6 +76,9 @@ final class FakeCustodyStore: CustodyStoring {
 
     var state: AnyPublisher<LedgerState, Never> { subject.eraseToAnyPublisher() }
     var currentState: LedgerState { subject.value }
+    /// What rule 0 dropped, set by a test.
+    let dropSubject = CurrentValueSubject<[DropRecord], Never>([])
+    var drops: AnyPublisher<[DropRecord], Never> { dropSubject.eraseToAnyPublisher() }
 
     /// A movement another device wrote, as if replication had pulled it.
     @discardableResult
