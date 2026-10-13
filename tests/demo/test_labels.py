@@ -26,10 +26,32 @@ def test_labels_count_and_payloads(tmp_path):
     assert len(payloads) == 2 * len(skus)
     assert all(re.fullmatch(r"[A-Z0-9-]+#\d{3}", p) for p in payloads)
     assert payloads == [f"{s}#{n:03d}" for s in skus for n in (1, 2)]
-    # The embedded code is the one the box's pairing page would draw for that exact text.
-    from siab_box.pairing import qr_svg
+    # The embedded code is the pairing page's drawing of that text, with the spec's 4-module quiet zone (#129).
+    import qrcode
+    import qrcode.image.svg
 
-    assert all(qr_svg(p) in page for p in payloads)
+    def drawn(text, border):
+        image = qrcode.make(text, image_factory=qrcode.image.svg.SvgPathImage, box_size=12, border=border)
+        return image.to_string(encoding="unicode")
+
+    assert all(drawn(p, 4) in page for p in payloads)
+    assert drawn(payloads[0], 2) not in page
+
+
+def test_quiet_zone_is_four_modules():
+    labels = load()
+    svg = labels.qr_svg("JKT-RAIN-M-BLU#001")
+    size = float(re.search(r'width="([\d.]+)mm"', svg).group(1))
+    module = 1.2  # mm: box_size 12 at the generator's 0.1 mm per pixel
+    modules = round(size / module)
+    from qrcode import QRCode
+
+    code = QRCode(border=0)
+    code.add_data("JKT-RAIN-M-BLU#001")
+    code.make(fit=True)
+    assert modules == len(code.get_matrix()) + 2 * 4
+    # The first dark module (the finder pattern's corner) sits four modules in from the edge.
+    assert re.search(r'<path d="M4\.8,4\.8H', svg)
 
 
 def test_default_is_five_per_sku(tmp_path):

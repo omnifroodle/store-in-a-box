@@ -42,10 +42,16 @@ def unit_ids(skus: Sequence[str], per_sku: int) -> list[str]:
     return [f"{sku}#{serial:03d}" for sku in skus for serial in range(1, per_sku + 1)]
 
 
-def qr_svg(text: str) -> str:
-    from siab_box.pairing import qr_svg as make
+# The QR spec's quiet zone. siab_box.pairing.qr_svg draws 2: enough for a screen, thin on a 0.85 in label.
+QUIET_ZONE_MODULES = 4
 
-    return make(text)
+
+def qr_svg(text: str) -> str:
+    import qrcode
+    import qrcode.image.svg
+
+    image = qrcode.make(text, image_factory=qrcode.image.svg.SvgPathImage, box_size=12, border=QUIET_ZONE_MODULES)
+    return image.to_string(encoding="unicode")
 
 
 def label(unit: str, name: str) -> str:

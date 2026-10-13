@@ -30,3 +30,20 @@ def test_one_checkbox_per_phase0_acceptance_line():
     boxes = re.findall(r"^- \[ \] \*\*\d\.", ACCEPTANCE.read_text(), re.MULTILINE)
     assert len(lines) == len(boxes) == 8
     assert all("Who:" in b for b in re.split(r"^- \[ \]", ACCEPTANCE.read_text(), flags=re.MULTILINE)[1:])
+
+
+def test_runbook_posts_to_hq_send_a_json_content_type():
+    """HQ answers 415 to a POST without Content-Type: application/json (since #123), so every curl POST to the HQ
+    port in the runbook or the demo scripts must send it. The box agent (port 8787) is a different server."""
+    files = [*(ROOT / "docs" / "runbook").glob("*.md"), *(ROOT / "scripts" / "demo").glob("*"),
+             ROOT / "box" / "README.md"]
+    found = 0
+    for path in files:
+        if not path.is_file():
+            continue
+        text = path.read_text()
+        for cmd in re.findall(r"curl[^`\n]*?-X POST[^`\n]*|curl[^`\n]*?(?:-d|--data)[^`\n]*", text):
+            if "8788" in cmd or "$url" in cmd:
+                found += 1
+                assert "Content-Type: application/json" in cmd, f"{path.name}: {cmd}"
+    assert found >= 1

@@ -27,7 +27,8 @@ Run it from the repository root on a machine with `.env` (the Capella SDK creden
   movement; with the tombstones in, nothing is packed.
 - **HQ screen:** reload. The conservation table shows no `in_custody`, `left_store` 0 and the indicator reads `HOLDS ·
   live`; the exceptions panel is empty. If it still shows a dispute, the HQ reconciler wrote it between the delete and
-  your look: run `curl -X POST http://127.0.0.1:8788/api/reconcile/run` and look again.
+  your look: run `curl -X POST -H 'Content-Type: application/json' -d '{}' http://127.0.0.1:8788/api/reconcile/run` (HQ
+  refuses a POST without that header) and look again.
 - **Box:** nothing to restart.
 
 ## Check it worked (agent with `capella` and `box`)
