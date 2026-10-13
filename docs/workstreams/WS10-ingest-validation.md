@@ -4,7 +4,7 @@
 **Issues:** two, under one label and this blueprint: WS10a (Python, HQ, scripts; branch `ws10a/ingest-python`) and
 WS10b (Swift; branch `ws10b/ingest-swift`, depends on WS10a merged). Design: `docs/architecture/servers-and-sync-trust.md`.
 
-**Status: draft. Not dispatched.** Waiting on the owner's answer to #160 and on the foreman applying CC11 (#159) as contracts 0.7.0; the two WS10a/WS10b issues are filed after both.
+**Status (2026-10-13): WS10a dispatched.** The owner answered #160 and #161 (yes). CC11 is applied as contracts 0.7.0 (branch `foreman/cc11-contracts-0.7.0`, merged with WS10a's PR). WS10a is #175, WS10b is #176 (after WS10a merges).
 
 The blueprint. The architect (`ws-architect`) writes it before any code is dispatched; the PR is judged against it.
 
@@ -343,7 +343,7 @@ WS10a, `ws-design`, branch `ws10a/ingest-python`:
 3. `[any]` HQ: `queries.load` ingests; the log on `Hq`; the write-side check; the API, indicator and panel;
    `ports/hq.md`. Accept: the four `test_drops.py` criteria.
 4. `[any]` `scripts/ledger_diff.py` and `.sh`. Accept: `test_ledger_diff.py`.
-5. `[any]` **PR.** One PR, `Closes #<WS10a issue>`; `needs-verification` issues filed and linked from "Not verified".
+5. `[any]` **PR.** One PR, `Closes #175`; `needs-verification` issues filed and linked from "Not verified".
    Expected size: about 550 lines of code (tests and fixtures not counted).
 
 WS10b, `ws-design`, branch `ws10b/ingest-swift`, after WS10a merges:
@@ -355,7 +355,7 @@ WS10b, `ws-design`, branch `ws10b/ingest-swift`, after WS10a merges:
    two-simulator criterion.
 9. `[macos-xcode]` `LedgerDifferentialTests` and the CI step. Accept: green on the PR with the step's log showing
    `PASS` per set.
-10. `[any]` **PR.** One PR, `Closes #<WS10b issue>`. Expected size: about 650 lines of code.
+10. `[any]` **PR.** One PR, `Closes #176`. Expected size: about 650 lines of code.
 
 ## Rules
 - Code against `contracts/` and `ports/`; fake your neighbours.
