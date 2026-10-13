@@ -46,11 +46,15 @@ feeds all of them to rule 0 and reduces what remains.
 The rules (decision 001; `ports/ledger.md` restates them as an interface):
 
 0. **Ingest** (decision 010). The reducer's input is documents that pass their collection's schema
-   (`schemas/store/`) and the cross-field rules `scripts/check_contracts.py` checks. A node validates every
+   (`schemas/store/`), the cross-field rules `scripts/check_contracts.py` checks, and the id template (the schema's
+   `x-id-template`: a `transaction`'s `_id` is `txn::<hlc>`, an `exception`'s is
+   `exc::<detected_by>::<unit_id>::<sha256_8 of its transactions>`). A node validates every
    `transaction` and `exception` it reads before rule 1 runs; a document that fails is *dropped*: not reduced, not an
    error, and recorded as a drop `{id, collection, code}`, where `code` is the first of `malformed` (not a JSON
    object), `wrong_type` (`type` is not the collection), `version` (`v` is not 1), `missing_field`, `extra_field`,
-   `invalid_value` (a value fails its type, enum, pattern or a conditional), `rule` (a cross-field rule).
+   `invalid_value` (a value fails its type, enum, pattern or a conditional), `rule` (a cross-field rule, or an `_id`
+   that is not what the id template gives for the body). A value inside a nullable object (`resolution`, `price`) is
+   judged against the alternative its JSON type matches, so a resolution object without `note` is `missing_field`.
    Validation precedes rule 5's dedupe: when several bodies share an id, only the valid ones are compared, and one
    drop names the id whatever the number of invalid bodies, with the smallest code (in the order above). Keys
    beginning with `_` are fixture metadata and are ignored. A drop changes no row directly (the rows are computed

@@ -36,7 +36,6 @@ try:
 except ImportError:  # pragma: no cover
     sys.exit("check_contracts: needs jsonschema >= 4.18 (pip install 'jsonschema>=4.18')")
 
-STRIPPED = ("_id", "_why", "_invalid")  # fixture metadata, removed before a document is validated
 SEMVER = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
 CHANGELOG_VERSION = re.compile(r"^\s*[-*]?\s*\**\s*(\d+\.\d+\.\d+)")
 SEED_COLLECTIONS = {"products.json": "product", "inventory.json": "inventory", "trips.json": "trip"}
@@ -162,7 +161,9 @@ class Contracts:
         sid = f"siab://contracts/store/{collection}.schema.json"
         if sid not in self.validators:
             return [f"no schema for collection {collection}"]
-        body = {k: v for k, v in doc.items() if k not in STRIPPED}
+        # Fixture metadata (_id, _why, _invalid, any key starting with an underscore) is removed before validating.
+        # Rule 0 ignores it too, so a document this calls invalid is invalid for a reason the ports see.
+        body = {k: v for k, v in doc.items() if not k.startswith("_")}
         errors = self.schema_errors(sid, body)
         errors += CROSS_CHECKS.get(collection, lambda _: [])(body)
         template = self.by_id[sid].get("x-id-template")
@@ -277,7 +278,7 @@ def check_ledger(root: Path, c: Contracts, problems: list[str]) -> int:
         ids = [d["_id"] for d in fx["transactions"]]
         for dup in sorted({i for i in ids if ids.count(i) > 1}):
             valid = [d for d in fx["transactions"] if d["_id"] == dup and "_invalid" not in d]
-            if len(valid) > 1:  # a duplicate id is allowed only when all but one of its bodies are marked _invalid
+            if len(valid) != 1:  # a duplicate id is allowed only when all but one of its bodies are marked _invalid
                 problems.append(f"{path}: duplicate transaction {dup}")
         marked = {("transaction", d["_id"]) for d in fx["transactions"] if "_invalid" in d}
         marked |= {("exception", d["_id"]) for d in fx["resolutions"] if "_invalid" in d}

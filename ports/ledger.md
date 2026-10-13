@@ -149,8 +149,11 @@ Both ports, in this order; the first check that fails gives the code:
    `drop-resolution-missing-field` pins). The smallest code over all errors wins, at any depth.
 5. `rule`: the cross-field checks of `scripts/check_contracts.py` (`sku` is the SKU part of `unit_id`; `hlc` ends
    with `-<device>`; an exception's `transactions` sorted and matching `branches[i].txn`; `dispute_key` starts with
-   `<unit_id>|`; `resolution.hlc` ends with `-<resolution.by>`; an allocation's `opened_at` ends with `-<opened_by>`).
-   The id template (`x-id-template`) is not checked.
+   `<unit_id>|`; `resolution.hlc` ends with `-<resolution.by>`; an allocation's `opened_at` ends with `-<opened_by>`),
+   **and the id template** (`x-id-template`): the document's `_id` must be what the schema's template gives for its
+   body (`txn::<hlc>`; `exc::<detected_by>::<unit_id>::<sha256_8 of its transactions>`). A document whose id
+   disagrees is `rule` (`drop-id-mismatch`). Without this check a body that passes everything else but carries a
+   different id would be reduced and `exceptions_for` would write an exception that fails its own schema.
 
 Keys beginning with `_` are ignored. One drop per `(collection, id)`, the smallest code among that id's invalid
 bodies; a valid body under the same id is accepted and reduced. The words a screen shows for a code: `malformed`,
