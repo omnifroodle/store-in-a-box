@@ -113,6 +113,12 @@ def test_bad_values_refused(kit, tmp_path):
             render_config.render(_template(), {**kit.ENV, name: value}, tmp_path)
 
 
+def test_ports_are_validated_at_render_time(kit, tmp_path):
+    for name, value in (("EDGE_PORT", "abc"), ("SIAB_PROXY_PORT", "99999"), ("SIAB_BOX_PORT", "0")):
+        with pytest.raises(RenderError, match=name):
+            render_config.render(_template(), {**kit.ENV, name: value}, tmp_path)
+
+
 def test_write_config_users_and_agent_credentials(kit, tmp_path):
     out = tmp_path / "edge" / "config.json"
     paths = render_config.write(out, kit.ENV, fake_bcrypt)
@@ -138,3 +144,11 @@ def test_cli_render_config(kit, tmp_path, monkeypatch, capsys):
     assert cli.main(["render-config", "--out", str(tmp_path / "y.json")]) == 2
     assert "SIAB_TRIP" in capsys.readouterr().err
     assert not (tmp_path / "y.json").exists()
+
+
+def test_run_sh_renders_on_every_start():
+    """A changed device password in .env must reach users.json, so run.sh may not skip an existing config."""
+    lines = (render_config.REPO_ROOT / "box" / "run.sh").read_text(encoding="utf-8").splitlines()
+    at = next(i for i, line in enumerate(lines) if "siab_box render-config" in line)
+    assert "config.json" not in lines[at - 1] or "if" not in lines[at - 1]
+    assert not any(line.lstrip().startswith("if") and "config.json" in line for line in lines[max(0, at - 3):at])

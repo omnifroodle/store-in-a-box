@@ -39,9 +39,10 @@ edge_bin="$edge_dir/couchbase-edge-server"
 
 if [[ "$mode" != agent ]]; then
   [[ -x "$edge_bin" ]] || { echo "run.sh: no Edge Server; run box/install/install.sh first" >&2; exit 1; }
-  if [[ ! -f "$edge_dir/config.json" ]]; then
-    (cd "$repo" && "${py[@]}" -m siab_box render-config --out "$edge_dir/config.json")
-  fi
+  # Render on every start, so a changed device password or port in .env never leaves a stale users.json (which
+  # would refuse the tablet's login while the pairing page serves the new password). This also rotates the agent's
+  # own password, which is harmless because the agent restarts with this script.
+  (cd "$repo" && "${py[@]}" -m siab_box render-config --out "$edge_dir/config.json")
   if [[ "${EDGE_TLS:-off}" == on && ! -f "$edge_dir/cert.pem" ]]; then
     ip="$(cd "$repo" && "${py[@]}" -c 'from siab_box.agent import lan_ip; print(lan_ip())')"
     "$edge_bin" --create-cert "CN=$ip" "$edge_dir/cert.pem" "$edge_dir/key.pem"
