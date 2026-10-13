@@ -36,7 +36,7 @@ try:
 except ImportError:  # pragma: no cover
     sys.exit("check_contracts: needs jsonschema >= 4.18 (pip install 'jsonschema>=4.18')")
 
-STRIPPED = ("_id", "_why")  # fixture metadata, removed before a document is validated
+STRIPPED = ("_id", "_why", "_invalid")  # fixture metadata, removed before a document is validated
 SEMVER = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
 CHANGELOG_VERSION = re.compile(r"^\s*[-*]?\s*\**\s*(\d+\.\d+\.\d+)")
 SEED_COLLECTIONS = {"products.json": "product", "inventory.json": "inventory", "trips.json": "trip"}
@@ -258,19 +258,36 @@ def check_ledger(root: Path, c: Contracts, problems: list[str]) -> int:
         groups.append(("expected.exceptions.docs", "exception", expected_docs))
         for label, collection, docs in groups:
             for i, doc in enumerate(docs):
-                problems += [f"{path}: {label}[{i}] {doc.get('_id')}: {e}" for e in c.doc_errors(collection, doc)]
+                errors = c.doc_errors(collection, doc)
+                where = f"{path}: {label}[{i}] {doc.get('_id')}"
+                if "_invalid" in doc:  # marked on purpose (rule 0): it must fail, or the fixture proves nothing
+                    if not errors:
+                        problems.append(f"{where}: should fail validation ({doc['_invalid']}) but passes")
+                else:
+                    problems += [f"{where}: {e}" for e in errors]
         for doc in fx["transactions"]:
-            if doc.get("trip") != fx["trip"]:
+            if "_invalid" not in doc and doc.get("trip") != fx["trip"]:
                 problems.append(f"{path}: {doc['_id']} is on trip {doc.get('trip')}, not {fx['trip']}")
         for doc in fx["resolutions"]:
-            if doc.get("status") != "resolved":
+            if "_invalid" not in doc and doc.get("status") != "resolved":
                 problems.append(f"{path}: resolution {doc['_id']} is not resolved")
         for doc in fx["expected"]["exceptions"]["docs"]:
             if doc.get("detected_by") != fx["expected"]["exceptions"]["detector"]:
                 problems.append(f"{path}: expected exception {doc['_id']} is not from the detector")
         ids = [d["_id"] for d in fx["transactions"]]
         for dup in sorted({i for i in ids if ids.count(i) > 1}):
-            problems.append(f"{path}: duplicate transaction {dup}")
+            valid = [d for d in fx["transactions"] if d["_id"] == dup and "_invalid" not in d]
+            if len(valid) > 1:  # a duplicate id is allowed only when all but one of its bodies are marked _invalid
+                problems.append(f"{path}: duplicate transaction {dup}")
+        marked = {("transaction", d["_id"]) for d in fx["transactions"] if "_invalid" in d}
+        marked |= {("exception", d["_id"]) for d in fx["resolutions"] if "_invalid" in d}
+        drops = fx["expected"]["drops"]
+        dropped = [(x["collection"], x["id"]) for x in drops]
+        if dropped != sorted(set(dropped)):
+            problems.append(f"{path}: expected.drops must be unique and sorted by collection then id")
+        if set(dropped) != marked:
+            problems.append(f"{path}: expected.drops names {sorted(set(dropped))}, the _invalid documents are "
+                            f"{sorted(marked)}")
     return n
 
 

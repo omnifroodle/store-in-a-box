@@ -37,8 +37,26 @@ venue-only rows), and compares with `expected`. When `order_independent` is true
 every order of `transactions` (WS1's runner re-runs each with the array shuffled). `detected_at` is left out of the
 expected exceptions because it is the detector's clock.
 
+A document in `transactions` or `resolutions` may carry `"_invalid": "<why>"`: it is there on purpose, to be
+dropped by rule 0. `scripts/check_contracts.py` checks that it fails its schema (or a cross-field rule), that every
+document without the key passes, and that the `_invalid` documents are exactly the ones in `expected.drops`. A
+duplicate `_id` in `transactions` is allowed only when all but one of its bodies are `_invalid`. An implementation
+feeds all of them to rule 0 and reduces what remains.
+
 The rules (decision 001; `ports/ledger.md` restates them as an interface):
 
+0. **Ingest** (decision 010). The reducer's input is documents that pass their collection's schema
+   (`schemas/store/`) and the cross-field rules `scripts/check_contracts.py` checks. A node validates every
+   `transaction` and `exception` it reads before rule 1 runs; a document that fails is *dropped*: not reduced, not an
+   error, and recorded as a drop `{id, collection, code}`, where `code` is the first of `malformed` (not a JSON
+   object), `wrong_type` (`type` is not the collection), `version` (`v` is not 1), `missing_field`, `extra_field`,
+   `invalid_value` (a value fails its type, enum, pattern or a conditional), `rule` (a cross-field rule).
+   Validation precedes rule 5's dedupe: when several bodies share an id, only the valid ones are compared, and one
+   drop names the id whatever the number of invalid bodies, with the smallest code (in the order above). Keys
+   beginning with `_` are fixture metadata and are ignored. A drop changes no row directly (the rows are computed
+   over what remains, dangling roots and all), and a report computed with drops is never a plain `HOLDS`: it
+   carries the count. The fixtures pin which documents drop and the code; the free text that explains a drop
+   (`detail`) is not compared.
 1. A unit's movements form a forest by predecessor. A movement's predecessor is the transaction its `prev_txn`
    names, whether or not this node has it, except for a *blind* movement: a `check_out` or `sale` with `prev_txn`
    null whose `from_custodian` is not the store (its writer had no record of the unit, for example a tablet taking
@@ -167,6 +185,8 @@ What `expected` holds, and in what order (so two implementations produce identic
     those back on the shelf; negative when the ledger names more units than the store had), and
     `holds = untraced == 0 and store_on_hand >= 0`.
   - Venue-only: `opening_on_hand`, `received` and `store_on_hand` are null, and `holds = untraced == 0`.
+- `drops`: every document rule 0 dropped, `{id, collection, code}`, sorted by `collection` then `id`; `[]` when none.
+  It sits beside `conservation`, not in it: a drop is not per SKU (a dropped document may have no readable `sku`).
 
 ## `sync/<case>.json`: the App Services sync functions
 

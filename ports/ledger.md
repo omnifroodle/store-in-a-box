@@ -3,7 +3,7 @@
 Owner: WS1 (`src/siab_ledger/`, the Python reference implementation). Users: WS4 (the same operations in Swift, on
 the tablets and phones), WS5 (the Capella-side reconciler and the HQ screen run the Python package). Every
 implementation must pass the golden fixtures in `contracts/fixtures/ledger/`; the fixtures, not this page and not the
-Python code, are the source of truth. Semantics come from `contracts/fixtures/README.md` (rules 1 to 8 and the output
+Python code, are the source of truth. Semantics come from `contracts/fixtures/README.md` (rules 0 to 8 and the output
 order) and decision 001; this page restates them as an interface.
 
 The operations are pure: no I/O, no clock reads (the clock is injected), no database. The caller reads the
@@ -26,6 +26,14 @@ The operations are pure: no I/O, no clock reads (the clock is injected), no data
 ## Operations
 
 ```
+ingest(docs, collection) -> Ingest(accepted, drops)   rule 0, before reduce
+  docs:       raw documents (dicts with _id), any order, duplicates allowed
+  collection: "transaction" | "exception"
+  accepted:   the bodies that pass their collection's schema and the cross-field rules, in input order
+  drops:      Drop{id, collection, code, detail}, one per (collection, id), sorted by (collection, id); code is the
+              first of malformed, wrong_type, version, missing_field, extra_field, invalid_value, rule; detail is
+              free text, logged and shown, never compared by a fixture
+
 reduce(transactions, resolutions, store) -> LedgerState
   transactions: every transaction this node knows, any order, duplicates allowed by id
   resolutions:  exception documents; only those with status "resolved" and resolution.by "hq" count (rule 3)
@@ -61,6 +69,8 @@ trip, box, *, detected_at=None)`, `siab_ledger.conservation(state, store, invent
 
 ## Reducer rules
 
+0. **Ingest.** The reducer's input is `ingest(...).accepted`; see `contracts/fixtures/README.md` rule 0
+   (decision 010). A drop changes no row directly, and a report computed with drops is never a plain `HOLDS`.
 1. **Predecessor.** A unit's movements form a forest by predecessor. A movement's predecessor is the transaction its
    `prev_txn` names, whether or not this node has it, except for a blind movement, whose predecessor is the movement
    of the same unit with `to_custodian` equal to the blind movement's `from_custodian` and the greatest `hlc` below
@@ -178,3 +188,7 @@ id; `forks` sorted by `unit_id` then `prev_txn` (null first) with `branches` sor
 reversed and with its transactions and resolutions shuffled (seeded by `N`, default 0; every other run also delivers
 some documents twice). One line per fixture, `PASS <name>` or `FAIL <name>: <first difference>`, in file-name order;
 exit 1 on any failure.
+
+The runner ingests `transactions` and `resolutions` first (rule 0), reduces the accepted ones, and adds
+`drops: [{id, collection, code}]` (no `detail`) to its result; every ordering of an `order_independent` fixture must
+give the same `drops`. A document marked `_invalid` in a fixture is fed to rule 0 like any other.
