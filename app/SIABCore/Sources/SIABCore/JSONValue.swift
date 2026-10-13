@@ -1,11 +1,15 @@
 import Foundation
 
-/// A JSON value. Used for the reference's canonical form (the reducer's tie-break between two bodies under one id)
-/// and by the fixture tests to compare against `expected`.
+/// A JSON value. Used for the reference's canonical form (the reducer's tie-break between two bodies under one id),
+/// by rule 0's validator (`DocumentCheck`), which must read any body to say why it fails, and by the fixture tests to
+/// compare against `expected`. A number is `.int` when it fits an `Int64` exactly, else `.double`: no schema allows a
+/// non-integer number, so `.double` exists so that `{"cents": 12.5}` parses and is dropped as `invalid_value` instead
+/// of failing to decode.
 public enum JSONValue: Codable, Equatable {
     case null
     case bool(Bool)
     case int(Int64)
+    case double(Double)
     case string(String)
     case array([JSONValue])
     case object([String: JSONValue])
@@ -15,6 +19,7 @@ public enum JSONValue: Codable, Equatable {
         if c.decodeNil() { self = .null }
         else if let b = try? c.decode(Bool.self) { self = .bool(b) }
         else if let i = try? c.decode(Int64.self) { self = .int(i) }
+        else if let d = try? c.decode(Double.self) { self = .double(d) }
         else if let s = try? c.decode(String.self) { self = .string(s) }
         else if let a = try? c.decode([JSONValue].self) { self = .array(a) }
         else { self = .object(try c.decode([String: JSONValue].self)) }
@@ -26,6 +31,7 @@ public enum JSONValue: Codable, Equatable {
         case .null: try c.encodeNil()
         case .bool(let b): try c.encode(b)
         case .int(let i): try c.encode(i)
+        case .double(let d): try c.encode(d)
         case .string(let s): try c.encode(s)
         case .array(let a): try c.encode(a)
         case .object(let o): try c.encode(o)
@@ -43,12 +49,21 @@ public enum JSONValue: Codable, Equatable {
         case .null: return "null"
         case .bool(let b): return b ? "true" : "false"
         case .int(let i): return String(i)
+        case .double(let d): return JSONValue.python(d)
         case .string(let s): return JSONValue.quote(s)
         case .array(let a): return "[" + a.map(\.canonical).joined(separator: ",") + "]"
         case .object(let o):
             let keys = o.keys.sorted { $0.unicodeScalars.lexicographicallyPrecedes($1.unicodeScalars) }
             return "{" + keys.map { JSONValue.quote($0) + ":" + o[$0]!.canonical }.joined(separator: ",") + "}"
         }
+    }
+
+    /// Python's `repr` of a float, as `json.dumps` writes it. Swift's description is the shortest form that reads
+    /// back to the same value, as Python's is (`12.5`, `12.0`, `1e+16`, `1e-05`).
+    private static func python(_ d: Double) -> String {
+        if d.isNaN { return "NaN" }
+        if d.isInfinite { return d < 0 ? "-Infinity" : "Infinity" }
+        return "\(d)"
     }
 
     private static func quote(_ s: String) -> String {
