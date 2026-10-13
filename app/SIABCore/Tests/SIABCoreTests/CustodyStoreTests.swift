@@ -240,6 +240,123 @@ final class CustodyStoreTests: XCTestCase {
         XCTAssertTrue(units.allSatisfy { store.currentState.units[$0]?.state == .sold })
     }
 
+    // MARK: - Rule 0: drop, never skip (decision 010)
+
+    /// A body saved as Couchbase Lite holds it (no `_id`), edited after encoding: what a peer on another schema, or
+    /// a bug, would push.
+    @discardableResult
+    func pulledRaw(_ txn: Transaction, edit: (inout [String: Any]) -> Void) throws -> String {
+        let encoder = JSONEncoder()
+        encoder.userInfo[.omitDocumentID] = true
+        var body = try JSONSerialization.jsonObject(with: encoder.encode(txn)) as! [String: Any]
+        edit(&body)
+        let json = String(decoding: try JSONSerialization.data(withJSONObject: body), as: UTF8.self)
+        if let existing = try store.transactions.document(id: txn.id) {
+            try store.transactions.save(document: existing.toMutable().setJSON(json))
+        } else {
+            try store.transactions.save(document: MutableDocument(id: txn.id, json: json))
+        }
+        return txn.id
+    }
+
+    func take(ms: Int64, device: String = "tablet-b", prev: String? = nil) -> Transaction {
+        let hlc = HLC(ms: ms, counter: 0, device: device).string
+        return Transaction(id: "txn::" + hlc, trip: Self.trip, box: "box-07", kind: .checkOut, unitID: Self.unit,
+                           sku: Ledger.skuOf(Self.unit), fromCustodian: "box-07", toCustodian: device, prevTxn: prev,
+                           fromAllocation: nil, toAllocation: nil, device: device, hlc: hlc,
+                           deviceClock: "2026-10-18T13:00:00Z")
+    }
+
+    func logEntries() throws -> [DropRecord] { try store.dropLog.entries() }
+
+    func testInvalidDocumentIsDroppedNotSkipped() throws {
+        let pack = try pulledPack()
+        let bad = try pulledRaw(take(ms: 1_792_328_500_000, prev: pack.id)) { $0["kind"] = "transfer" }
+        var published: [[DropRecord]] = []
+        let token = store.drops.sink { published.append($0) }
+        defer { token.cancel() }
+        let state = try store.rebuild()
+
+        XCTAssertNil(state.transactions[bad], "the dropped take is not reduced")
+        XCTAssertNotNil(state.transactions[pack.id])
+        XCTAssertEqual(state.units[Self.unit]?.holder, "box-07", "the unit is where the pack left it")
+        let drops = store.currentDrops
+        XCTAssertEqual(drops.map(\.id), [bad])
+        XCTAssertEqual(drops.first?.collection, "transaction")
+        XCTAssertEqual(drops.first?.code, .invalidValue)
+        XCTAssertEqual(drops.first?.source, "peer")
+        XCTAssertEqual(drops.first?.firstSeen, "2026-10-18T13:00:00.000Z")
+        XCTAssertTrue(drops.first?.detail.contains("transfer") ?? false)
+        XCTAssertEqual(published.last, drops, "published after the rebuild")
+
+        let logged = try XCTUnwrap(try store.dropLog.collection.document(id: "transaction::\(bad)"))
+        XCTAssertEqual(logged.string(forKey: "code"), "invalid_value")
+        XCTAssertEqual(logged.string(forKey: "source"), "peer")
+        XCTAssertEqual(try logEntries(), drops)
+        XCTAssertEqual(store.dropLog.collection.scope.name, CustodyStore.localScope, "never replicated")
+        XCTAssertFalse(CustodyStore.replicatedCollections.contains("drop_log"))
+
+        // Fixed (a valid revision under the same id): reduced again, and no longer counted.
+        try pulledRaw(take(ms: 1_792_328_500_000, prev: pack.id)) { _ in }
+        try store.rebuild()
+        XCTAssertNotNil(store.currentState.transactions[bad])
+        XCTAssertEqual(store.currentDrops, [])
+        XCTAssertEqual(try logEntries().count, 1, "the log keeps the entry")
+    }
+
+    func testVersionTwoIsDroppedAsVersion() throws {
+        let id = try pulledRaw(take(ms: 1_792_328_500_000)) { $0["v"] = 2 }
+        try store.rebuild()
+        XCTAssertEqual(store.currentDrops.map(\.code), [.version])
+        XCTAssertEqual(store.currentDrops.map(\.id), [id])
+        XCTAssertEqual(store.currentDrops.first?.code.words, "newer schema: update the app")
+    }
+
+    func testSourceIsLocalWhenTheIDNamesThisDeviceAndBoxWhenPulled() throws {
+        let mine = try pulledRaw(take(ms: 1_792_328_500_000, device: "tablet-a")) { $0["note"] = "edited" }
+        let boxed = try pulledRaw(take(ms: 1_792_328_600_000)) { $0["note"] = "edited" }
+        let peer = try pulledRaw(take(ms: 1_792_328_700_000)) { $0["note"] = "edited" }
+        store.pulledFromBox = { $0 == boxed }
+        try store.rebuild()
+        let sources = Dictionary(uniqueKeysWithValues: store.currentDrops.map { ($0.id, $0.source) })
+        XCTAssertEqual(sources, [mine: "local", boxed: "box", peer: "peer"])
+        XCTAssertTrue(store.currentDrops.allSatisfy { $0.code == .extraField })
+    }
+
+    func testDropLogIsBoundedAndKeyed() throws {
+        try database.inBatch {  // one change notification, not 250
+            for i in 0..<250 {
+                try pulledRaw(take(ms: 1_792_328_500_000 + Int64(i) * 1000)) { $0["kind"] = "transfer" }
+            }
+        }
+        try store.rebuild()
+        XCTAssertEqual(try logEntries().count, 200, "at most 200 entries")
+        XCTAssertEqual(store.currentDrops.count, 250, "every drop is counted, stored or not")
+        let held = Set(try logEntries().map(\.id))
+
+        // Again: nothing churns, and the entries the log holds are the same ones.
+        clock.advance(60_000)
+        try store.rebuild()
+        XCTAssertEqual(Set(try logEntries().map(\.id)), held)
+        XCTAssertTrue(try logEntries().allSatisfy { $0.firstSeen == "2026-10-18T13:00:00.000Z" && $0.lastSeen == "2026-10-18T13:01:00.000Z" })
+
+        // Re-saving one updates lastSeen only; one entry per (collection, id).
+        let resaved = try XCTUnwrap(held.sorted().first)
+        clock.advance(60_000)
+        try pulledRaw(take(ms: Int64(HLC(String(resaved.dropFirst(5)))!.ms))) { $0["kind"] = "transfer" }
+        try store.rebuild()
+        let entry = try XCTUnwrap(try logEntries().first { $0.id == resaved })
+        XCTAssertEqual(entry.firstSeen, "2026-10-18T13:00:00.000Z")
+        XCTAssertEqual(entry.lastSeen, "2026-10-18T13:02:00.000Z")
+        XCTAssertEqual(try logEntries().filter { $0.id == resaved }.count, 1)
+
+        // Older entries go first: once 200 newer drops arrive, the old ones are evicted.
+        let fresh = DropLog(database: database, collection: store.dropLog.collection)
+        let later = (0..<200).map { Drop(id: "txn::later-\($0)", collection: "transaction", code: .rule, detail: "x") }
+        _ = try fresh.record(later, now: "2026-10-18T14:00:00.000Z") { _ in "peer" }
+        XCTAssertEqual(Set(try logEntries().map(\.id)), Set(later.map(\.id)))
+    }
+
     func testPairingPayloadDecodesPortExample() throws {
         let url = try XCTUnwrap(Bundle.module.url(forResource: "box-agent", withExtension: "md"))
         let doc = try String(contentsOf: url, encoding: .utf8)

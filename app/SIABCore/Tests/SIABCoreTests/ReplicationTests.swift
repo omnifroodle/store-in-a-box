@@ -54,7 +54,8 @@ final class ReplicationTests: XCTestCase {
         XCTAssertFalse(mesh.contains { $0.hasPrefix("local.") })
         #endif
         // The local scope exists on the device all the same.
-        XCTAssertEqual(try database.scope(name: "local")?.collections().map(\.name).sorted(), ["device", "unit_state"])
+        XCTAssertEqual(try database.scope(name: "local")?.collections().map(\.name).sorted(),
+                       ["device", "drop_log", "unit_state"])
     }
 
     func testBoxConfigurationFromPairing() throws {
