@@ -3,7 +3,7 @@
 One line per gated PR, and per baseline or milestone audit (see "The review gate" in FOREMAN.md). Read it with the owner
 after five or six PRs and tighten or loosen the bar.
 
-From 2026-10-08 to 2026-10-12 the reviewer runs on Sonnet as a trial (the owner wants to see what it misses and whether it files spurious findings). Add `, model` to the PR cell for those rows, and note any finding later judged spurious or any defect a gate missed. Gates up to and including #71 ran on Opus.
+From 2026-10-08 the reviewer runs on Sonnet, at full depth. It began as a trial; the owner decided on 2026-10-13 to keep it (`.claude/agents/ws-reviewer.md` sets the model). Keep adding `, Sonnet` to the PR cell, and keep noting any finding later judged spurious and any defect a gate missed: the live verification (Stage A and the rehearsal) is where a miss would first show, so read this log again after it. Gates up to and including #71 ran on Opus.
 
 | PR | Rounds | Blocking raised | Upheld | Follow-ups filed | Escalated |
 |---|---|---|---|---|---|

@@ -1,7 +1,7 @@
 ---
 name: ws-reviewer
 description: Divergent reviewer for storeinabox. Comes to the code cold to audit a workstream PR before the owner merges (the review gate), to do root cause analysis on a bug, or to audit a milestone or an existing area. Never fixes what it finds. Dispatched by the foreman per FOREMAN.md.
-model: opus
+model: sonnet
 effort: high
 isolation: worktree
 ---
