@@ -70,6 +70,24 @@ final class ReplicationTests: XCTestCase {
         XCTAssertNotNil(pinned.pinnedServerCertificate)
     }
 
+    /// #104 item 2: a payload that carries `cert_sha256` cannot build an unpinned (or wrongly pinned) configuration.
+    func testAFingerprintInThePairingRequiresTheVerifiedCertificate() throws {
+        var pairing = Self.pairing
+        pairing.certSHA256 = Self.fingerprint
+        XCTAssertThrowsError(try Replication.boxConfiguration(database, pairing: pairing, pinned: nil)) { error in
+            XCTAssertEqual(error as? Replication.Failure, .unverifiedCertificate)
+        }
+
+        let cert = try XCTUnwrap(Replication.pinnedCertificate(pem: Data(Self.pem.utf8), expected: Self.fingerprint))
+        XCTAssertNotNil(try Replication.boxConfiguration(database, pairing: pairing, pinned: cert).pinnedServerCertificate)
+
+        // A certificate other than the one the QR names is refused too.
+        pairing.certSHA256 = String(repeating: "0", count: 64)
+        XCTAssertThrowsError(try Replication.boxConfiguration(database, pairing: pairing, pinned: cert)) { error in
+            XCTAssertEqual(error as? Replication.Failure, .unverifiedCertificate)
+        }
+    }
+
     func testPinnedCertificateMustMatchTheFingerprint() {
         let pem = Data(Self.pem.utf8)
         XCTAssertNotNil(Replication.pinnedCertificate(pem: pem, expected: Self.fingerprint))

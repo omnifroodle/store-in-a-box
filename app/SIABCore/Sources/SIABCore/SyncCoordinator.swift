@@ -201,11 +201,11 @@ public final class SyncCoordinator: ObservableObject {
         do {
             let pem = try await fetch(agent.appendingPathComponent("cert.pem"))
             guard started == generation else { return nil }  // stopped (or restarted) while fetching
+            boxReason = nil  // the fetch answered: no retry is pending, whatever the certificate says (#135 item 1)
             guard let cert = Replication.pinnedCertificate(pem: pem, expected: expected) else {
                 box = .error("the box certificate does not match the pairing QR")
                 return nil
             }
-            boxReason = nil
             startBox(pinned: cert)
             return nil
         } catch {

@@ -65,6 +65,9 @@ public final class CustodyStore {
     private(set) var lastHLC: HLC?
     /// Test seam: runs inside the write batch right after each transaction is saved.
     var afterTransactionWrite: (() throws -> Void)?
+    /// Test seam: runs inside the write batch after every document of it is saved (the transactions and the
+    /// allocations), last thing before the batch commits; a throw here must roll back all of them (#104 item 1).
+    var beforeBatchCommit: (() throws -> Void)?
 
     /// Recomputed on any `store.transaction` or `store.exception` change.
     public var state: AnyPublisher<LedgerState, Never> { subject.eraseToAnyPublisher() }
@@ -296,6 +299,7 @@ public final class CustodyStore {
                 try afterTransactionWrite?()
             }
             for alloc in changed { try save(alloc, id: alloc.id, in: allocations) }
+            try beforeBatchCommit?()
         }
         try rebuild()
     }

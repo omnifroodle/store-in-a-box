@@ -40,17 +40,34 @@ final class LedgerFixtureTests: XCTestCase {
         }
     }
 
+    /// The environment variable that fixes the shuffle seed, to reproduce a failure. With `xcodebuild test`, pass it
+    /// as `TEST_RUNNER_SIAB_LEDGER_SEED` (xcodebuild strips the prefix into the test runner's environment).
+    static let seedVariable = "SIAB_LEDGER_SEED"
+
+    /// A new seed each run, so CI covers different orders over time (#104 item 7), unless `SIAB_LEDGER_SEED` names one.
+    static func runSeed(_ environment: [String: String] = ProcessInfo.processInfo.environment) -> Int {
+        environment[seedVariable].flatMap { Int($0) } ?? Int.random(in: 0..<1_000_000)
+    }
+
     func testEveryFixturePasses() throws {
         let fixtures = try Self.loadFixtures()
         XCTAssertGreaterThanOrEqual(fixtures.count, 33, "contracts 0.5.0 has 33 ledger fixtures")
+        let seed = Self.runSeed()
+        print("LedgerFixtureTests seed \(seed) (reproduce with \(Self.seedVariable)=\(seed))")
         var lines: [String] = []
         for (file, fixture) in fixtures {
             XCTAssertEqual(file, fixture.name + ".json")
-            let diff = Self.check(fixture, seed: 0)
+            let diff = Self.check(fixture, seed: seed)
             lines.append(diff == nil ? "PASS \(fixture.name)" : "FAIL \(fixture.name): \(diff!)")
-            XCTAssertNil(diff, "\(fixture.name): \(diff ?? "")")
+            XCTAssertNil(diff, "\(fixture.name): \(diff ?? "") (\(Self.seedVariable)=\(seed))")
         }
         print("LedgerFixtureTests report:\n" + lines.joined(separator: "\n"))
+    }
+
+    func testTheSeedComesFromTheEnvironmentWhenSet() {
+        XCTAssertEqual(Self.runSeed([Self.seedVariable: "4242"]), 4242)
+        XCTAssertTrue((0..<1_000_000).contains(Self.runSeed([:])))
+        XCTAssertTrue((0..<1_000_000).contains(Self.runSeed([Self.seedVariable: "not a number"])))
     }
 
     // MARK: - The runner (mirrors src/siab_ledger/fixtures.py)

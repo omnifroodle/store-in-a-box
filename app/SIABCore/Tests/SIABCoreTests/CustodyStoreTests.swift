@@ -63,22 +63,48 @@ final class CustodyStoreTests: XCTestCase {
 
     // MARK: - Tests
 
+    /// The failure is injected at `beforeBatchCommit`, after the transaction and the allocations are saved, so a
+    /// `commit` split into two batches leaves the first one's documents behind and fails here (#104 item 1). The hook
+    /// also records what the batch had saved when it ran, which pins the seam after the allocation saves.
     func testEverySaleIsOneBatch() throws {
         struct Injected: Error {}
-        store.afterTransactionWrite = { throw Injected() }
+        var inBatch: [(transactions: UInt64, allocations: UInt64)] = []
+        let (transactions, allocations) = (store.transactions, store.allocations)
+        store.beforeBatchCommit = {
+            inBatch.append((transactions.count, allocations.count))
+            throw Injected()
+        }
         let price = Money(cents: 12900)
         XCTAssertThrowsError(try store.sell(unit: Self.unit, tender: Tender(kind: .cash, amount: price), price: price))
+        XCTAssertEqual(inBatch.last?.transactions, 1, "the sale was saved inside the batch")
         XCTAssertEqual(count(store.transactions), 0, "the sale rolled back")
         XCTAssertEqual(count(store.allocations), 0)
 
-        // A check-out that would open an allocation: neither the transaction nor the allocation lands.
+        // A check-out that opens an allocation: both were saved in the batch, and neither lands.
         XCTAssertThrowsError(try store.checkOut(unit: Self.unit, from: Custodian.store, to: "box-07", actingFor: "box-07"))
+        XCTAssertEqual(inBatch.last?.transactions, 1)
+        XCTAssertEqual(inBatch.last?.allocations, 1, "the allocation was saved before the hook ran")
         XCTAssertEqual(count(store.transactions), 0)
         XCTAssertEqual(count(store.allocations), 0)
 
-        store.afterTransactionWrite = nil
-        let sale = try store.sell(unit: Self.unit, tender: Tender(kind: .cash, amount: price), price: price)
-        XCTAssertEqual(count(store.transactions), 1)
+        // A check-in that closes this device's allocation: the close rolls back with the movement.
+        store.beforeBatchCommit = nil
+        try pulledPack()
+        try store.rebuild()
+        let take = try store.checkOut(unit: Self.unit, from: "box-07", to: "tablet-a")
+        let mine = try XCTUnwrap(take.toAllocation)
+        let before = count(store.transactions)
+        store.beforeBatchCommit = { throw Injected() }
+        XCTAssertThrowsError(try store.checkIn(unit: Self.unit))
+        XCTAssertEqual(count(store.transactions), before, "the check-in rolled back")
+        let kept: Allocation = try XCTUnwrap(store.load(id: mine, from: store.allocations))
+        XCTAssertEqual(kept.status, .active, "and so did the allocation it closed")
+        XCTAssertEqual(store.currentState.units[Self.unit]?.holder, "tablet-a")
+
+        store.beforeBatchCommit = nil
+        let other = "JKT-RAIN-M-BLU#002"
+        let sale = try store.sell(unit: other, tender: Tender(kind: .cash, amount: price), price: price)
+        XCTAssertEqual(count(store.transactions), before + 1)
         XCTAssertEqual(sale.kind, .sale)
         XCTAssertEqual(sale.fromCustodian, "box-07", "no record: a blind sale off the box")
         XCTAssertNil(sale.prevTxn)
@@ -198,6 +224,64 @@ final class CustodyStoreTests: XCTestCase {
         token.cancel()
         XCTAssertEqual(seen.first, 0)
         XCTAssertEqual(seen.last, 1)
+    }
+
+    /// #50 (owner ruling, WS4 Rules): the app never writes `product` or `trip`; Edge Server cannot restrict a device
+    /// to some collections, so this test is the guard. Every CustodyStore write operation runs (each kind of check-out,
+    /// check-in and sale, a basket, a write that fails inside its batch, exception detection and a rebuild) with one
+    /// product and one trip already pulled; neither collection gains, changes or loses a document, and neither
+    /// reports a change.
+    func testNoWriteTouchesProductOrTrip() throws {
+        struct Injected: Error {}
+        let product = try XCTUnwrap(database.collection(name: "product", scope: CustodyStore.storeScope))
+        let trip = try XCTUnwrap(database.collection(name: "trip", scope: CustodyStore.storeScope))
+        try product.save(document: MutableDocument(id: "JKT-RAIN-M-BLU", json: """
+            {"type":"product","v":1,"sku":"JKT-RAIN-M-BLU","name":"Rain shell","price":{"cents":12900}}
+            """))
+        try trip.save(document: MutableDocument(id: Self.trip, json: """
+            {"type":"trip","v":1,"trip":"\(Self.trip)","name":"Richmond Riverfest"}
+            """))
+        let revisions = try [product.document(id: "JKT-RAIN-M-BLU")?.revisionID, trip.document(id: Self.trip)?.revisionID]
+        var changed: [String] = []
+        let tokens = [product, trip].map { collection in
+            collection.addChangeListener(queue: .main) { change in
+                changed += change.documentIDs.map { "\(collection.name)/\($0)" }
+            }
+        }
+        defer { tokens.forEach { $0.remove() } }
+
+        let price = Money(cents: 12900)
+        let cash = Tender(kind: .cash, amount: price)
+        try store.checkOut(unit: Self.unit, from: Custodian.store, to: "box-07", actingFor: "box-07")  // pack
+        try store.checkOut(unit: Self.unit, from: "box-07", to: "tablet-a")                          // take
+        try store.checkIn(unit: Self.unit)                                     // back, closing the allocation
+        try store.checkOut(unit: "JKT-RAIN-M-BLU#002", from: "box-07", to: "tablet-a")  // a blind take
+        try store.checkIn(unit: "HAT-BEANIE-OS#001")                           // no record: from unknown
+        try store.sell(unit: Self.unit, tender: cash, price: price)            // off the box
+        try store.sell(unit: "JKT-RAIN-M-BLU#002", tender: cash, price: price)  // from this device
+        try store.sell(basket: ["JKT-RAIN-M-BLU#003", "HAT-BEANIE-OS#002"].map { SaleLine(unit: $0, price: price) },
+                       tender: Tender(kind: .cardSimulated, amount: Money(cents: 25800)))
+        try store.sell(unit: Self.unit, tender: cash, price: price)            // a unit already sold
+        XCTAssertThrowsError(try store.sell(basket: [SaleLine(unit: Self.unit, price: price)] + [SaleLine(unit: Self.unit, price: price)],
+                                            tender: cash))                     // refused before any write
+        store.beforeBatchCommit = { throw Injected() }
+        XCTAssertThrowsError(try store.checkOut(unit: "JKT-RAIN-M-BLU#004", from: Custodian.store, to: "box-07",
+                                                actingFor: "box-07"))         // rolled back
+        store.beforeBatchCommit = nil
+        let exceptions = try store.detectAndWriteExceptions()
+        try store.rebuild()
+
+        XCTAssertGreaterThanOrEqual(count(store.transactions), 9, "the writes landed")
+        XCTAssertGreaterThanOrEqual(count(store.allocations), 2)
+        XCTAssertFalse(exceptions.isEmpty, "exception detection wrote documents")
+        let drained = expectation(description: "change notifications delivered")
+        DispatchQueue.main.async { drained.fulfill() }
+        wait(for: [drained], timeout: 10)
+        XCTAssertEqual(changed, [], "no change to store.product or store.trip")
+        XCTAssertEqual(product.count, 1)
+        XCTAssertEqual(trip.count, 1)
+        XCTAssertEqual(try [product.document(id: "JKT-RAIN-M-BLU")?.revisionID, trip.document(id: Self.trip)?.revisionID],
+                       revisions)
     }
 
     /// #114: a basket is one batch and one published state. A failure inside the batch (after the first sale was

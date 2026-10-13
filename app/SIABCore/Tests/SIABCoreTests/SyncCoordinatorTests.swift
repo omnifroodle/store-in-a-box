@@ -182,6 +182,37 @@ final class SyncCoordinatorTests: XCTestCase {
         XCTAssertTrue(sync.hasBoxReplicator, "the box replicator was built once the certificate matched")
         XCTAssertNil(sync.boxReason)
         XCTAssertEqual(sync.box, .offline(lastSeenMs: nil))
+
+        // #135 item 1: unreachable twice, then something answers with a certificate that does not match. The link
+        // is an error and the "retrying" reason is gone: no retry follows a mismatch.
+        pairing.certSHA256 = String(repeating: "0", count: 64)
+        var misses = 0
+        var mismatchWaits: [Int64] = []
+        var reasons: [String?] = []
+        weak var mismatchProbe: SyncCoordinator?
+        let mismatch = SyncCoordinator(database: database, pairing: pairing, identity: NoIdentity(), clock: FakeClock(),
+                                       fetch: { _ in
+                                           misses += 1
+                                           if misses <= 2 { throw URLError(.cannotConnectToHost) }
+                                           return Data(ReplicationTests.pem.utf8)
+                                       },
+                                       sleep: { ms in
+                                           mismatchWaits.append(ms)
+                                           reasons.append(mismatchProbe?.boxReason)
+                                       })
+        mismatchProbe = mismatch
+        mismatch.startsReplicators = false
+        mismatch.start()
+        defer { mismatch.stop() }
+        for _ in 0..<500 where mismatch.box == .offline(lastSeenMs: nil) { await Task.yield() }
+        for _ in 0..<100 { await Task.yield() }  // a retry, if one were scheduled, would run now
+
+        XCTAssertEqual(misses, 3)
+        XCTAssertEqual(mismatchWaits, [1_000, 2_000], "no wait after the mismatch")
+        XCTAssertTrue(reasons.allSatisfy { $0?.contains("retrying in") ?? false }, "the reason while retrying")
+        XCTAssertEqual(mismatch.box, .error("the box certificate does not match the pairing QR"))
+        XCTAssertNil(mismatch.boxReason, "no stale \"retrying in 2 s\" beside the error")
+        XCTAssertFalse(mismatch.hasBoxReplicator)
     }
 
     /// `stop()` during a wait between attempts: no further attempt, no replicator.

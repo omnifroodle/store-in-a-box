@@ -107,7 +107,7 @@ private struct MovementCheck: View {
             TextField("Unit (SKU#serial)", text: $unit)
                 .textInputAutocapitalization(.characters)
                 .autocorrectionDisabled()
-            let valid = unit.range(of: "^[A-Z0-9]+(-[A-Z0-9]+)*#[0-9]{3}$", options: .regularExpression) != nil
+            let valid = Ledger.isUnitID(unit)
             Button("Pack onto the box") { model.check(unit, take: false) }.disabled(!valid)
             Button("Take from the box") { model.check(unit, take: true) }.disabled(!valid)
         }
