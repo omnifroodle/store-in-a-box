@@ -305,3 +305,57 @@ def test_malformed_values_are_400_not_500(kit):
     for path, body in bad:
         status, reply = _post(app, path, body)
         assert status == 400 and reply["error"], (path, body, status, reply)
+
+
+def test_host_and_origin_compare_case_insensitively(kit):
+    app = kit.app(kit.hq(kit.fixture("oversell-hq")))
+    reply = _exchange(app, lambda port: _request("GET", "/api/tree", port, host=f"LOCALHOST:{port}"))
+    assert _status(reply) == 200
+    reply = _exchange(app, lambda port: _request("POST", "/api/reconcile/run", port, origin=f"HTTP://LocalHost:{port}",
+                                                 body=b"{}"))
+    assert _status(reply) == 200
+
+
+def test_a_repeated_host_or_content_type_is_400(kit):
+    """The last of two Host headers used to win, so ``Host: evil`` then the real one passed."""
+    app = kit.app(kit.hq(kit.fixture("oversell-hq")))
+
+    def raw(port, extra, method="GET"):
+        lines = [f"{method} /api/tree HTTP/1.1", f"Host: evil.example:{port}", *extra, f"Host: 127.0.0.1:{port}"]
+        if method == "POST":
+            lines += ["Content-Type: text/plain", "Content-Type: application/json"]
+        return ("\r\n".join(lines) + "\r\nContent-Length: 0\r\n\r\n").encode()
+
+    assert _status(_exchange(app, lambda port: raw(port, []))) == 400
+    reply = _exchange(app, lambda port: raw(port, [], "POST"))
+    assert _status(reply) == 400 and b"repeated header: content-type, host" in reply
+    # a lone Host still passes
+    assert _status(_exchange(app, lambda port: _request("GET", "/api/tree", port))) == 200
+
+
+def test_handle_refuses_when_the_port_is_unknown(kit):
+    """Only serve() sets app.port; a caller that skipped it must not get a server with no Host/Origin check."""
+    from siab_hq.server import handle
+    app = kit.app(kit.hq(kit.fixture("oversell-hq")))
+    assert app.port is None
+
+    async def run() -> bytes:
+        server = await asyncio.start_server(lambda r, w: handle(app, r, w), "127.0.0.1", 0)
+        port = server.sockets[0].getsockname()[1]
+        reader, writer = await asyncio.open_connection("127.0.0.1", port)
+        writer.write(_request("GET", "/api/tree", port))
+        await writer.drain()
+        reply = await reader.read()
+        writer.close()
+        server.close()
+        await server.wait_closed()
+        return reply
+    assert _status(asyncio.run(run())) == 403
+
+
+def test_a_deeply_nested_json_body_is_400_not_500(kit):
+    app = kit.app(kit.hq(kit.fixture("oversell-hq")))
+    body = b"[" * 60000
+    assert route(app, "POST", "/api/reconcile/run", body)[0] == 400
+    reply = _exchange(app, lambda port: _request("POST", "/api/reconcile/run", port, body=body))
+    assert _status(reply) == 400

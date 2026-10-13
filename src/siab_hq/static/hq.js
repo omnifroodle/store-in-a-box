@@ -5,6 +5,8 @@
 const PANELS = ["conservation", "tree", "exceptions", "stage", "box"];
 const trip = new URLSearchParams(location.search).get("trip") || "";
 const last = {};
+const errors = {};
+const SKIPPED = "skipped";
 
 function query(extra) {
   const p = new URLSearchParams(extra || {});
@@ -18,7 +20,7 @@ function showError(message) {
 
 async function refresh(name) {
   const el = document.getElementById(name);
-  if (el.contains(document.activeElement) && document.activeElement !== document.body) return; // typing a note
+  if (el.contains(document.activeElement) && document.activeElement !== document.body) return SKIPPED; // typing a note
   const extra = name === "exceptions" ? { status: document.getElementById("status").value } : {};
   const r = await fetch("/panels/" + name + query(extra));
   const html = await r.text();
@@ -48,8 +50,14 @@ async function refreshAll() {
   const results = await Promise.allSettled(PANELS.map((name) => refresh(name)));
   const failures = [];
   results.forEach((r, i) => {
+    const name = PANELS[i];
+    if (r.status === "fulfilled" && r.value === SKIPPED) {  // not fetched: neither a success nor a new failure
+      if (errors[name]) failures.push(errors[name]);
+      return;
+    }
     const message = r.status === "rejected" ? String((r.reason && r.reason.message) || r.reason) : "";
-    panelError(PANELS[i], message);
+    errors[name] = message;
+    panelError(name, message);
     if (message) failures.push(message);
   });
   showError(failures.join("; "));
