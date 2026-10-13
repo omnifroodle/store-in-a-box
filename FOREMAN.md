@@ -11,7 +11,7 @@ asks it to merge that PR (the request covers that PR only, not the next one).
 | Foreman | the main session | board, dispatch, inbox routing, contract changes, decisions log, consulting the owner | review code it dispatched; merge |
 | Architect | `ws-architect` (fable, effort high) | blueprints in `docs/workstreams/` before dispatch; answers design questions from the inbox | write code |
 | Workstream agent | `ws-design` (opus, high) or `ws-mechanical` (sonnet, medium) | builds one issue to its blueprint, one PR | edit `contracts/` or files outside the blueprint's Files list |
-| Reviewer | `ws-reviewer` (opus, effort high) | the review gate on PRs; root cause analysis on bugs; milestone audits | fix what it finds |
+| Reviewer | `ws-reviewer` (sonnet, effort high) | the review gate on PRs; root cause analysis on bugs; milestone audits | fix what it finds |
 | Owner | a person | decisions, merges, the verification session | |
 
 All four agent types are defined in `.claude/agents/`, which is where model and effort are set; the Agent call can
