@@ -81,9 +81,17 @@ validators. A valid body under an id that also has an invalid body is reduced; t
 3. `version`: `v` is absent or not `1`.
 4. Then the collection schema. Python: every error from `jsonschema`'s `iter_errors`, mapped by the error's top-level
    `validator` keyword: `required` → `missing_field`; `additionalProperties` → `extra_field`; anything else (`type`,
-   `enum`, `const`, `pattern`, `format`, `anyOf`, `allOf`, `if`, `not`, `minItems`, `uniqueItems`, `minimum`) →
-   `invalid_value`; the smallest code wins. Swift: check missing required keys, then unknown keys, then every value
-   (type, enum, pattern, nullability, the `allOf` conditionals), stopping at the first failing group.
+   `enum`, `const`, `pattern`, `format`, `minItems`, `uniqueItems`, `minimum`) → `invalid_value`; the smallest code
+   wins. **An `anyOf`/`oneOf` error takes the smallest code among its alternatives' errors** (`error.context`,
+   recursively), which is the code of the alternative whose JSON type the value has: `exception.resolution` is `anyOf`
+   [object, null], so a resolution object without `note` is `missing_field` (fixture `drop-resolution-missing-field`),
+   and the same holds for `tender`, `price` and `chosen_txn`. `allOf`, `if`/`then`/`else` and `$ref` never appear as a
+   top-level keyword in `jsonschema` (it reports the inner keyword). Swift: check missing required keys, then unknown
+   keys, then every value (type, enum, pattern, nullability, the conditionals), at every nesting level, stopping at the
+   first failing group; a value of the wrong JSON type inside a nullable object is judged against the object's keys.
+   The expected code for each file of the `docs/` corpus is `INVALID_CODES` in `tests/ledger/test_ingest.py` (WS10a);
+   `DocumentCheckTests` copies it. The derivation is written up in `ports/ledger.md`, "Ingest: how a drop's code is
+   derived" (WS10a, #177).
 5. `rule`: the cross-field checks of `scripts/check_contracts.py` (`CROSS_CHECKS`: `sku` is the SKU part of
    `unit_id`; `hlc` ends with `device`; an exception's `transactions` sorted and matching `branches`; `dispute_key`
    starts with `unit_id`; `resolution.hlc` ends with `resolution.by`). Both ports implement them; Python may import
@@ -91,6 +99,8 @@ validators. A valid body under an id that also has an invalid body is reduced; t
    `docs/` corpus).
 
 `detail` is the first failing check in words; it is logged and shown, never compared.
+
+**What rule 0 does not check** (foreman ruling 2026-10-13 on #177 point 3; contracts 0.7.0): the id template. `scripts/check_contracts.py` also checks a fixture document's `_id` against the schema's `x-id-template`; rule 0 names only the cross-field rules (`CROSS_CHECKS`). So a document whose `_id` disagrees with its `hlc` is reduced, on both ports. Making it a rule is a contract change for a case no fixture or generated set produces; revisit it if a rehearsal shows one.
 
 ### Python (`ports/ledger.md` gains this)
 
@@ -174,7 +184,7 @@ extension CustodyStore {
 
 ### The differential set format (owned here)
 
-`DIR/<fixture name>-<k>.json`: `{ "name", "trip", "box", "store", "inventory", "transactions", "resolutions" }`, the
+`DIR/<fixture name>-<k>.json`: `{ "name", "trip", "box", "store", "detector", "inventory", "transactions", "resolutions" }` (`detector` is the fixture's `expected.exceptions.detector`, which `exceptions_for` needs), the
 ledger fixture without `expected`, `description` or `order_independent`. Documents may be invalid. `scripts/ledger_diff.py
 generate --seed N --out DIR [--per-fixture K]` writes, per fixture: `-0` the fixture's order, `-1` reversed, `-2..`
 shuffled with duplicates (a third of the transactions and the first resolution delivered twice), and from `-K/2` on
