@@ -39,7 +39,9 @@ composition root (`App/AppModel.swift`) small so WS6 can add screens without tou
 
 **Platform**: iOS 17+, Swift 5.10+, SwiftUI, Couchbase Lite Swift 4.x (the version that ships `MultipeerReplicator`
 on the owner's devices; 4.1+ if an Android device ever joins), via Swift Package Manager or CocoaPods as the
-Couchbase docs for that version require. Vector Search extension is not added in Phase 0.
+Couchbase docs for that version require. Vector Search extension is not added in Phase 0. **Edition**: Community
+Edition is the default build (`SIAB_CBL_EDITION=community`); `MultipeerReplicator` ships only in Enterprise Edition, so
+device-to-device sync needs the opt-in `SIAB_CBL_EDITION=enterprise` build (`app/README.md`, #106).
 
 **Collections on the device** (same names as the cluster, CC1): scope `store`: `product`, `trip`, `allocation`,
 `transaction`, `exception` (all replicated); scope `local`: `unit_state` (derived, one document per unit, rebuilt
@@ -167,7 +169,8 @@ box's pairing QR (camera; WS6 reuses the scanner view) and a "Rebuild derived st
       as if pulled, `state` shows the unit held by this device, `forks` empty and `detectAndWriteExceptions()`
       writes nothing).
 - [ ] `.github/workflows/ios.yml` runs the command above on `macos-latest` and is green on the PR.
-- [ ] `[macos-xcode]` Two simulators (iPad and iPhone) running the app with the same pairing payload see each other
+- [ ] `[macos-xcode]` Two simulators (iPad and iPhone) running the app, paired with payloads for the same box, trip and
+      peer group (one payload per device: `device`, `user` and `password` differ), see each other
       in Diagnostics within 15 s and a `checkOut` on one appears in the other's `counts` within 5 s, with no box
       running. Recorded as a short screen capture or log excerpt in the PR.
 - [ ] `[owner-present]` On two physical iPads paired to the box (WS3 live): the same test over Wi-Fi with the box on,
@@ -219,3 +222,5 @@ Milestones and acceptance tests (ws-design):
 - Work in your own git worktree/branch `ws<N>/<topic>`; one PR per issue; CI must be green.
 - Notes, questions and decision requests for the foreman: file an issue with the `for-foreman` label (see FOREMAN.md).
   Do not leave them only in PR comments.
+- The app never writes `product` or `trip` documents: Edge Server 1.1 cannot stop a device doing it
+  (`box/README.md`, #50), so the app is the only guard, and a test must pin it.

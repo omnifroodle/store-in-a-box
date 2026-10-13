@@ -143,3 +143,5 @@ Milestones and acceptance tests (ws-design):
 - Work in your own git worktree/branch `ws<N>/<topic>`; one PR per issue; CI must be green.
 - Notes, questions and decision requests for the foreman: file an issue with the `for-foreman` label (see FOREMAN.md).
   Do not leave them only in PR comments.
+- The app never writes `product` or `trip` documents: Edge Server 1.1 cannot stop a device doing it
+  (`box/README.md`, #50), so the app is the only guard, and a test must pin it.
