@@ -58,6 +58,13 @@ Named edits in neighbours' code:
 - `app/StoreInABox/UI/Shared/StatusBar.swift`: `N dropped` when `N > 0` (owner decision Q2; omit if the owner says no).
 - `app/StoreInABox/UI/Shared/CustodyStoring.swift`: the protocol gains `drops: AnyPublisher<[DropRecord], Never>`.
 - `app/StoreInABox/App/AppModel.swift`: wires `drops` to the status bar.
+- `app/SIABCore/Sources/SIABCore/SyncCoordinator.swift`: records the ids `documentsReplicated` reports pulled in a
+  `pulledIDs: Set<String>` (about 6 lines; this is what makes `source: box` real; WS10b left it, #184). A follow-up PR,
+  not part of WS10b.
+- `app/StoreInABox/UI/Shared/Catalog.swift`: `StoreProductCatalog.stored()` logs a skipped product once at `.warning`
+  with `DocumentCheck.check(..., collection: "product")` (#184). Same follow-up.
+- `app/StoreInABox/App/RootView.swift`: if the status bar should take its drop count as a parameter instead of reading
+  `AppModel` from the environment (WS10b chose the environment; no change needed).
 - `app/README.md`: the Diagnostics paragraph names the new section.
 - `docs/runbook/phase0.md`: acceptance line 6 passes only with `0 dropped` (one sentence; WS7 owns the file, this is
   the named edit).
