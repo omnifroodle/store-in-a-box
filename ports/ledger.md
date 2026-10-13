@@ -62,7 +62,10 @@ hlc_now(clock, last, device = device of last) -> hlc
 hlc_receive(local_last, remote, clock, device = device of local_last) -> hlc
 ```
 
-Python names: `siab_ledger.reduce(transactions, resolutions, *, store)`, `siab_ledger.exceptions_for(state, detector,
+Python names: `siab_ledger.ingest(docs, collection)` (returns `Ingest(accepted, drops)`; `Drop.to_json()` gives
+`{id, collection, code, detail}`; the schemas are read from `contracts/schemas/`, found from the working directory
+as the fixture runner finds its fixtures, or from `SIAB_CONTRACTS_DIR`; a missing schema directory or an unknown
+collection raises, a document never does), `siab_ledger.reduce(transactions, resolutions, *, store)`, `siab_ledger.exceptions_for(state, detector,
 trip, box, *, detected_at=None)`, `siab_ledger.conservation(state, store, inventory)`, `siab_ledger.hlc_now`,
 `siab_ledger.hlc_receive`, and `siab_ledger.exception_id(detector, unit_id, txn_ids)`. `LedgerState.to_json()` and
 `Row.to_json()` give the fixtures' shapes.
@@ -130,6 +133,30 @@ trip, box, *, detected_at=None)`, `siab_ledger.conservation(state, store, invent
    `check_in` is rule 6's. A foreign movement stands, as an unexpected check-in does, and a `foreign_movement`
    exception attaches the movement and, when the input has it, its `prev_txn`.
 
+## Ingest: how a drop's code is derived
+
+Both ports, in this order; the first check that fails gives the code:
+
+1. `malformed`: the document is not a JSON object (in Python also: it has no string `_id`, so nothing can name it;
+   such a drop has the id `""`).
+2. `wrong_type`: `type` is absent or not the collection's name.
+3. `version`: `v` is absent or not the number 1.
+4. The collection schema. Every error is mapped by its keyword: `required` is `missing_field`,
+   `additionalProperties` is `extra_field`, any other keyword (`type`, `enum`, `const`, `pattern`, `format`, `not`,
+   `minItems`, `uniqueItems`, `minimum`, a conditional's `then`/`else`) is `invalid_value`. An `anyOf` (or `oneOf`)
+   error takes the smallest code among its alternatives' errors, which is the code of the alternative whose JSON type
+   the value has (a resolution object missing `note` is `missing_field`, not `invalid_value`, as
+   `drop-resolution-missing-field` pins). The smallest code over all errors wins, at any depth.
+5. `rule`: the cross-field checks of `scripts/check_contracts.py` (`sku` is the SKU part of `unit_id`; `hlc` ends
+   with `-<device>`; an exception's `transactions` sorted and matching `branches[i].txn`; `dispute_key` starts with
+   `<unit_id>|`; `resolution.hlc` ends with `-<resolution.by>`; an allocation's `opened_at` ends with `-<opened_by>`).
+   The id template (`x-id-template`) is not checked.
+
+Keys beginning with `_` are ignored. One drop per `(collection, id)`, the smallest code among that id's invalid
+bodies; a valid body under the same id is accepted and reduced. The words a screen shows for a code: `malformed`,
+`wrong type`, `newer schema: update the app` (`version`), `missing field`, `unknown field` (`extra_field`),
+`invalid value`, `rule` (`siab_ledger.ingest.CODE_WORDS`).
+
 ## Exception documents
 
 - `_id` = `exc::<detector>::<unit_id>::<hash8>`, `hash8` = the first 8 hex characters of sha256 over the attached
@@ -192,3 +219,13 @@ exit 1 on any failure.
 The runner ingests `transactions` and `resolutions` first (rule 0), reduces the accepted ones, and adds
 `drops: [{id, collection, code}]` (no `detail`) to its result; every ordering of an `order_independent` fixture must
 give the same `drops`. A document marked `_invalid` in a fixture is fed to rule 0 like any other.
+
+`python -m siab_ledger report --sets DIR --out FILE` is the differential test's Python half: for every `*.json`
+differential set in `DIR` it runs the same as `check` (ingest, reduce, `exceptions_for` with the set's `detector`,
+`conservation` with and without inventory) and writes one JSON object keyed by file name, each value the result in
+`expected`'s shape plus `drops`, serialised canonically (sorted keys, separators `,` and `:` with no spaces, ASCII
+with `\uXXXX` escapes). A differential set (`scripts/ledger_diff.py generate`) is `{name, trip, box, store,
+detector, inventory, transactions, resolutions}`: a ledger fixture without `expected`, `description` and
+`order_independent`, with `expected.exceptions.detector` as `detector`; its documents may be invalid or repeated.
+`scripts/ledger_diff.py compare A B` prints `PASS <set>` or `FAIL <set>: <first difference>` per set and exits 1 on
+any failure; `scripts/ledger_diff.sh` runs generate, both reports and compare on a Mac.

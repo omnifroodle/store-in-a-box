@@ -1,9 +1,11 @@
 """The golden fixture runner: ``contracts/fixtures/ledger/*.json`` against this implementation.
 
-Each fixture is reduced, then ``exceptions_for`` runs with the fixture's detector and ``conservation`` runs with the
-inventory (when the fixture has one) and without it; the result must equal ``expected`` exactly. A fixture marked
+Each fixture's transactions and resolutions are ingested (rule 0) and the accepted ones reduced, then
+``exceptions_for`` runs with the fixture's detector and ``conservation`` runs with the inventory (when the fixture has
+one) and without it; the result, with the drops, must equal ``expected`` exactly. A fixture marked
 ``order_independent`` is re-run with its transactions and resolutions shuffled (seeded), and with duplicates, and must
-give the same answer every time.
+give the same answer every time, ``drops`` included. ``report`` runs the same over a directory of differential sets
+(``scripts/ledger_diff.py``) for the comparison with the Swift port.
 """
 
 from __future__ import annotations
@@ -17,6 +19,7 @@ from pathlib import Path
 from .chain import reduce
 from .conservation import conservation
 from .exceptions import exceptions_for
+from .ingest import ingest
 
 SHUFFLES = 8
 """Shuffled re-runs per order-independent fixture (besides the reversed order)."""
@@ -37,14 +40,17 @@ def load_fixtures(directory: Path) -> list[dict]:
 
 
 def run(fixture: dict, transactions: Sequence[dict] | None = None, resolutions: Sequence[dict] | None = None) -> dict:
-    """The implementation's answer to ``fixture``, shaped like its ``expected``."""
+    """The implementation's answer to ``fixture``, shaped like its ``expected``: rule 0, then the reducer over what
+    it accepted. ``fixture`` may also be a differential set, which has no ``expected`` and names its ``detector``."""
     txns = fixture["transactions"] if transactions is None else transactions
     res = fixture["resolutions"] if resolutions is None else resolutions
-    state = reduce(txns, res, store=fixture["store"])
-    detector = fixture["expected"]["exceptions"]["detector"]
+    txn_in, res_in = ingest(txns, "transaction"), ingest(res, "exception")
+    state = reduce(txn_in.accepted, res_in.accepted, store=fixture["store"])
+    detector = fixture["expected"]["exceptions"]["detector"] if "expected" in fixture else fixture["detector"]
     with_inventory = None
     if fixture["inventory"] is not None:
         with_inventory = [r.to_json() for r in conservation(state, fixture["store"], fixture["inventory"])]
+    drops = sorted(txn_in.drops + res_in.drops, key=lambda d: (d.collection, d.id))
     return {
         **state.to_json(),
         "exceptions": {
@@ -55,6 +61,7 @@ def run(fixture: dict, transactions: Sequence[dict] | None = None, resolutions: 
             "with_inventory": with_inventory,
             "venue_only": [r.to_json() for r in conservation(state, fixture["store"], None)],
         },
+        "drops": [d.key() for d in drops],
     }
 
 
@@ -125,3 +132,13 @@ def check(fixture: dict, seed: int = 0) -> Outcome:
 
 def check_all(directory: Path, seed: int = 0) -> list[Outcome]:
     return [check(fixture, seed) for fixture in load_fixtures(directory)]
+
+
+def canonical(value) -> str:
+    """The differential report's serialisation: sorted keys, no spaces, ASCII (the Swift runner writes the same)."""
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+
+
+def report(sets_dir: Path) -> dict[str, dict]:
+    """``run`` over every ``*.json`` differential set in ``sets_dir``, keyed by file name."""
+    return {p.name: run(json.loads(p.read_text(encoding="utf-8"))) for p in sorted(Path(sets_dir).glob("*.json"))}

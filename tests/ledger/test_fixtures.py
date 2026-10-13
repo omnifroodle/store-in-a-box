@@ -9,9 +9,9 @@ from pathlib import Path
 
 import pytest
 
-from siab_ledger import reduce
+from siab_ledger import ingest, reduce
 from siab_ledger.__main__ import main
-from siab_ledger.fixtures import check, first_difference, run
+from siab_ledger.fixtures import canonical, check, first_difference, run
 
 LEDGER_FIXTURES = Path(__file__).resolve().parents[2] / "contracts" / "fixtures" / "ledger"
 FIXTURE_NAMES = [p.stem for p in sorted(LEDGER_FIXTURES.glob("*.json"))]  # file-name order, as the CLI prints
@@ -41,7 +41,12 @@ def test_fork_detection_is_order_independent(name, fixture):
     if not fx["order_independent"]:
         pytest.skip("fixture is not marked order_independent")
     store = fx["store"]
-    baseline = reduce(fx["transactions"], fx["resolutions"], store=store)
+
+    def reduced(txns, res):  # rule 0 first: the reducer's input is what ingest accepts
+        t_in, r_in = ingest(txns, "transaction"), ingest(res, "exception")
+        return reduce(t_in.accepted, r_in.accepted, store=store), t_in.drops + r_in.drops
+
+    baseline = reduced(fx["transactions"], fx["resolutions"])
     rng = random.Random(f"order/{name}")
     for _ in range(40):
         txns = list(fx["transactions"])
@@ -49,7 +54,7 @@ def test_fork_detection_is_order_independent(name, fixture):
         res = list(fx["resolutions"]) * rng.randint(1, 2)
         rng.shuffle(txns)
         rng.shuffle(res)
-        assert reduce(txns, res, store=store) == baseline
+        assert reduced(txns, res) == baseline
     assert first_difference(fx["expected"], run(fx)) is None
 
 
@@ -106,3 +111,48 @@ def test_first_difference_reports_list_lengths_and_types():
     assert first_difference({"a": 1}, {"a": True}) == "expected.a: got true, expected 1"
     assert first_difference({"a": 1}, {}) == "expected.a: missing"
     assert first_difference({}, {"b": None}) == "expected.b: unexpected null"
+
+
+DROP_FIXTURES = [n for n in FIXTURE_NAMES if n.startswith("drop-")]
+
+
+def test_the_seven_drop_fixtures_are_there():
+    assert len(DROP_FIXTURES) == 7 and len(FIXTURE_NAMES) == 46
+
+
+@pytest.mark.parametrize("name", DROP_FIXTURES)
+@pytest.mark.parametrize("seed", [0, 1, 20261013])
+def test_drop_fixtures_give_the_same_drops_in_every_ordering(name, seed, fixture):
+    from siab_ledger.fixtures import orderings
+
+    fx = fixture(name)
+    assert fx["expected"]["drops"]
+    for label, txns, res in orderings(fx, seed):
+        assert first_difference(fx["expected"], run(fx, txns, res)) is None, label
+
+
+def test_a_missed_drop_is_a_difference(fixture):
+    fx = fixture("drop-newer-version")
+    fx["expected"]["drops"] = []
+    assert check(fx).line.startswith("FAIL drop-newer-version: expected.drops: 1 items, expected 0")
+
+
+def test_report_over_sets_is_canonical(tmp_path, capsys):
+    for name in ("double-scan", "drop-extra-field-same-id"):
+        fx = json.loads((LEDGER_FIXTURES / f"{name}.json").read_text())
+        detector = fx["expected"]["exceptions"]["detector"]
+        for key in ("expected", "description", "order_independent"):
+            del fx[key]
+        (tmp_path / "sets").mkdir(exist_ok=True)
+        (tmp_path / "sets" / f"{name}-0.json").write_text(json.dumps({**fx, "detector": detector}))
+    out = tmp_path / "r.json"
+    assert main(["report", "--sets", str(tmp_path / "sets"), "--out", str(out)]) == 0
+    assert capsys.readouterr().out == f"wrote 2 sets to {out}\n"
+    text = out.read_text(encoding="ascii")
+    got = json.loads(text)
+    assert text == canonical(got) and ": " not in text and ", " not in text
+    assert list(got) == ["double-scan-0.json", "drop-extra-field-same-id-0.json"]
+    for name in ("double-scan", "drop-extra-field-same-id"):
+        fx = json.loads((LEDGER_FIXTURES / f"{name}.json").read_text())
+        assert first_difference(fx["expected"], got[f"{name}-0.json"]) is None
+    assert main(["report", "--sets", str(tmp_path / "none"), "--out", str(out)]) == 1

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
 from siab_ledger.exceptions import PROPOSED_RESOLUTION
+from siab_ledger.ingest import CODES
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -14,11 +16,21 @@ def test_port_doc_names_every_operation_and_rule():
     doc = (REPO / "ports" / "ledger.md").read_text(encoding="utf-8")
     for name in ("reduce(", "LedgerState", "exceptions_for(", "conservation(", "hlc_now(", "hlc_receive(",
                  "allocation_counts", "forks", "resolved_by", "untraced", "left_store", "returned_to_store",
-                 "store_on_hand", "holds", "python -m siab_ledger check"):
+                 "store_on_hand", "holds", "python -m siab_ledger check", "ingest(", "Drop", "drops",
+                 "siab_ledger.ingest(", "python -m siab_ledger report", *CODES):
         assert name in doc, name
     rules = re.findall(r"^(\d)\. \*\*", doc, re.MULTILINE)
-    assert rules == [str(n) for n in range(1, 9)]
+    assert rules == [str(n) for n in range(0, 9)]
     assert "ledger.md" in (REPO / "ports" / "README.md").read_text(encoding="utf-8")
+
+
+def test_drop_codes_match_the_contract():
+    readme = (REPO / "contracts" / "fixtures" / "README.md").read_text(encoding="utf-8")
+    schema = json.loads((REPO / "contracts" / "schemas" / "fixtures" / "ledger.schema.json").read_text())
+    rule0 = readme[readme.index("0. **Ingest**"):readme.index("1. A unit's movements")]
+    assert [c for c in re.findall(r"`(\w+)`", rule0) if c in CODES] == list(CODES)
+    drops = schema["properties"]["expected"]["properties"]["drops"]["items"]["properties"]
+    assert drops["code"]["enum"] == list(CODES)
 
 
 def test_fixed_notes_match_the_contract_table():
