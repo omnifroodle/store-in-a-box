@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from siab_ledger import exception_id, exceptions_for, reduce
+from siab_ledger import exception_id, exceptions_for, ingest, reduce
 
 LEDGER_FIXTURES = Path(__file__).resolve().parents[2] / "contracts" / "fixtures" / "ledger"
 FIXTURE_NAMES = [p.stem for p in sorted(LEDGER_FIXTURES.glob("*.json"))]
@@ -42,7 +42,9 @@ def test_exception_id_is_deterministic(fixture):
 def test_exception_documents_validate(name, detector, fixture, validator):
     module, contracts = validator
     fx = fixture(name)
-    state = reduce(fx["transactions"], fx["resolutions"], store=fx["store"])
+    # Rule 0 first: what the reducer reads is what ingest accepted, so what exceptions_for writes validates.
+    txns, res = ingest(fx["transactions"], "transaction").accepted, ingest(fx["resolutions"], "exception").accepted
+    state = reduce(txns, res, store=fx["store"])
     docs = exceptions_for(state, detector, fx["trip"], fx["box"], detected_at=f"1792340000000-0000-{detector}")
     for doc in docs:
         assert contracts.doc_errors("exception", doc) == [], doc["_id"]

@@ -121,8 +121,15 @@ def _check_out_to_customer(doc: dict, collection: str, rng: random.Random, ctx: 
     return True
 
 
+def _wrong_id(doc: dict, collection: str, rng: random.Random, ctx: dict) -> bool:
+    """A valid body under an id its template does not give (rule 0 drops it as `rule`; #181's gate finding)."""
+    doc["_id"] = "txn::bad" if collection == "transaction" else doc["_id"][:-8] + "00000000"
+    return True
+
+
 MUTATIONS: tuple[Mutation, ...] = (_remove_required, _add_note, _version_2, _outside_enum, _other_sku,
-                                   _decimal_cents, _other_type, _bad_prev, _resolution_hlc, _check_out_to_customer)
+                                   _decimal_cents, _other_type, _bad_prev, _resolution_hlc, _check_out_to_customer,
+                                   _wrong_id)
 
 
 def required_keys(contracts: Path) -> dict[str, list[str]]:

@@ -217,8 +217,11 @@ At startup, every `SIAB_RECONCILE_INTERVAL_S` and on `POST /api/reconcile/run`: 
 `ingest` the transactions and exceptions (rule 0), `state = reduce(accepted transactions, accepted exceptions,
 store)`, `exceptions_for(state, "hq", trip, None)` stamped with HQ's HLC as `detected_at`, and upsert only the
 documents whose id does not exist among the exceptions read, dropped ones included (HQ never writes over a document it
-could not read). Idempotent by id. A run with invalid rows succeeds: they are dropped, counted and logged, never a
-`last_error`. HQ's clock observes only accepted documents. `python -m siab_hq reconcile --once [--trip ID]
+could not read). Idempotent by id. A row rule 0 drops (its id included: an `_id` its template does not give is
+`rule`) does not fail the run: it is dropped, counted and logged. A run sets `last_error` when a read fails, or when a
+document HQ would write fails its schema (the write check below), which rule 0 is there to prevent: the reducer's
+input is valid, so what `exceptions_for` builds from it is. Such a run writes nothing, and until it succeeds the
+watched trip's views answer `400` with the reason. HQ's clock observes only accepted documents. `python -m siab_hq reconcile --once [--trip ID]
 [--dry-run]` runs it once and prints `wrote <id>` (or `would write <id>`) per document.
 
 **The drop log.** In memory on the app, like the status: one entry per `(collection, id)`, `{id, collection, code,

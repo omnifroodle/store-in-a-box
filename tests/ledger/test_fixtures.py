@@ -116,8 +116,8 @@ def test_first_difference_reports_list_lengths_and_types():
 DROP_FIXTURES = [n for n in FIXTURE_NAMES if n.startswith("drop-")]
 
 
-def test_the_seven_drop_fixtures_are_there():
-    assert len(DROP_FIXTURES) == 7 and len(FIXTURE_NAMES) == 46
+def test_the_eight_drop_fixtures_are_there():
+    assert len(DROP_FIXTURES) == 8 and len(FIXTURE_NAMES) == 47
 
 
 @pytest.mark.parametrize("name", DROP_FIXTURES)

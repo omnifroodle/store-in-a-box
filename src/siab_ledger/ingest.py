@@ -11,8 +11,9 @@ failing check in this order:
 4. the schema, every error ``jsonschema`` reports mapped by its keyword (``required`` is ``missing_field``,
    ``additionalProperties`` is ``extra_field``, anything else ``invalid_value``; an ``anyOf`` or ``oneOf`` error takes
    the smallest code among its alternatives' errors), the smallest code winning;
-5. ``rule``: a cross-field rule (``CROSS_CHECKS``, copied from ``scripts/check_contracts.py``, which a package may not
-   import; ``tests/ledger/test_ingest.py`` checks the two copies agree).
+5. ``rule``: a cross-field rule (``CROSS_CHECKS``), then the id template: the ``_id`` must be what the schema's
+   ``x-id-template`` gives for the body (``expand_id``). Both are copied from ``scripts/check_contracts.py``, which a
+   package may not import; ``tests/ledger/test_ingest.py`` checks the copies agree.
 
 Keys beginning with ``_`` are fixture metadata and are ignored. One ``Drop`` per ``(collection, id)``, carrying the
 smallest code among that id's invalid bodies; a valid body under the same id is still accepted. ``ingest`` never
@@ -21,6 +22,7 @@ raises on a JSON value: whatever it cannot read, it drops.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -120,6 +122,23 @@ def check_exception(doc: dict) -> list[str]:
 
 
 CROSS_CHECKS = {"transaction": check_transaction, "allocation": check_allocation, "exception": check_exception}
+
+
+def sha256_8(ids: list[str]) -> str:
+    """The exception id hash: first 8 hex chars of sha256 over the ids, sorted and joined by '|'."""
+    return hashlib.sha256("|".join(sorted(ids)).encode()).hexdigest()[:8]
+
+
+def expand_id(template: str, doc: dict) -> str | None:
+    """Fill an x-id-template ({field} or {sha256_8:field}) from a document; None if a field is missing."""
+    out = template
+    for token in re.findall(r"\{([^}]+)\}", template):
+        func, _, field = token.rpartition(":")
+        if field not in doc:
+            return None
+        value = sha256_8(doc[field]) if func == "sha256_8" else doc[field]
+        out = out.replace("{" + token + "}", str(value))
+    return out
 
 
 # ---------------------------------------------------------------- the schemas
@@ -258,6 +277,13 @@ def check(doc: Any, collection: str, contracts_dir: Path | None = None) -> tuple
     rule = CROSS_CHECKS.get(collection, lambda _: [])(body)
     if rule:
         return "rule", rule[0]
+    template = validator.schema.get("x-id-template")
+    if template is not None:  # the id is what the body says it is, or exceptions_for would name an invalid id
+        want = expand_id(template, body)
+        if "_id" not in doc:
+            return "rule", "_id: required"
+        if want is not None and doc["_id"] != want:
+            return "rule", f"_id {doc['_id']} should be {want}"
     return None
 
 

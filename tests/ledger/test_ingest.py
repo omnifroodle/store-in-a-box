@@ -10,7 +10,7 @@ import pytest
 
 from siab_ledger import Drop, ingest, reduce
 from siab_ledger.fixtures import run
-from siab_ledger.ingest import CODE_WORDS, CODES, CROSS_CHECKS, check
+from siab_ledger.ingest import CODE_WORDS, CODES, CROSS_CHECKS, check, expand_id, sha256_8
 
 DOCS = Path(__file__).resolve().parents[2] / "contracts" / "fixtures" / "docs"
 CORPUS = sorted(DOCS.glob("*/*/*.json"))
@@ -71,6 +71,36 @@ def test_docs_corpus_agrees_with_check_contracts(path, validator):
     assert set(CROSS_CHECKS) == set(module.CROSS_CHECKS)
     if collection in CROSS_CHECKS:
         assert CROSS_CHECKS[collection](body) == module.CROSS_CHECKS[collection](body)
+    # So is the id template's expansion.
+    template = contracts.by_id[f"siab://contracts/store/{collection}.schema.json"]["x-id-template"]
+    assert expand_id(template, body) == module.expand_id(template, body)
+
+
+def test_the_id_template_is_rule_0(validator, pack, fixture):
+    """The gate's #181 finding: a valid body under an id its template does not give is dropped as `rule`, as the
+    validator calls it invalid; an exception id with the wrong hash too."""
+    module, contracts = validator
+    exc = copy.deepcopy(fixture("double-scan")["expected"]["exceptions"]["docs"][0])
+    exc["detected_at"] = "1792340000000-0000-tablet-a"
+    assert contracts.doc_errors("exception", exc) == [] and ingest([exc], "exception").drops == []
+    wrong_hash = {**exc, "_id": exc["_id"][:-8] + "00000000"}
+    wrong_detector = {**exc, "_id": exc["_id"].replace("exc::tablet-a::", "exc::hq::")}
+    for collection, doc, want in [
+        ("transaction", {**pack, "_id": "txn::bad"}, pack["_id"]),
+        ("transaction", {**pack, "_id": "txn::1792328410000-0000-tablet-b"}, pack["_id"]),
+        ("exception", wrong_hash, exc["_id"]),
+        ("exception", wrong_detector, exc["_id"]),
+    ]:
+        assert contracts.doc_errors(collection, doc), doc["_id"]  # the validator calls it invalid
+        (drop,) = ingest([doc], collection).drops
+        assert (drop.id, drop.code, drop.detail) == (doc["_id"], "rule", f"_id {doc['_id']} should be {want}")
+    # The template check comes after the cross-field rules: a body that breaks one says so first.
+    (drop,) = ingest([{**pack, "_id": "txn::bad", "sku": "JKT-RAIN-L-BLU"}], "transaction").drops
+    assert drop.code == "rule" and drop.detail.startswith("sku JKT-RAIN-L-BLU is not")
+    ids = ["txn::b", "txn::a"]
+    assert sha256_8(ids) == module.sha256_8(ids)
+    template = "exc::{detected_by}::{unit_id}::{sha256_8:transactions}"
+    assert expand_id(template, {"detected_by": "hq"}) is None is module.expand_id(template, {"detected_by": "hq"})
 
 
 def test_cross_checks_agree_on_crafted_failures(validator, pack, fixture):
@@ -120,6 +150,8 @@ def test_code_priority_and_one_drop_per_id(pack):
     assert check({**pack, "v": 2, "kind": "transfer"}, "transaction")[0] == "version"
     assert check({k: v for k, v in pack.items() if k != "v"}, "transaction")[0] == "version"
     assert check({**pack, "v": True}, "transaction")[0] == "version"
+    assert check({**pack, "v": "1"}, "transaction")[0] == "version"
+    assert check({**pack, "v": 1.0}, "transaction") is None  # as JSON Schema's integer and const read it
     assert check({**pack, "kind": "transfer", "sku": "JKT-RAIN-L-BLU"}, "transaction")[0] == "invalid_value"
     assert check({**pack, "sku": "JKT-RAIN-L-BLU"}, "transaction")[0] == "rule"
 

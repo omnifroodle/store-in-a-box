@@ -140,7 +140,8 @@ Both ports, in this order; the first check that fails gives the code:
 1. `malformed`: the document is not a JSON object (in Python also: it has no string `_id`, so nothing can name it;
    such a drop has the id `""`).
 2. `wrong_type`: `type` is absent or not the collection's name.
-3. `version`: `v` is absent or not the number 1.
+3. `version`: `v` is absent or not the number 1. `1.0` counts as 1, as JSON Schema's `integer` and `const` treat it;
+   `true`, `"1"` and `2` do not.
 4. The collection schema. Every error is mapped by its keyword: `required` is `missing_field`,
    `additionalProperties` is `extra_field`, any other keyword (`type`, `enum`, `const`, `pattern`, `format`, `not`,
    `minItems`, `uniqueItems`, `minimum`, a conditional's `then`/`else`) is `invalid_value`. An `anyOf` (or `oneOf`)

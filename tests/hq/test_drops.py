@@ -108,6 +108,36 @@ def test_reconciler_survives_invalid_rows(kit, clock, caplog):
     assert hq.status.exceptions_written == 1  # the double scan's exception, from the valid rows
 
 
+def test_a_valid_body_under_the_wrong_id_is_a_drop_not_a_dead_screen(kit, clock):
+    """The gate's #181 finding: double-scan.json with transactions[2]._id set to txn::bad. Before rule 0 checked the
+    id template, HQ reduced it, exceptions_for named txn::bad in a branch, the write check refused that exception on
+    every tick and the screen answered 400 with dropped 0."""
+    fx = kit.fixture("double-scan")
+    fx["transactions"][2]["_id"] = "txn::bad"
+    hq = kit.hq(fx, clock)
+    app = App(hq)
+
+    async def virtual_sleep(seconds: float) -> None:
+        clock.advance(int(seconds * 1000))
+
+    asyncio.run(hq.run_every(3, sleep=virtual_sleep, ticks=3))
+    assert hq.status.last_error is None and hq.status.dropped == 1
+    for path in ("/api/conservation", "/api/exceptions", "/api/tree", "/api/stage/units", "/panels/conservation",
+                 "/panels/exceptions"):
+        status, _, body = route(app, "GET", path)
+        assert status == 200, (path, body)
+    view = _get(app, "/api/conservation")
+    assert view["dropped"] == 1
+    (entry,) = view["drops"]
+    assert (entry["id"], entry["collection"], entry["code"]) == ("txn::bad", "transaction", "rule")
+    assert entry["detail"] == "_id txn::bad should be txn::1792328511000-0000-tablet-b"
+    panel = _get(app, "/panels/conservation")
+    assert "· 1 dropped · live</p>" in panel and "<li>transaction txn::bad · rule · " in panel
+    assert _get(app, "/api/reconcile/status")["last_error"] is None
+    # With tablet-b's take dropped there is no fork, so nothing invalid was planned and nothing was written.
+    assert _get(app, "/api/exceptions")["disputes"] == [] and _upserts(hq) == []
+
+
 def test_hq_never_overwrites_a_document_it_cannot_read(kit, clock):
     fx = kit.fixture("oversell-hq")
     hq = kit.hq(fx, clock)

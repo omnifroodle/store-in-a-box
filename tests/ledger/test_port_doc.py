@@ -28,7 +28,7 @@ def test_drop_codes_match_the_contract():
     readme = (REPO / "contracts" / "fixtures" / "README.md").read_text(encoding="utf-8")
     schema = json.loads((REPO / "contracts" / "schemas" / "fixtures" / "ledger.schema.json").read_text())
     rule0 = readme[readme.index("0. **Ingest**"):readme.index("1. A unit's movements")]
-    assert [c for c in re.findall(r"`(\w+)`", rule0) if c in CODES] == list(CODES)
+    assert list(dict.fromkeys(c for c in re.findall(r"`(\w+)`", rule0) if c in CODES)) == list(CODES)
     drops = schema["properties"]["expected"]["properties"]["drops"]["items"]["properties"]
     assert drops["code"]["enum"] == list(CODES)
 
