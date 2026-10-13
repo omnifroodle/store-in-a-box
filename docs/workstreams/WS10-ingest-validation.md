@@ -100,7 +100,7 @@ validators. A valid body under an id that also has an invalid body is reduced; t
 
 `detail` is the first failing check in words; it is logged and shown, never compared.
 
-**What rule 0 does not check** (foreman ruling 2026-10-13 on #177 point 3; contracts 0.7.0): the id template. `scripts/check_contracts.py` also checks a fixture document's `_id` against the schema's `x-id-template`; rule 0 names only the cross-field rules (`CROSS_CHECKS`). So a document whose `_id` disagrees with its `hlc` is reduced, on both ports. Making it a rule is a contract change for a case no fixture or generated set produces; revisit it if a rehearsal shows one.
+**The id template is part of rule 0** (foreman ruling 2026-10-13, reversing the same day's earlier one on #177 point 3, after the review gate on #181): `scripts/check_contracts.py` checks a fixture document's `_id` against the schema's `x-id-template`, and so does rule 0: a `transaction`'s `_id` must be `txn::<hlc>`, an `exception`'s `exc::<detected_by>::<unit_id>::<sha256_8 of its transactions>`; a document whose id disagrees is dropped with code `rule` (fixture `drop-id-mismatch`; 47 fixtures). Without it, a valid body under a wrong id is reduced and `exceptions_for` writes an exception that fails its own schema, which HQ's write-side check then refuses on every tick. Both ports implement it, Swift with CryptoKit for the `sha256_8`.
 
 ### Python (`ports/ledger.md` gains this)
 
