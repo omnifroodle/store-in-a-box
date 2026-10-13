@@ -22,8 +22,8 @@ function (doc, oldDoc, meta) {
   }
   if (doc.type !== "allocation") throw({forbidden: "type mismatch"});
   if (!doc.trip) throw({forbidden: "trip is required"});
-  if (!doc.box && !isUser("hq")) throw({forbidden: "box is required"});
-  if (!isUser(doc.box ? [doc.box, "hq"] : "hq")) throw({forbidden: "a box writes only its own documents"});
+  if (!doc.box) throw({forbidden: "box is required"});
+  if (!isUser([doc.box, "hq"])) throw({forbidden: "a box writes only its own documents"});
   requireAccess("trip:" + doc.trip);
   if (oldDoc && !oldDoc._deleted && changedExcept(["status", "closed_at"])) {
     throw({forbidden: "only status and closed_at may change"});

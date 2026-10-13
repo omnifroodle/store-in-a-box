@@ -160,6 +160,31 @@ def test_verify_exits_1_on_a_refused_session(cli, fake):
     assert code == 1 and "BOX_APP_PASSWORD is not set" in out
 
 
+def test_verify_explains_a_rotated_password(cli, fake):
+    """apply never pushes a changed password to an existing user (it compares channels only); verify says so."""
+    cli("app-services", "apply", "--yes")
+    rotated = {**PASSWORDS, "BOX_APP_PASSWORD": "rotated"}
+    code, out = cli("app-services", "apply", "--yes", env=rotated)
+    assert code == 0 and "update user" not in out
+    code, out = cli("app-services", "verify", env=rotated)
+    assert code == 1 and "failed: PermissionError" in out
+    assert "apply sets a password only when it creates a user" in out and "BOX_APP_PASSWORD changed" in out
+
+
+def test_dotenv_is_read_from_the_repository_root_not_the_working_directory(tmp_path, monkeypatch):
+    from siab_capella import config
+
+    assert config.DOTENV == config.ROOT / ".env"  # docs/capella-setup.md: "at the repository root"
+    root_env, elsewhere = tmp_path / "root.env", tmp_path / "sub"
+    root_env.write_text("SIAB_TRIP=from-root\n")
+    elsewhere.mkdir()
+    (elsewhere / ".env").write_text("SIAB_TRIP=from-cwd\n")
+    monkeypatch.setattr(config, "DOTENV", root_env)  # the test never reads the real .env
+    monkeypatch.chdir(elsewhere)
+    monkeypatch.delenv("SIAB_TRIP", raising=False)
+    assert config.Config.load().get("SIAB_TRIP") == "from-root"
+
+
 def test_plan_offline_has_no_runs():
     steps = plan_app_services(None, load_endpoint(SYNC_DIR), Config({}))
     assert steps and all(s.action == "ensure" and s.run is None for s in steps)

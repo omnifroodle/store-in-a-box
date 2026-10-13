@@ -11,6 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SEED_DIR = ROOT / "contracts" / "fixtures" / "seed"
 SYNC_DIR = ROOT / "sync"
+DOTENV = ROOT / ".env"  # at the repository root, wherever the CLI is run from (docs/capella-setup.md)
 
 ENV_VARS = (
     "CAPELLA_CONN_STRING",
@@ -61,10 +62,10 @@ class Config:
 
     @classmethod
     def load(cls, env: Mapping[str, str] | None = None, dotenv: Path | None = None) -> Config:
-        """The process environment over `.env` (in the working directory), unless `env` is given."""
+        """The process environment over `.env` (at the repository root), unless `env` is given."""
         if env is not None:
             return cls(dict(env))
-        merged = read_dotenv(dotenv or Path.cwd() / ".env")
+        merged = read_dotenv(dotenv or DOTENV)
         merged.update({k: v for k, v in os.environ.items() if k in ENV_VARS})
         return cls(merged)
 

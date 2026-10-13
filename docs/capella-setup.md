@@ -59,10 +59,13 @@ steps already in place.
   linking `product`, `trip`, `allocation`, `transaction`, `exception` (never `inventory`), sets each collection's
   sync function from `sync/functions/`, and creates the users `box-07` and `hq` with their channels on every linked
   collection (passwords from `.env`). It refuses when `BOX_APP_USER` names another user, or `SIAB_TRIP` /
-  `SIAB_REGION` name a trip or region the box is not granted.
+  `SIAB_REGION` name a trip or region the box is not granted. It sets a password only when it creates a user: after
+  a password changes in `.env`, set it on the existing user in the Capella UI (App Users).
 - **`app-services verify`** logs in to the public endpoint as the box user, prints the channels it holds per
   collection, and exits 0 when they are exactly `trip:<trip>`, `catalog:<region>`, `box:box-07` on every linked
-  collection (the public channel `!` is ignored).
+  collection (the public channel `!` is ignored). It reads the grants from `_session`'s per-collection view
+  (`userCtx.collection_access`) and fails when the response has none, rather than checking the user-level channels
+  in their place.
 - **`reset-trip --trip ID --yes`** deletes the trip's `allocation`, `transaction` and `exception` documents through
   the SDK before a rehearsal (refuses without `--yes`; `--dry-run` lists them). App Services imports the deletes;
   the sync functions route the tombstones to the trip's channel so they reach the box.
