@@ -326,7 +326,7 @@ def route(app: App, method: str, target: str, body: bytes = b"") -> Response:
                 return _error(404, "not found")
             try:
                 req = json.loads(body or b"{}")
-            except ValueError:
+            except (ValueError, RecursionError):  # RecursionError: a body of nothing but "[" nests past the stack
                 raise BadRequest("the body is not JSON") from None
             if not isinstance(req, dict):
                 raise BadRequest("the body is a JSON object")
@@ -354,6 +354,7 @@ def route(app: App, method: str, target: str, body: bytes = b"") -> Response:
 # ---------------------------------------------------------------- the server
 
 LOOPBACK_HOSTS = ("127.0.0.1", "localhost")
+SINGLE_HEADERS = ("host", "origin", "content-type", "content-length")  # a repeat is 400: which one would count?
 
 
 def check_request(app: App, method: str, headers: dict[str, str]) -> Response | None:
@@ -361,15 +362,17 @@ def check_request(app: App, method: str, headers: dict[str, str]) -> Response | 
 
     The ``Host`` header must be the server's own loopback host and port (a rebound name carries its own); an
     ``Origin``, when sent, must be the server's own origin; a POST must say ``Content-Type: application/json``, which
-    a cross-site form cannot send without a CORS preflight this server never answers. ``app.port`` unset (route
-    called directly, as most tests do) skips the checks that need to know it."""
-    if app.port is not None:
-        own = {f"{h}:{app.port}" for h in LOOPBACK_HOSTS}
-        if headers.get("host", "") not in own:
-            return _error(403, "Host is not this server's own loopback host and port")
-        origin = headers.get("origin")
-        if origin is not None and origin not in {f"http://{h}" for h in own}:
-            return _error(403, "Origin is not this server's own origin")
+    a cross-site form cannot send without a CORS preflight this server never answers. Host names are
+    case-insensitive, so ``Host`` and ``Origin`` are lowercased before comparing. ``app.port`` unset (no ``serve()``)
+    is refused, never waved through: the checks need the port. ``route`` called directly skips all of this."""
+    if app.port is None:
+        return _error(403, "the server does not know its own port, so it cannot check Host and Origin")
+    own = {f"{h}:{app.port}" for h in LOOPBACK_HOSTS}
+    if headers.get("host", "").lower() not in own:
+        return _error(403, "Host is not this server's own loopback host and port")
+    origin = headers.get("origin")
+    if origin is not None and origin.lower() not in {f"http://{h}" for h in own}:
+        return _error(403, "Origin is not this server's own origin")
     if method == "POST":
         media = headers.get("content-type", "").partition(";")[0].strip().lower()
         if media != "application/json":
@@ -381,10 +384,15 @@ async def handle(app: App, reader: asyncio.StreamReader, writer: asyncio.StreamW
         head = await reader.readuntil(b"\r\n\r\n")
         lines = head.decode("latin-1").split("\r\n")
         parts = lines[0].split(" ")
-        headers = {k.strip().lower(): v.strip() for k, _, v in (h.partition(":") for h in lines[1:] if h)}
+        pairs = [(k.strip().lower(), v.strip()) for k, _, v in (h.partition(":") for h in lines[1:] if h)]
+        headers = dict(pairs)
+        names = [k for k, _ in pairs]
+        repeated = sorted({k for k in SINGLE_HEADERS if names.count(k) > 1})
         length = int(headers.get("content-length") or 0)
         if len(parts) != 3 or not 0 <= length <= MAX_BODY:
             status, ctype, body = _error(400, "bad request")
+        elif repeated:
+            status, ctype, body = _error(400, f"repeated header: {', '.join(repeated)}")
         elif (refused := check_request(app, parts[0].upper(), headers)) is not None:
             status, ctype, body = refused
         else:
