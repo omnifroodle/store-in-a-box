@@ -22,6 +22,7 @@ import httpx
 
 from siab_capella.provision import ks
 from siab_ledger import conservation
+from siab_ledger.ingest import CODE_WORDS
 
 from .queries import TripNotFound
 from .reconcile import FORK_KINDS, BadRequest, Hq, NotFound, Snapshot, queue, stageable
@@ -65,14 +66,19 @@ def reason(row: dict) -> str:
     return ", ".join(parts)
 
 
-def indicator(rows: list[dict]) -> str:
+def indicator(rows: list[dict], dropped: int = 0) -> str:
+    """``HOLDS · live``, ``HOLDS · N dropped · live``, ``K SKUs do not hold · live`` or ``K SKUs do not hold · N
+    dropped · live``: a result computed with drops is never a plain ``HOLDS`` (decision 010)."""
     failing = sum(1 for r in rows if not r["holds"])
-    return "HOLDS · live" if failing == 0 else f"{failing} SKUs do not hold · live"
+    head = "HOLDS" if failing == 0 else f"{failing} SKUs do not hold"
+    return " · ".join([head, *([f"{dropped} dropped"] if dropped else []), "live"])
 
 
 def conservation_view(snap: Snapshot, *, sql: bool = False) -> dict:
+    """The rows, and beside them (never inside) how many documents rule 0 dropped and the log's entries for them."""
     rows = [r.to_json() for r in conservation(snap.state, snap.data.store, snap.data.inventory)]
-    out = {"trip": snap.data.trip, "as_of": snap.as_of, "rows": rows, "holds": all(r["holds"] for r in rows)}
+    out = {"trip": snap.data.trip, "as_of": snap.as_of, "rows": rows, "holds": all(r["holds"] for r in rows),
+           "dropped": len(snap.data.drops), "drops": [dict(e) for e in snap.drops]}
     if sql:
         out["statements"] = snap.data.statements
     return out
@@ -156,7 +162,8 @@ def conservation_panel(app: App, snap: Snapshot) -> str:
     view = conservation_view(snap)
     holds = view["holds"]
     out = [f'<header><h2>Conservation</h2><p class="live">{LIVE_HEADER}</p>'
-           f'<p class="indicator {"holds" if holds else "fails"}">{escape(indicator(view["rows"]))}</p></header>',
+           f'<p class="indicator {"holds" if holds else "fails"}">'
+           f'{escape(indicator(view["rows"], view["dropped"]))}</p></header>',
            "<table><thead><tr><th>SKU</th><th>Opening</th><th>Received</th><th>Left store</th><th>Returned</th>"
            "<th>Store on hand</th><th>In custody</th><th>Sold</th><th>Disputed</th><th>Untraced</th><th>Holds</th>"
            "<th>Reason</th></tr></thead><tbody>"]
@@ -170,7 +177,13 @@ def conservation_panel(app: App, snap: Snapshot) -> str:
         cells += [f'<td class="n">{r[k]}</td>' for k in ("sold", "disputed", "untraced")]
         cells.append(f'<td>{"yes" if r["holds"] else "no"}</td><td class="reason">{escape(reason(r))}</td>')
         out.append(f'<tr class="{"" if r["holds"] else "fail"}">{"".join(cells)}</tr>')
-    out.append(f'</tbody></table><p class="as-of">as of {escape(view["as_of"])}</p>')
+    out.append("</tbody></table>")
+    if view["dropped"]:
+        out.append(f'<p class="dropped">{view["dropped"]} documents dropped</p><ul class="drops">')
+        out += [f'<li>{escape(d["collection"])} {escape(d["id"])} · {escape(CODE_WORDS.get(d["code"], d["code"]))} · '
+                f'{escape(d["last_seen"])}</li>' for d in view["drops"]]
+        out.append("</ul>")
+    out.append(f'<p class="as-of">as of {escape(view["as_of"])}</p>')
     return "".join(out)
 
 

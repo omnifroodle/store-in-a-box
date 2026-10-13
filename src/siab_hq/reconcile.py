@@ -8,11 +8,16 @@ detector ``hq`` that do not exist yet. Writes are idempotent by id. HQ's queue i
 HQ keeps one hybrid logical clock for device ``hq``. Its ``last`` is the greater of the last HLC it issued and the
 greatest it has read (every ``resolution.hlc`` of the trip's exceptions, and every transaction and detection), so it
 is monotonic across restarts without a file. ``resolution.at`` is a label in UTC, whole seconds, ``Z``.
+
+Rule 0 (decision 010): HQ reduces only what passes its schema (``queries.load`` ingests) and keeps a bounded log of
+what it dropped, one entry per document, each new one logged once at ``WARNING`` on ``siab_hq.ingest``. HQ also
+validates every document it writes, and refuses (``BadRequest``) rather than write one that would be dropped.
 """
 
 from __future__ import annotations
 
 import asyncio
+import logging
 import threading
 import uuid
 from collections import defaultdict
@@ -23,7 +28,7 @@ from typing import Any
 
 from siab_capella.gateway import CapellaGateway
 from siab_capella.provision import ks
-from siab_ledger import LedgerState, compare_hlc, exceptions_for, hlc_now, parse_hlc, reduce
+from siab_ledger import Drop, LedgerState, compare_hlc, exceptions_for, hlc_now, ingest, parse_hlc, reduce
 from siab_ledger.exceptions import is_foreign, is_unexpected_check_in
 
 from . import queries
@@ -35,8 +40,12 @@ MOVEMENT_KINDS = ("unexpected_check_in", "foreign_movement")
 SUPERSEDED_NOTE = "superseded"
 WITHDRAWN = "withdrawn: choose again"
 AWAITING = "open: HQ's copy on the next run"
+DROP_LOG_LIMIT = 200
+DROPS_SHOWN = 50
+SOURCE = "capella"  # where HQ read every document it drops
 
 Clock = Callable[[], int]  # unix milliseconds
+ingest_log = logging.getLogger("siab_hq.ingest")
 
 
 class BadRequest(ValueError):
@@ -87,6 +96,8 @@ class Snapshot:
     data: TripData
     state: LedgerState
     as_of: str
+    drops: tuple[dict, ...] = ()
+    """The drop log's entries for this read's drops, newest ``last_seen`` first, at most ``DROPS_SHOWN``."""
 
 
 @dataclass
@@ -94,11 +105,55 @@ class Status:
     last_run: str | None = None
     exceptions_written: int = 0
     forks_open: int = 0
+    dropped: int = 0
     last_error: str | None = None
 
     def to_json(self) -> dict:
         return {"last_run": self.last_run, "exceptions_written": self.exceptions_written,
-                "forks_open": self.forks_open, "last_error": self.last_error}
+                "forks_open": self.forks_open, "dropped": self.dropped, "last_error": self.last_error}
+
+
+class DropLog:
+    """HQ's drop log (in memory, like ``Status``): one entry per ``(collection, id)``, at most ``limit``, the least
+    recently seen evicted first. An entry is a ``Drop`` with ``source``, ``first_seen`` and ``last_seen``; a document
+    dropped again on every read updates ``last_seen`` (and its code and detail) only. Each new entry is logged once."""
+
+    def __init__(self, limit: int = DROP_LOG_LIMIT):
+        self.limit = limit
+        self.entries: dict[tuple[str, str], dict] = {}
+        self._seen: dict[tuple[str, str], int] = {}  # recency, so eviction is exact within one second
+        self._tick = 0
+
+    def record(self, drops: Iterable[Drop], now: str, source: str = SOURCE) -> None:
+        self._tick += 1
+        for d in drops:
+            key = (d.collection, d.id)
+            entry = self.entries.get(key)
+            if entry is None:
+                self.entries[key] = {**d.to_json(), "source": source, "first_seen": now, "last_seen": now}
+                ingest_log.warning("dropped %s %s: %s, %s (source %s)", d.collection, d.id, d.code, d.detail, source)
+            else:
+                entry.update(code=d.code, detail=d.detail, last_seen=now)
+            self._seen[key] = self._tick
+        if len(self.entries) > self.limit:
+            for key in sorted(self.entries, key=lambda k: (self._seen[k], k))[:len(self.entries) - self.limit]:
+                del self.entries[key], self._seen[key]
+
+    def newest(self, keys: Iterable[tuple[str, str]] | None = None) -> list[dict]:
+        """Entries (all, or those of ``keys``), newest ``last_seen`` first."""
+        wanted = self.entries if keys is None else [k for k in dict.fromkeys(keys) if k in self.entries]
+        ordered = sorted(wanted, key=lambda k: (-self._seen[k], k))
+        return [dict(self.entries[k]) for k in ordered]
+
+    def __len__(self) -> int:
+        return len(self.entries)
+
+
+def refuse_invalid(collection: str, docs: list[dict]) -> None:
+    """HQ validates what it writes (decision 010, Q4): ``BadRequest`` when any of ``docs`` would be dropped."""
+    drops = ingest(docs, collection).drops
+    if drops:
+        raise BadRequest(f"HQ would write an invalid {collection}: {drops[0].detail}")
 
 
 # ---------------------------------------------------------------- the queue (pure)
@@ -236,6 +291,7 @@ class Hq:
     new_basket: Callable[[], str] = field(default=lambda: str(uuid.uuid4()))
     hlc: HqClock = field(init=False)
     status: Status = field(default_factory=Status)
+    drop_log: DropLog = field(default_factory=DropLog, init=False)
     _snapshot: Snapshot | None = field(default=None, init=False)
     _lock: threading.RLock = field(default_factory=threading.RLock, init=False)
 
@@ -243,29 +299,40 @@ class Hq:
         self.hlc = HqClock(self.clock)
 
     def _read(self, trip: str) -> tuple[TripData, LedgerState]:
+        """Read and reduce. The clock observes only what rule 0 accepted, and every drop goes to the log."""
         data = queries.load(self.gw, trip)
+        self.drop_log.record(data.drops, iso(self.clock()))
         self.hlc.observe_trip(data)
         return data, reduce(data.transactions, data.exceptions, store=data.store)
 
+    def _snap(self, data: TripData, state: LedgerState) -> Snapshot:
+        shown = self.drop_log.newest((d.collection, d.id) for d in data.drops)[:DROPS_SHOWN]
+        return Snapshot(data, state, iso(self.clock()), tuple(shown))
+
     def run_once(self, trip: str | None = None, *, dry_run: bool = False) -> list[dict]:
-        """One reconcile: the exception documents to write for detector ``hq`` (those whose id does not exist yet).
-        Written unless ``dry_run``; the result is cached for the API when ``trip`` is the watched trip."""
+        """One reconcile: the exception documents to write for detector ``hq`` (those whose id does not exist yet,
+        dropped documents included: HQ never writes over a document it could not read). Written unless ``dry_run``,
+        and only when every one passes its schema; the result is cached for the API when ``trip`` is the watched
+        trip."""
         trip = trip or self.trip
         with self._lock:
             data, state = self._read(trip)
-            existing = {e["_id"] for e in data.exceptions}
+            existing = data.exception_ids
             planned = [d for d in exceptions_for(state, HQ, trip, None) if d["_id"] not in existing]
             if planned and not dry_run:
                 detected_at = self.hlc.now()
                 planned = [{**d, "detected_at": detected_at} for d in planned]
+                refuse_invalid("exception", planned)
                 for doc in planned:
                     self.gw.upsert(ks("exception"), doc["_id"], queries.body(doc))
-                data = replace(data, exceptions=data.exceptions + planned)
+                data = replace(data, exceptions=data.exceptions + planned,
+                               exception_ids=existing | {d["_id"] for d in planned})
             if trip == self.trip and not dry_run:
-                self._snapshot = Snapshot(data, state, iso(self.clock()))
+                self._snapshot = self._snap(data, state)
                 self.status = Status(last_run=iso(self.clock()),
                                      exceptions_written=self.status.exceptions_written + len(planned),
-                                     forks_open=sum(1 for f in state.forks if f.resolved_by is None))
+                                     forks_open=sum(1 for f in state.forks if f.resolved_by is None),
+                                     dropped=len(data.drops))
             return planned
 
     def snapshot(self, trip: str | None = None) -> Snapshot:
@@ -278,7 +345,7 @@ class Hq:
                 assert self._snapshot is not None
                 return self._snapshot
             data, state = self._read(trip)
-            return Snapshot(data, state, iso(self.clock()))
+            return self._snap(data, state)
 
     async def run_every(self, interval_s: float, *, sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
                         ticks: int | None = None) -> None:
@@ -297,9 +364,11 @@ class Hq:
         return {"by": HQ, "hlc": self.hlc.now(), "at": self.hlc.at(), "chosen_txn": chosen_txn, "note": note}
 
     def _write_resolved(self, docs: list[dict], resolution: dict) -> None:
-        for doc in docs:
-            self.gw.upsert(ks("exception"), doc["_id"],
-                           {**queries.body(doc), "status": "resolved", "resolution": dict(resolution)})
+        """Every copy resolved, or none: all are validated before the first is written."""
+        resolved = [{**doc, "status": "resolved", "resolution": dict(resolution)} for doc in docs]
+        refuse_invalid("exception", resolved)
+        for doc in resolved:
+            self.gw.upsert(ks("exception"), doc["_id"], queries.body(doc))
 
     def resolve(self, trip: str, dispute_key: str, transactions: list[str], chosen_txn: str | None,
                 note: str = "") -> dict:
@@ -383,6 +452,7 @@ class Hq:
                 "price": dict(price), "tender": {"kind": "card_simulated", "amount": dict(price)},
             }
             txn_id = f"txn::{hlc}"
+            refuse_invalid("transaction", [{"_id": txn_id, **txn}])
             self.gw.upsert(ks("transaction"), txn_id, txn)
             self.run_once(trip)
             return {"id": txn_id}

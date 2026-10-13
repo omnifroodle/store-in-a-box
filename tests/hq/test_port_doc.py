@@ -49,6 +49,9 @@ def test_conservation_tree_and_status_match_port_doc(kit):
         "_id": ALLOC, "v": 1, "type": "allocation", "trip": hq.trip, "box": "box-07", "sku": "HAT-BRIM-OS",
         "custodian": "box-07", "parent": None, "from_custodian": "store-richmond", "opened_by": "tablet-a",
         "opened_at": "1792328400000-0000-tablet-a", "closed_at": None, "status": "active"})
+    invalid = {k: v for k, v in fx["transactions"][0].items() if k != "device_clock"}
+    kit.put(hq, "transaction", {**invalid, "_id": "txn::1792328999000-0000-tablet-a",
+                                "hlc": "1792328999000-0000-tablet-a"})
     app = kit.app(hq)
     doc = _doc(kit)
     assert shape(_get(app, "/api/conservation")) == shape(_example(doc, "GET /api/conservation"))

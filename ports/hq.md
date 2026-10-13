@@ -40,12 +40,21 @@ that fixture's transactions, resolutions and inventory and the seed's trips and 
       "returned_to_store": 0, "store_on_hand": -1, "in_custody": { "box-07": 2 }, "sold": 1, "disputed": 0,
       "holds": false }
   ],
-  "holds": false
+  "holds": false,
+  "dropped": 1,
+  "drops": [
+    { "id": "txn::1792328510000-0000-tablet-a", "collection": "transaction", "code": "missing_field",
+      "detail": "device_clock: required", "source": "capella", "first_seen": "2026-10-18T14:01:00Z",
+      "last_seen": "2026-10-18T14:03:00Z" }
+  ]
 }
 ```
 
-`rows` are `siab_ledger.conservation` with the store's inventory, WS1's row shape (`ports/ledger.md`, "Conservation");
-`holds` is true only when every row's is. `as_of` is the reconciler's last read. With `sql=1` the reply also has
+`rows` are `siab_ledger.conservation` with the store's inventory, WS1's row shape (`ports/ledger.md`, "Conservation"),
+computed over the documents rule 0 accepted (`ports/ledger.md`, `ingest`; decision 010); `holds` is true only when
+every row's is. `dropped` is how many transactions and exceptions of this read failed their schema and were not
+reduced; `drops` are their drop log entries (below), newest `last_seen` first, at most 50. `as_of` is the
+reconciler's last read. With `sql=1` the reply also has
 `statements`: the SQL++ run, each `{ "statement", "params" }`:
 
 - `SELECT META(t).id AS _id, t.* FROM retail.store.transaction AS t WHERE t.trip = $trip ORDER BY t.hlc`
@@ -57,8 +66,13 @@ that fixture's transactions, resolutions and inventory and the seed's trips and 
 
 On screen, a row that does not hold is highlighted and its reason cell says why: `overdrawn by N` when
 `store_on_hand < 0` (`N = -store_on_hand`), `N untraced` when `untraced > 0`, both comma-separated when both apply;
-a row that holds has an empty reason cell. The indicator reads `HOLDS · live`, or `N SKUs do not hold · live`. Nothing
-is written for a failing row (an exception per SKU is Phase 2's Eventing).
+a row that holds has an empty reason cell. The indicator reads, byte for byte, `HOLDS · live`, `HOLDS · N dropped ·
+live`, `K SKUs do not hold · live` or `K SKUs do not hold · N dropped · live` (`K` failing rows, `N` = `dropped`): a
+result computed with drops is never a plain `HOLDS`. When `N > 0`, under the table: `<p class="dropped">N documents
+dropped</p>` and one line per `drops` entry, `<collection> <id> · <code in words> · <last_seen>`, the code in words
+being `malformed`, `wrong type`, `newer schema: update the app` (`version`), `missing field`, `unknown field`
+(`extra_field`), `invalid value` or `rule`, the words the tablet's Diagnostics uses. Nothing is written for a failing
+row (an exception per SKU is Phase 2's Eventing).
 
 ## `GET /api/tree?trip=`
 
@@ -191,18 +205,33 @@ Set but unreachable: `502` with `{ "configured": true, "reachable": false, "erro
 ## `GET /api/reconcile/status` and `POST /api/reconcile/run`
 
 ```json
-{ "last_run": "2026-10-18T14:03:00Z", "exceptions_written": 1, "forks_open": 1, "last_error": null }
+{ "last_run": "2026-10-18T14:03:00Z", "exceptions_written": 1, "forks_open": 1, "dropped": 0, "last_error": null }
 ```
 
-`exceptions_written` counts since the app started; `forks_open` is the last run's; `last_error` is the last failed
+`exceptions_written` counts since the app started; `forks_open` and `dropped` are the last run's; `last_error` is the last failed
 run's error, `null` after a run succeeds. `POST /api/reconcile/run` runs the reconciler once and answers the same.
 
 ## The reconciler
 
 At startup, every `SIAB_RECONCILE_INTERVAL_S` and on `POST /api/reconcile/run`: read the trip (the statements above),
-`state = reduce(transactions, exceptions, store)`, `exceptions_for(state, "hq", trip, None)` stamped with HQ's HLC
-as `detected_at`, and upsert only the documents whose id does not exist. Idempotent by id. `python -m siab_hq reconcile
---once [--trip ID] [--dry-run]` runs it once and prints `wrote <id>` (or `would write <id>`) per document.
+`ingest` the transactions and exceptions (rule 0), `state = reduce(accepted transactions, accepted exceptions,
+store)`, `exceptions_for(state, "hq", trip, None)` stamped with HQ's HLC as `detected_at`, and upsert only the
+documents whose id does not exist among the exceptions read, dropped ones included (HQ never writes over a document it
+could not read). Idempotent by id. A row rule 0 drops (its id included: an `_id` its template does not give is
+`rule`) does not fail the run: it is dropped, counted and logged. A run sets `last_error` when a read fails, or when a
+document HQ would write fails its schema (the write check below), which rule 0 is there to prevent: the reducer's
+input is valid, so what `exceptions_for` builds from it is. Such a run writes nothing, and until it succeeds the
+watched trip's views answer `400` with the reason. HQ's clock observes only accepted documents. `python -m siab_hq reconcile --once [--trip ID]
+[--dry-run]` runs it once and prints `wrote <id>` (or `would write <id>`) per document.
+
+**The drop log.** In memory on the app, like the status: one entry per `(collection, id)`, `{id, collection, code,
+detail, source: "capella", first_seen, last_seen}` (RFC 3339, HQ's clock), at most 200, the least recently seen
+evicted first. A document dropped again on every read updates `last_seen` only. Each new entry is logged once at
+`WARNING` on the logger `siab_hq.ingest`, with the id, collection, code and detail.
+
+**HQ validates what it writes.** Every document HQ writes (the reconciler's exceptions, the resolved copies of
+`resolve` and `close-superseded`, the staged sale) is run through `ingest` first; one that would be dropped is
+refused with `400` `HQ would write an invalid <collection>: <detail>` and nothing of that request is written.
 
 ## The screen and its panels
 

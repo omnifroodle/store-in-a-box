@@ -67,7 +67,9 @@ Server from the pairing payload).
 
 ## Beat 1: Pack
 
-*Proves acceptance line 1 and, with the HQ screen, line 6.*
+*Proves acceptance line 1 and, with the HQ screen, line 6.* Line 6 passes only with 0 dropped: the indicator reads
+`HOLDS · live`, and `HOLDS · N dropped · live` (documents HQ could not read, listed under the table; decision 010)
+fails it.
 
 1. On tablet A open the Custody tab and select **Pack**. The header reads `PACKING store-richmond → box-07`.
 2. Scan serials 001 and 002 of every SKU: 32 units. Each scan is accepted at once and appears in "This session".

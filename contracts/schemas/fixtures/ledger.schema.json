@@ -79,7 +79,8 @@
         "allocation_counts",
         "forks",
         "exceptions",
-        "conservation"
+        "conservation",
+        "drops"
       ],
       "properties": {
         "units": {
@@ -276,6 +277,42 @@
               "type": "array",
               "items": {
                 "$ref": "#/$defs/row"
+              }
+            }
+          }
+        },
+        "drops": {
+          "description": "Every document the reducer dropped before rule 1 (rule 0), sorted by collection then id; [] when none. The detail text is free and never compared, so it is not here.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "collection",
+              "code"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "collection": {
+                "enum": [
+                  "transaction",
+                  "exception"
+                ]
+              },
+              "code": {
+                "enum": [
+                  "malformed",
+                  "wrong_type",
+                  "version",
+                  "missing_field",
+                  "extra_field",
+                  "invalid_value",
+                  "rule"
+                ]
               }
             }
           }

@@ -3,6 +3,13 @@
 One line per version, newest first: version, date, what was added (additive) or changed (breaking). The first
 version line must match `VERSION` (`scripts/check_contracts.py` checks it).
 
+- 0.7.0 (2026-10-13): a node reduces only schema-valid documents and records every drop (rule 0; #96, #104 item 4,
+  CC11 #159, decision 010): `expected.drops` (required) in every ledger fixture, documents marked `_invalid` on
+  purpose, the seven drop codes; the id template is part of rule 0 (a document whose `_id` disagrees with its body is
+  dropped as `rule`, gate finding on #181). Fixtures `drop-transaction-missing-field`,
+  `drop-resolution-missing-field`, `drop-extra-field-same-id`, `drop-newer-version`, `drop-unknown-kind`,
+  `drop-rule-sku-mismatch`, `drop-id-mismatch`, `drop-and-untraced`. A changed rule and a new required field, so a
+  minor bump.
 - 0.6.0 (2026-10-08): HQ's closure of an `unexpected_check_in` or a `foreign_movement` holds by `kind` and
   `dispute_key` (the movement), whatever its `transactions`, so a predecessor that arrives after the close no longer
   reopens it (rule 7; #83, CC10 #86, decision 009); rule 8 names who acts for the store (only `hq`) and that `hq`

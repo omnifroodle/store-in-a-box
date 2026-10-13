@@ -1,6 +1,7 @@
 """The custody ledger reducer, reference implementation (WS1). Interface: ``ports/ledger.md``.
 
-Pure functions, no I/O: ``reduce`` turns the immutable ``transaction`` documents and HQ's resolutions into each unit's
+Pure functions, no I/O: ``ingest`` (rule 0) keeps the documents that pass their schema and records a ``Drop`` for
+each one that does not; ``reduce`` turns the immutable ``transaction`` documents and HQ's resolutions into each unit's
 holder, the counts and the forks; ``exceptions_for`` gives the ``exception`` documents a detector writes;
 ``conservation`` gives the per-SKU rows. ``hlc_now`` and ``hlc_receive`` are the hybrid logical clock.
 """
@@ -9,10 +10,13 @@ from .chain import Fork, LedgerState, Unit, reduce
 from .conservation import Row, conservation
 from .exceptions import exception_id, exceptions_for
 from .hlc import Hlc, compare_hlc, format_hlc, hlc_now, hlc_receive, parse_hlc
+from .ingest import Drop, Ingest, ingest
 
 __all__ = [
+    "Drop",
     "Fork",
     "Hlc",
+    "Ingest",
     "LedgerState",
     "Row",
     "Unit",
@@ -23,6 +27,7 @@ __all__ = [
     "format_hlc",
     "hlc_now",
     "hlc_receive",
+    "ingest",
     "parse_hlc",
     "reduce",
 ]
