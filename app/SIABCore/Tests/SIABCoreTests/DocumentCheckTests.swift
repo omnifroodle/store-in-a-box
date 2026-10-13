@@ -320,6 +320,25 @@ final class DocumentCheckTests: XCTestCase {
         XCTAssertFalse(SchemaEvaluator.equal(.bool(true), .int(1)))
     }
 
+    /// Gate finding 3 on #189: ids and keys by code point, as Python and Couchbase Lite compare them.
+    func testIDsAndUnderscoreKeysByCodePoint() throws {
+        let pack = try Self.pack()
+        var bad = pack; bad["kind"] = .string("transfer")
+        let ids = ["txn::\u{e9}", "txn::e\u{301}", "txn::\u{212b}", "txn::\u{c5}", "txn::A\u{30a}", "txn::\u{d55c}",
+                   "txn::\u{1112}\u{1161}\u{11ab}"]
+        let result = DocumentCheck.ingest(ids.map { ($0, bad) }, collection: "transaction", as: Transaction.self)
+        XCTAssertEqual(result.drops.count, ids.count, "one drop per code-point id")
+        XCTAssertEqual(result.drops.map { $0.id.unicodeScalars.map(\.value) },
+                       ids.map { $0.unicodeScalars.map(\.value) }.sorted { $0.lexicographicallyPrecedes($1) })
+
+        var marked = pack
+        marked["_\u{301}x"] = .int(1)
+        XCTAssertNil(code(marked), "_ followed by a combining mark is metadata, as Python's startswith")
+        var field = pack
+        field["\u{301}_x"] = .int(1)
+        XCTAssertEqual(code(field), .extraField)
+    }
+
     func testRawDocumentsThatCannotBeNamedAreMalformed() throws {
         let result = DocumentCheck.ingest(documents: [.string("txn"), .object(["_id": .int(5)]), .array([])],
                                           collection: "transaction", as: Transaction.self)

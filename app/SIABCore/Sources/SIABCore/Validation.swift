@@ -53,7 +53,8 @@ public enum DocumentCheck {
         guard let schema = StoreSchema.collections[collection] else {
             preconditionFailure("no schema for collection \(collection)")
         }
-        let body = body.filter { !$0.key.hasPrefix("_") }
+        // By code point, as Python's startswith: `_` followed by a combining mark is still metadata.
+        let body = body.filter { $0.key.unicodeScalars.first != "_" }
         func drop(_ code: DropCode, _ detail: String) -> Drop { Drop(id: id, collection: collection, code: code, detail: detail) }
         if body["type"] != .string(collection) {
             return drop(.wrongType, "type: \(body["type"].map(\.canonical) ?? "required"), not \(collection)")
@@ -99,7 +100,9 @@ public enum DocumentCheck {
     private static func ingest<T: Decodable>(_ items: [(id: String, doc: JSONValue, named: Bool)], collection: String,
                                              as: T.Type) -> (accepted: [T], drops: [Drop]) {
         var accepted: [T] = []
-        var worst: [String: Drop] = [:]
+        // Keyed by code points: ids that differ only by Unicode normalisation are two documents (Couchbase Lite,
+        // Python), so two drops; Swift's String equality would merge them.
+        var worst: [[Unicode.Scalar]: Drop] = [:]
         for (id, doc, named) in items {
             var failed: Drop?
             if !named {
@@ -121,7 +124,8 @@ public enum DocumentCheck {
                 failed = Drop(id: id, collection: collection, code: .malformed,
                               detail: "the document is \(SchemaEvaluator.jsonType(doc)), not an object")
             }
-            if let drop = failed, worst[id].map({ precedes(drop, $0) }) ?? true { worst[id] = drop }
+            let key = Array(id.unicodeScalars)
+            if let drop = failed, worst[key].map({ precedes(drop, $0) }) ?? true { worst[key] = drop }
         }
         let drops = worst.values.sorted { $0.id.unicodeScalars.lexicographicallyPrecedes($1.id.unicodeScalars) }
         return (accepted, drops)

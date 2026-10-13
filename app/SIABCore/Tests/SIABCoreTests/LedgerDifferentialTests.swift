@@ -46,6 +46,73 @@ final class LedgerDifferentialTests: XCTestCase {
         print("LedgerDifferentialTests: wrote \(out)")
     }
 
+    /// The gate's sets on #189 (finding 3), built from the fixtures as the gate built them. The expected drops are
+    /// what `python -m siab_ledger report` gives for the same sets (run when they were added); the rest of each
+    /// report must be the fixture's own `expected`, since every added document is dropped (or, for the `_`-key,
+    /// ignored).
+    func testUnicodeSetsAgreeWithThePythonReport() throws {
+        func fixture(_ name: String) throws -> [String: JSONValue] {
+            DocumentCheckTests.object(try DocumentCheckTests.read(
+                LedgerFixtureTests.fixturesDirectory().appendingPathComponent("\(name).json")))
+        }
+        func array(_ v: JSONValue?) -> [JSONValue] { if case .array(let a)? = v { return a }; return [] }
+        func with(_ doc: JSONValue, _ changes: [String: JSONValue]) -> JSONValue {
+            .object(DocumentCheckTests.object(doc).merging(changes) { $1 })
+        }
+        func report(_ fx: [String: JSONValue], transactions: [JSONValue], resolutions: [JSONValue]) -> [String: JSONValue] {
+            guard case .object(let expected)? = fx["expected"], case .object(let x)? = expected["exceptions"],
+                  case .string(let detector)? = x["detector"], case .string(let trip)? = fx["trip"],
+                  case .string(let box)? = fx["box"], case .string(let store)? = fx["store"] else { fatalError() }
+            let inventory = try! JSONDecoder().decode([Inventory]?.self, from: JSONEncoder().encode(fx["inventory"]!))
+            return DocumentCheckTests.object(LedgerFixtureTests.result(
+                trip: trip, box: box, store: store, detector: detector, inventory: inventory,
+                transactions: transactions, resolutions: resolutions))
+        }
+        func drops(_ list: [(String, String, String)]) -> JSONValue {
+            .array(list.map { .object(["id": .string($0.0), "collection": .string($0.1), "code": .string($0.2)]) })
+        }
+        let transfer: [String: JSONValue] = ["kind": .string("transfer")]
+
+        let packAndSell = try fixture("pack-and-sell")
+        let txns = array(packAndSell["transactions"])
+        var expected = DocumentCheckTests.object(packAndSell["expected"]!)
+        let cases: [(String, [JSONValue], JSONValue)] = [
+            ("adv-u-canon-pair", [with(txns[0], ["_id": .string("txn::\u{e9}")].merging(transfer) { $1 }),
+                                  with(txns[0], ["_id": .string("txn::e\u{301}")])],
+             drops([("txn::e\u{301}", "transaction", "rule"), ("txn::\u{e9}", "transaction", "invalid_value")])),
+            ("adv-u-hangul", [with(txns[0], ["_id": .string("txn::\u{d55c}")].merging(transfer) { $1 }),
+                              with(txns[0], ["_id": .string("txn::\u{1112}\u{1161}\u{11ab}")])],
+             drops([("txn::\u{1112}\u{1161}\u{11ab}", "transaction", "rule"),
+                    ("txn::\u{d55c}", "transaction", "invalid_value")])),
+            ("adv-u-angstrom", [with(txns[0], ["_id": .string("txn::\u{212b}")].merging(transfer) { $1 }),
+                                with(txns[0], ["_id": .string("txn::\u{c5}")]),
+                                with(txns[0], ["_id": .string("txn::A\u{30a}")].merging(transfer) { $1 })],
+             drops([("txn::A\u{30a}", "transaction", "invalid_value"), ("txn::\u{c5}", "transaction", "rule"),
+                    ("txn::\u{212b}", "transaction", "invalid_value")])),
+        ]
+        for (name, added, want) in cases {
+            let got = report(packAndSell, transactions: txns + added, resolutions: [])
+            XCTAssertEqual(got["drops"], want, name)
+            expected["drops"] = want
+            XCTAssertNil(LedgerFixtureTests.firstDifference(.object(expected), .object(got)), name)
+        }
+
+        // adv-f-underscore-comb: the sale carries a key `_` + U+0301 + `x`; Python ignores it, so must Swift.
+        var marked = txns
+        marked[3] = with(txns[3], ["_\u{301}x": .int(1)])
+        let underscore = report(packAndSell, transactions: marked, resolutions: [])
+        XCTAssertNil(LedgerFixtureTests.firstDifference(packAndSell["expected"]!, .object(underscore)), "adv-f-underscore-comb")
+
+        // adv-ur-canon-pair: resolved-fork's resolution under two ids that differ only by normalisation.
+        let resolvedFork = try fixture("resolved-fork")
+        let resolution = array(resolvedFork["resolutions"])[0]
+        let ur = report(resolvedFork, transactions: array(resolvedFork["transactions"]),
+                        resolutions: [with(resolution, ["_id": .string("exc::\u{e9}")]),
+                                      with(resolution, ["_id": .string("exc::e\u{301}")])])
+        XCTAssertEqual(ur["drops"], drops([("exc::e\u{301}", "exception", "rule"), ("exc::\u{e9}", "exception", "rule")]),
+                       "adv-ur-canon-pair")
+    }
+
     /// The report's shape, without Python: one set made from a fixture gives the fixture's `expected` plus `drops`,
     /// serialised canonically.
     func testReportOfAFixtureIsItsExpected() throws {
