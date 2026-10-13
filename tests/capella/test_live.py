@@ -1,6 +1,7 @@
 """LiveCapella's request shapes against mocked transports: no network. These pin what the code sends; whether
 Capella accepts it is task 3's live check (needs-verification)."""
 
+import io
 import json
 
 import httpx
@@ -8,7 +9,7 @@ import pytest
 
 from siab_capella.config import Config
 from siab_capella.gateway import Keyspace, ManualStepRequired
-from siab_capella.live import LiveCapella, http_base, session_channels
+from siab_capella.live import CapellaApiError, LiveCapella, http_base, session_channels
 
 ENV = {"CAPELLA_ORG_ID": "org", "CAPELLA_PROJECT_ID": "proj", "CAPELLA_CLUSTER_ID": "clu",
        "CAPELLA_APP_SERVICE_ID": "app", "CAPELLA_API_KEY": "test-key", "CAPELLA_API_BASE": "http://api.test",
@@ -153,12 +154,14 @@ def test_session_reads_channels_and_refuses_a_guest():
         assert request.url.path == "/store/_session"
         if request.headers.get("Authorization") is None:
             return httpx.Response(401)
-        return httpx.Response(200, json={"ok": True, "userCtx": {"name": "box-07",
-                                                                 "channels": {"!": 1, "trip:t": 3}}})
+        return httpx.Response(200, json={"ok": True, "userCtx": {"name": "box-07", "channels": {"!": 1},
+                                                                 "collection_access": {"store": {
+                                                                     "trip": {"all_channels": {"!": 1, "trip:t": 3}},
+                                                                     "product": {"admin_channels": {"trip:t": 3}}}}}})
 
     gw = LiveCapella(Config(ENV), transport=httpx.MockTransport(handler))
     assert gw.app_services_session("box-07", "pw", "store", ["trip", "product"]) == {"trip": ["!", "trip:t"],
-                                                                                     "product": ["!", "trip:t"]}
+                                                                                     "product": ["trip:t"]}
     with pytest.raises(PermissionError):
         gw.app_services_session("hq", "pw", "store", ["trip"])
 
@@ -167,6 +170,23 @@ def test_session_channels_prefers_a_per_collection_view():
     body = {"userCtx": {"name": "box-07", "channels": {"!": 1},
                         "collection_access": {"store": {"trip": {"all_channels": {"trip:t": 1}}}}}}
     assert session_channels(body, "store", ["trip", "product"]) == {"trip": ["trip:t"], "product": []}
+
+
+def test_session_without_a_per_collection_view_fails_verify(capsys):
+    """User-level channels may be the default collection's: they never stand in for the linked collections'."""
+    from siab_capella.app_services import load_endpoint, verify
+    from siab_capella.config import SYNC_DIR
+
+    spec = load_endpoint(SYNC_DIR)
+    want = sorted(next(u for u in spec["users"] if u["user_env"] == "BOX_APP_USER")["channels"])
+    body = {"ok": True, "userCtx": {"name": "box-07", "channels": dict.fromkeys(want, 1)}}
+    with pytest.raises(CapellaApiError, match="no per-collection grants"):
+        session_channels(body, "store", ["trip"])
+
+    gw = LiveCapella(Config(ENV), transport=httpx.MockTransport(lambda request: httpx.Response(200, json=body)))
+    out = io.StringIO()
+    assert verify(gw, spec, Config({**ENV, "BOX_APP_PASSWORD": "pw"}), out) == 1
+    assert "no per-collection grants" in out.getvalue()
 
 
 def test_http_base():

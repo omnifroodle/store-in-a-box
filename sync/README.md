@@ -6,7 +6,7 @@ One App Services sync function (access control function) per linked collection o
 |---|---|---|---|
 | `functions/store.product.js` | `product` | `hq` | `catalog:<region>` for each of `regions` |
 | `functions/store.trip.js` | `trip` | `hq` | `trip:<trip_id>`, `box:<box>` |
-| `functions/store.allocation.js` | `allocation` | its `box`, or `hq` | `trip:<trip>`; later only `status`, `closed_at` change |
+| `functions/store.allocation.js` | `allocation` | its `box`, or `hq` (`box` always required) | `trip:<trip>`; later only `status`, `closed_at` change |
 | `functions/store.transaction.js` | `transaction` | its `box`, or `hq` (`box` may be null) | `trip:<trip>`; never updated |
 | `functions/store.exception.js` | `exception` | its `box` (status `open`), or `hq` | `trip:<trip>`; only `hq` updates, only `status`, `resolution` |
 
@@ -27,9 +27,12 @@ node --test sync/tests/
 ```
 
 `tests/harness.mjs` is a fake of the App Services runtime (`channel`, `access`, `requireUser`, `requireAccess`,
-`requireRole`, `requireAdmin`, with Sync Gateway's semantics: a user holding `*` has every channel, and the admin
-context passes every `require*`). `tests/fixtures.test.mjs` runs every case in `contracts/fixtures/sync/`;
-`tests/rules.test.mjs` covers what the fixtures leave open (admin context, tombstones, field order, ES5 only).
+`requireRole`, `requireAdmin`, with Sync Gateway's semantics: the `require*` calls wrap a single value in an array
+and never flatten a nested one, `channel` and `access` take strings or arrays of strings and ignore anything else,
+and the admin context passes every `require*`). One assumption is not from Sync Gateway's source: a user holding `*`
+passes `requireAccess`; the real runtime is checked for it in #40. `tests/fixtures.test.mjs` runs every case in
+`contracts/fixtures/sync/`; `tests/rules.test.mjs` covers what the fixtures leave open (admin context, tombstones,
+field order, ES5 only, nested arrays, an allocation without a box).
 The harness is a fake: the behaviour on the real runtime is checked live (see `docs/capella-setup.md`).
 
 ## `app-endpoint.json`

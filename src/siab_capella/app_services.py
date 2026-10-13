@@ -139,6 +139,10 @@ def verify(gw: CapellaGateway, spec: dict[str, Any], config: Config, out: TextIO
         got = gw.app_services_session(user, password, spec["scope"], list(spec["functions"]))
     except Exception as e:  # noqa: BLE001 (any refusal or transport error is a failed verify; say which)
         print(f"session as {user} on {spec['name']} failed: {type(e).__name__}: {e}", file=out)
+        if isinstance(e, PermissionError):
+            print(f"  apply sets a password only when it creates a user: if {box['password_env']} changed after "
+                  f"{user} was created, set the new password in the Capella UI (App Services > {spec['name']} > "
+                  "App Users)", file=out)
         return 1
     want = grants(spec, box)
     got_n = _normalise(got, sorted(set(got) | set(want)))

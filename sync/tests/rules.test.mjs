@@ -60,6 +60,25 @@ test("an unchanged rewrite of an allocation is accepted (field order does not ma
   assert.equal(run("allocation", BOX, reordered, c.doc).ok, true);
 });
 
+test("an allocation needs a box whoever writes it (hq and an import included)", () => {
+  const c = fixture("allocation-by-hq-ok");
+  for (const user of [HQ, ADMIN, BOX]) {
+    for (const box of [null, undefined, ""]) {
+      assert.equal(run("allocation", user, { ...c.doc, box }).error, "box is required", `${user?.name} box=${box}`);
+    }
+  }
+});
+
+test("a nested box array is rejected (requireUser does not flatten, as in Sync Gateway)", () => {
+  const nested = ["box-07", "box-08"];
+  for (const name of ["transaction-by-box-ok", "allocation-by-box-ok", "exception-create-by-box-ok"]) {
+    const c = fixture(name);
+    assert.equal(run(c.collection, BOX, { ...c.doc, box: nested }).error, "a box writes only its own documents", name);
+    assert.equal(run(c.collection, BOX, { ...c.doc, box: ["box-07"] }).error, "a box writes only its own documents",
+      name);
+  }
+});
+
 test("a box may not create an exception for another box", () => {
   const c = fixture("exception-create-by-box-ok");
   assert.equal(run("exception", BOX, { ...c.doc, box: "box-08" }).error, "a box writes only its own documents");
@@ -97,6 +116,33 @@ test("a product needs at least one region", () => {
   const c = fixture("product-by-hq-ok");
   assert.equal(run("product", HQ, { ...c.doc, regions: [] }).ok, false);
   assert.equal(run("product", HQ, { ...c.doc, regions: undefined }).ok, false);
+});
+
+// The harness's built-ins against Sync Gateway's: makeArray wraps a non-array and never flattens; channel() and
+// access() take strings or arrays of strings and ignore anything else (a nested array included).
+const probe = (body) => ({ make: (channel, access, role, expiry, requireUser, requireAccess) =>
+  (doc) => body({ channel, access, requireUser, requireAccess }, doc) });
+
+test("harness: requireUser and requireAccess do not flatten nested arrays", () => {
+  const user = probe(({ requireUser }, doc) => requireUser(doc.names));
+  assert.equal(runSync(user, { user: BOX, doc: { names: "box-07" } }).ok, true);
+  assert.equal(runSync(user, { user: BOX, doc: { names: ["hq", "box-07"] } }).ok, true);
+  assert.equal(runSync(user, { user: BOX, doc: { names: [["box-07"], "hq"] } }).error, "wrong user");
+  assert.equal(runSync(user, { user: null, doc: { names: [["box-07"]] } }).ok, true); // admin context
+  const access = probe(({ requireAccess }, doc) => requireAccess(doc.chans));
+  const trip = "trip:trip-2026-10-18-riverfest";
+  assert.equal(runSync(access, { user: BOX, doc: { chans: trip } }).ok, true);
+  assert.equal(runSync(access, { user: BOX, doc: { chans: ["x", trip] } }).ok, true);
+  assert.match(runSync(access, { user: BOX, doc: { chans: [[trip]] } }).error, /access/);
+});
+
+test("harness: channel() and access() take one level of array and ignore non-strings", () => {
+  const fn = probe(({ channel, access }) => {
+    channel("a", ["b", ["c"]], null, 7);
+    access(["u1", ["u2"]], ["d", ["e"]]);
+  });
+  assert.deepEqual(runSync(fn, { user: HQ, doc: {} }),
+    { ok: true, channels: ["a", "b"], access: [{ users: ["u1"], channels: ["d"] }] });
 });
 
 test("the harness surfaces a function bug instead of reporting a rejection", () => {

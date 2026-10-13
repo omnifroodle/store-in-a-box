@@ -36,14 +36,16 @@ def http_base(public_url: str) -> str:
 
 
 def session_channels(body: dict[str, Any], scope: str, collections: list[str]) -> Channels:
-    """Channels per collection from a `_session` response. A per-collection view (`collection_access`) is used when
-    the response has one; otherwise the user-level `channels` are reported for every collection."""
+    """Channels per collection from a `_session` response's per-collection view (`collection_access`). Without one
+    there is nothing to check per collection: the user-level `channels` could be the default collection's, so they
+    are not reported in its place (that could pass `verify` with no grants on the linked collections)."""
     ctx = body.get("userCtx") or {}
     per = (ctx.get("collection_access") or {}).get(scope)
-    if per is not None:
-        return {c: sorted((per.get(c) or {}).get("all_channels") or (per.get(c) or {}).get("admin_channels") or [])
-                for c in collections}
-    return {c: sorted(ctx.get("channels") or []) for c in collections}
+    if per is None:
+        raise CapellaApiError(f"_session has no per-collection grants for scope {scope} (userCtx.collection_access); "
+                              "the user-level channels are not checked in their place")
+    return {c: sorted((per.get(c) or {}).get("all_channels") or (per.get(c) or {}).get("admin_channels") or [])
+            for c in collections}
 
 
 class LiveCapella:

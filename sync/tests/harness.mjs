@@ -23,7 +23,12 @@ export function functionFor(collection) {
   return loadSyncFunction(join(FUNCTIONS_DIR, `store.${collection}.js`));
 }
 
-const list = (x) => (Array.isArray(x) ? x.flat(Infinity) : [x]).filter((v) => v !== null && v !== undefined);
+// Sync Gateway's makeArray (channels/sync_runner.go): an array as it is, anything else wrapped. Never flattened, so
+// requireUser([["box-07"], "hq"]) refuses box-07 there and here.
+const makeArray = (x) => (Array.isArray(x) ? x : [x]);
+// channel() and access() arguments (ottoValueToStringArray, base.ValueToStringArray): a string or an array of
+// strings; anything else, a nested array included, is ignored (Sync Gateway logs a warning).
+const strings = (x) => makeArray(x).filter((v) => typeof v === "string");
 
 // Run a loaded function as `user` ({name, channels, roles?}, or null for the admin context).
 // Returns {ok: true, channels, access} or {ok: false, error}.
@@ -31,22 +36,26 @@ export function runSync(fn, { user, doc, oldDoc = null, meta = { xattrs: {} } })
   const channels = new Set();
   const grants = [];
   const builtins = {
-    channel: (...names) => list(names).forEach((c) => channels.add(c)),
-    access: (users, chans) => grants.push({ users: list(users), channels: list(chans) }),
+    channel: (...args) => args.flatMap(strings).forEach((c) => channels.add(c)),
+    access: (users, chans) => grants.push({ users: strings(users), channels: strings(chans) }),
     role: () => {},
     expiry: () => {},
     requireUser: (names) => {
-      if (user && !list(names).includes(user.name)) throw { forbidden: "wrong user" };
+      if (user && makeArray(names).indexOf(user.name) === -1) throw { forbidden: "wrong user" };
     },
     requireAccess: (chans) => {
       if (!user) return;
       const held = user.channels || [];
-      if (!held.includes("*") && !list(chans).some((c) => held.includes(c))) {
+      // "*" passing requireAccess is an assumption: Sync Gateway's requireAccess compares the user's channel names
+      // with no special case for "*" (checked on the real runtime by issue #40).
+      if (!held.includes("*") && !makeArray(chans).some((c) => held.indexOf(c) !== -1)) {
         throw { forbidden: "missing channel access" };
       }
     },
     requireRole: (roles) => {
-      if (user && !list(roles).some((r) => (user.roles || []).includes(r))) throw { forbidden: "missing role" };
+      if (user && !makeArray(roles).some((r) => (user.roles || []).indexOf(r) !== -1)) {
+        throw { forbidden: "missing role" };
+      }
     },
     requireAdmin: () => {
       if (user) throw { forbidden: "sgw admin required" };
