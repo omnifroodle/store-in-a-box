@@ -47,15 +47,15 @@ open `needs-verification` issues that line passing live lets the foreman close. 
   - Closes: #89, #92.
 - [ ] **7. One staged oversell produces one exception document with both transactions.**
   - How: the Conflict-free by construction beat. `scripts/demo/stage_oversell.sh 'JKT-RAIN-M-BLU#001'`, then restore.
-  - Result: exactly one dispute `JKT-RAIN-M-BLU#001|root` of kind `oversell` in `GET /api/exceptions?status=open`,
+  - Result: exactly one dispute `JKT-RAIN-M-BLU#001|root` of kind `oversell` (titled "Sold twice" on the tablet) in `GET /api/exceptions?status=open`,
     with two branches (the pack, whose leaf is the tablet's sale, and HQ's sale), the same dispute on tablet A's
     Exceptions tab, and the exception count recorded. The words on stage are those of the ledger note (#63 read by the
     owner).
   - Who: agent: box+capella for the cluster; owner for the tablet and the stage.
   - Closes: #90, #65, #63.
 - [ ] **8. One deliberate double-scan produces one exception, not a lost or duplicated unit.**
-  - How: beat 5. Both tablets Take `JKT-RAIN-L-BLU#001` out of range of each other, then rejoin.
-  - Result: one `double_scan` exception for that unit on each tablet and, once synced, on HQ; the conservation row
+  - How: beat 5. Both tablets Take `JKT-RAIN-L-BLU#001` (untouched until now) out of range of each other, then rejoin.
+  - Result: one "Scanned out twice" (kind `double_scan`) exception for that unit on each tablet and, once synced, on HQ; the conservation row
     for `JKT-RAIN-L-BLU` shows the unit as `disputed`, not in custody and not lost (`holds` true).
   - Who: owner.
   - Closes: #116, #98.

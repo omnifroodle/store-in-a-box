@@ -96,8 +96,10 @@ class StubHq(BaseHTTPRequestHandler):
         body = self.rfile.read(int(self.headers.get("Content-Length", 0)))
         StubHq.seen.append((self.path, json.loads(body)))
         unit = json.loads(body)["unit_id"]
-        ok = unit == "JKT-RAIN-M-BLU#001"
-        payload = {"id": "txn::1792329100000-0000-hq"} if ok else {"error": "not held by the box"}
+        ok = unit in ("JKT-RAIN-M-BLU#001", "JKT-RAIN-M-BLU#003")
+        payload = {"id": "txn::1792329100000-0000-hq"} if unit.endswith("#001") else {"ok": True}
+        if not ok:
+            payload = {"error": "not held by the box"}
         data = json.dumps(payload).encode()
         self.send_response(200 if ok else 400)
         self.send_header("Content-Type", "application/json")
@@ -127,6 +129,14 @@ def test_stage_oversell_prints_the_transaction_and_the_dispute():
     assert StubHq.seen == [("/api/stage/hq-sale", {"unit_id": "JKT-RAIN-M-BLU#001"})]
     assert "txn::1792329100000-0000-hq" in r.stdout
     assert "oversell" in r.stdout and "JKT-RAIN-M-BLU#001|root" in r.stdout
+
+
+def test_stage_oversell_survives_an_answer_without_an_id():
+    # HQ answers 200 with no "id": the script must reach its fallback message, not die under `set -euo pipefail`.
+    r = with_stub(lambda port: run(STAGE, "JKT-RAIN-M-BLU#003", env={"SIAB_HQ_PORT": str(port)}))
+    assert r.returncode == 0, r.stderr
+    assert "staged HQ sale: <no id in the answer>" in r.stdout
+    assert "JKT-RAIN-M-BLU#003|root" in r.stdout
 
 
 def test_stage_oversell_reports_a_refusal():

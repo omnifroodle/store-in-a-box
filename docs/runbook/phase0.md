@@ -58,7 +58,8 @@ Do this the evening before, then again an hour before.
    be shown).
 7. **Labels on the table.** `uv run python scripts/demo/labels.py --out labels.html`, printed at 100% scale. Keep
    the serials 001 and 002 of every SKU at hand for the pack; `JKT-RAIN-M-BLU#001` is the oversell unit and
-   `JKT-RAIN-L-BLU#001` the double-scan unit.
+   `JKT-RAIN-L-BLU#001` the double-scan unit. The beats use fixed serials (named in each beat) so none is reused:
+   beat 5 needs `JKT-RAIN-L-BLU#001` untouched at the box until then, so no earlier beat takes it.
 8. **Byte counter at zero.** `curl -X POST http://127.0.0.1:8787/bytes/reset` (the reset script already did it; do
    it again if anything synced since).
 
@@ -82,9 +83,11 @@ Audience sees: store on-hand falling a scan at a time on the HQ half of the scre
 
 1. The cut. **Default:** `box/install/uplink.sh cut`. **Alternative:** pull the router's WAN cable. The status page
    shows UPLINK CUT.
-2. On tablet A: Custody, **Take**, scan `JKT-RAIN-M-BLU#001` and a few others (the header reads `TAKING FROM
-   box-07`). Then Sell: scan a unit into the basket, tap **Cash** or **Card (simulated)**.
-3. On tablet B sell a few units the same way.
+2. On tablet A: Custody, **Take**, scan `JKT-RAIN-M-BLU#001` (the oversell unit, if not already taken),
+   `JKT-RAIN-M-BLU#002`, `JKT-RAIN-M-OLV#001` and `JKT-RAIN-M-OLV#002` (the header reads `TAKING FROM box-07`). Then
+   Sell `JKT-RAIN-M-OLV#001`: scan the unit into the basket, tap **Cash** or **Card (simulated)**. Leave
+   `JKT-RAIN-M-BLU#001` unsold; the oversell beat sells it.
+3. On tablet B: Take `BAS-TEE-M-BLK#001` and `BAS-TEE-M-BLK#002`, then Sell `BAS-TEE-M-BLK#001` the same way.
 
 Audience sees: sales going through with the status page showing the cut. The byte counter does not move.
 
@@ -94,9 +97,9 @@ Audience sees: sales going through with the status page showing the cut. The byt
 
 1. Power the box off: Ctrl-C the `box/run.sh --edge-only` terminal (and unplug the router if you want it visible).
    The agent stays up, so the byte counter and the cut survive.
-2. Tablet A sells a unit; tablet B's Shelf and Exceptions update through device-to-device sync (Diagnostics, mesh
+2. Tablet A sells `JKT-RAIN-M-OLV#002`; tablet B's Shelf and Exceptions update through device-to-device sync (Diagnostics, mesh
    peers, shows the other tablet as last seen a moment ago).
-3. Tablet B sells a different unit; tablet A's Shelf reflects it.
+3. Tablet B sells `BAS-TEE-M-BLK#002`; tablet A's Shelf reflects it.
 4. Start the box again: `box/run.sh --edge-only`. It resumes from its database; the tablets reconnect.
 
 Audience sees: two tablets agreeing with nothing between them.
@@ -105,10 +108,13 @@ Audience sees: two tablets agreeing with nothing between them.
 
 *Proves acceptance line 4, and line 6 while tablet B is out of range.*
 
-1. Tablet B: Custody, **Take**, scan eight units off the box.
+1. Tablet B: Custody, **Take**, scan eight units off the box: serials 001 and 002 of
+   `HAT-BEANIE-OS`, `HAT-BRIM-OS`, `SOC-WOOL-M` and `SOC-WOOL-L`.
 2. Tablet B leaves range (Wi-Fi off, or walk out of the venue's coverage). The box keeps selling on tablet A.
-3. Tablet B sells three of the eight (Sell tab).
-4. Tablet B comes back into range. Custody, **Return**, scan the five unsold units.
+3. Tablet B sells three of the eight (Sell tab): `HAT-BEANIE-OS#001`, `HAT-BEANIE-OS#002` and `HAT-BRIM-OS#001`.
+   Meanwhile tablet A sells `JKT-RAIN-M-BLU#002`.
+4. Tablet B comes back into range. Custody, **Return**, scan the five unsold units: `HAT-BRIM-OS#002` and serials 001
+   and 002 of `SOC-WOOL-M` and `SOC-WOOL-L`.
 5. Check the box and tablet B agree without the cloud: the Shelf on tablet B and tablet A show the same `here` and
    `box` counts, and the uplink is still cut. On the HQ screen the conservation row indicator reads `HOLDS · live`
    (HQ's view lags by what the cable has kept back).
@@ -121,8 +127,8 @@ Audience sees: a tablet that walked off with eight jackets and was still a store
 
 1. Put tablet A and tablet B out of range of each other (Wi-Fi off on one).
 2. Both tablets: Custody, **Take**, scan `JKT-RAIN-L-BLU#001`. Each scan is accepted; neither tablet can know.
-3. Bring them back in range. Each tablet's Exceptions tab shows one `double_scan` dispute for the unit, and it is the
-   same dispute (`JKT-RAIN-L-BLU#001|<pack txn>`). The unit is counted nowhere: not lost, not twice.
+3. Bring them back in range. Each tablet's Exceptions tab shows one dispute titled "Scanned out twice" (kind
+   `double_scan`) for the unit, and it is the same dispute (`JKT-RAIN-L-BLU#001|<pack txn>`). The unit is counted nowhere: not lost, not twice.
 
 Audience sees: one exception, not a duplicated unit.
 
@@ -171,8 +177,8 @@ venue is about to find the same fork from its side."
 
 #### Run sheet for this beat
 
-Not part of the copied text. Proves acceptance lines 7 and 5. Before the beat: on tablet A, Custody **Take** then Sell `JKT-RAIN-M-BLU#001` (so the
-pack's chain ends in the tablet's sale). The uplink is still cut from beat 2.
+Not part of the copied text. Proves acceptance lines 7 and 5. Before the beat: on tablet A, Sell `JKT-RAIN-M-BLU#001` (so the pack's chain ends in
+the tablet's sale); tablet A took it in beat 2, and if not already taken, Custody **Take** it first. Do not Take it twice. The uplink is still cut from beat 2.
 
 - **Rehearsal decision on the HQ exception panel (#61): provisional.** The default is to keep the exception panel off
   the projector until step 3. HQ's reconciler runs every `SIAB_RECONCILE_INTERVAL_S` (3 s) and has the pack from
@@ -184,10 +190,10 @@ pack's chain ends in the tablet's sale). The uplink is still cut from beat 2.
   rehearsal (#124)*.
 - **Step 1, fire the staged sale.** In the HQ stage control pick `JKT-RAIN-M-BLU#001`, or from a terminal:
   `scripts/demo/stage_oversell.sh 'JKT-RAIN-M-BLU#001'`. It prints the transaction id and the dispute to expect
-  (`oversell`, `JKT-RAIN-M-BLU#001|root`).
+  (kind `oversell`, shown on the tablet as "Sold twice", `JKT-RAIN-M-BLU#001|root`).
 - **Step 2, plug the cable in.** **Default:** `box/install/uplink.sh restore`. **Alternative:** put the router's WAN
   cable back. Edge Server resumes from its checkpoint; the status page byte counter ticks.
-- **Step 3, show both branches.** On HQ: the exceptions panel, `oversell`, two branches. On tablet A: the Exceptions
+- **Step 3, show both branches.** On HQ: the exceptions panel, `oversell` (the tablet's Exceptions tab titles it "Sold twice"), two branches. On tablet A: the Exceptions
   tab.
 - **The byte number (acceptance line 5).** Read `bytes.out` and `bytes.in` from `http://<box>:8787/status` (or
   the box panel on the HQ screen) once the replication state is back to `idle`. The line is a day of fifty

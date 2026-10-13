@@ -27,7 +27,8 @@ if [[ "$status" != 200 ]]; then
   exit 1
 fi
 
-txn="$(printf '%s' "$body" | grep -o '"id": *"[^"]*"' | head -n 1 | sed 's/.*: *"\(.*\)"/\1/')"
+# `|| true`: an answer without an "id" must reach the fallback message below, not kill the script under pipefail.
+txn="$(printf '%s' "$body" | grep -o '"id": *"[^"]*"' | head -n 1 | sed 's/.*: *"\(.*\)"/\1/' || true)"
 echo "staged HQ sale: ${txn:-<no id in the answer>}"
 echo "expect one dispute within a reconcile interval (SIAB_RECONCILE_INTERVAL_S, default 3 s):"
 echo "  kind oversell, unit ${unit}, dispute_key ${unit}|root, detector hq"
