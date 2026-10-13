@@ -3,6 +3,10 @@
 Every read goes through WS2's ``CapellaGateway`` (``ports/capella.md``). The SQL++ is fixed in shape by the blueprint
 (``docs/workstreams/WS5-hq.md``, "Interfaces"); each statement also selects ``META().id AS _id``, because the ledger
 (``siab_ledger``) keys documents by their id. ``GET /api/conservation?sql=1`` returns these statements as run.
+
+Rule 0 (decision 010): ``load`` ingests the transactions and exceptions it reads, so everything downstream (the
+reducer, the queue, HQ's clock) sees only documents that pass their schema; the rest are ``drops``. The ids of every
+exception read, dropped ones included, are kept apart, so HQ never writes over a document it could not read.
 """
 
 from __future__ import annotations
@@ -15,6 +19,7 @@ from typing import Any
 
 from siab_capella.gateway import CapellaGateway, FakeCapella
 from siab_capella.provision import ks
+from siab_ledger import Drop, ingest
 
 TRANSACTIONS = (f"SELECT META(t).id AS _id, t.* FROM {ks('transaction').sqlpp()} AS t "
                 "WHERE t.trip = $trip ORDER BY t.hlc")
@@ -29,7 +34,8 @@ class TripNotFound(LookupError):
 
 @dataclass(frozen=True)
 class TripData:
-    """One read of a trip: the documents the reducer, the conservation rows and the tree are computed from."""
+    """One read of a trip: the documents the reducer, the conservation rows and the tree are computed from.
+    ``transactions`` and ``exceptions`` are what rule 0 accepted; ``drops`` what it did not."""
 
     trip: str
     store: str
@@ -39,6 +45,9 @@ class TripData:
     inventory: list[dict]
     allocations: list[dict]
     statements: list[dict] = field(default_factory=list)
+    drops: list[Drop] = field(default_factory=list)
+    exception_ids: frozenset[str] = frozenset()
+    """The id of every exception document read, dropped ones included."""
 
 
 def statements(trip: str, store: str) -> list[dict]:
@@ -59,13 +68,17 @@ def trip_doc(gw: CapellaGateway, trip: str) -> dict:
 
 
 def load(gw: CapellaGateway, trip: str) -> TripData:
-    """Read the trip, its transactions, exceptions and allocations, and its store's inventory."""
+    """Read the trip, its transactions, exceptions and allocations, and its store's inventory; ingest (rule 0) the
+    transactions and exceptions."""
     doc = trip_doc(gw, trip)
     store = doc["store"]
     stmts = statements(trip, store)
     txns, excs, inv, allocs = (gw.query(s["statement"], s["params"]) for s in stmts)
-    return TripData(trip=trip, store=store, trip_doc=doc, transactions=txns, exceptions=excs, inventory=inv,
-                    allocations=allocs, statements=stmts)
+    txn_in, exc_in = ingest(txns, "transaction"), ingest(excs, "exception")
+    ids = frozenset(e["_id"] for e in excs if isinstance(e, dict) and isinstance(e.get("_id"), str))
+    return TripData(trip=trip, store=store, trip_doc=doc, transactions=txn_in.accepted, exceptions=exc_in.accepted,
+                    inventory=inv, allocations=allocs, statements=stmts, drops=txn_in.drops + exc_in.drops,
+                    exception_ids=ids)
 
 
 def body(doc: dict) -> dict:
@@ -93,8 +106,8 @@ def fake_query_handler(fake: FakeCapella):
         collection, name = _FIELD[statement]
         docs = fake.docs.get(ks(collection), {})
         rows = [{"_id": i, **d} for i, d in sorted(docs.items()) if d.get(name) == params[name]]
-        if statement == TRANSACTIONS:
-            rows.sort(key=lambda r: (r["hlc"], r["_id"]))
+        if statement == TRANSACTIONS:  # ORDER BY t.hlc, which a row without a string hlc does not break
+            rows.sort(key=lambda r: (str(r.get("hlc", "")), r["_id"]))
         return rows
 
     return handler

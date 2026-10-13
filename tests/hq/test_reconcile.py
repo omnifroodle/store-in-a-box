@@ -33,7 +33,7 @@ def test_reconciler_writes_one_exception_per_open_fork(name, kit, contracts):
     assert contracts.doc_errors("exception", stored) == []
     assert kit.writes(hq, "exception") == [doc["_id"]]
     assert hq.status.to_json() == {"last_run": "2026-10-18T16:13:20Z", "exceptions_written": 1, "forks_open": 1,
-                                   "last_error": None}
+                                   "dropped": 0, "last_error": None}
 
 
 def test_reconciler_is_idempotent_across_runs(kit, clock):

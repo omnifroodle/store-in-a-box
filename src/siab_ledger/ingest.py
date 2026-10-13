@@ -214,8 +214,10 @@ def _leaf(error):
     """The error whose words explain ``_error_code(error)``: for ``anyOf``, the alternative's error with that code."""
     if error.validator in ("anyOf", "oneOf") and error.context:
         code = _error_code(error)
+        # The alternative the value was meant for: not a bare type mismatch, the deepest error first.
         return _leaf(min((e for e in error.context if _error_code(e) == code),
-                         key=lambda e: (_where(e.absolute_path), e.message)))
+                         key=lambda e: (e.validator == "type", -len(e.absolute_path), _where(e.absolute_path),
+                                        e.message)))
     return error
 
 
