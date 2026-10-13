@@ -62,7 +62,7 @@ documents on any tablet that does reconnect. See [app-services-sync](app-service
 
 **Overspend becomes an exception, never an overdraft.** Two charges against split slices that together exceed the
 allowance (the member spends at tablet A and, before the tablets have synced, at tablet B) conflict at merge. The
-resolver writes an `overspend` exception with both transactions and zeroes the allowance. Nobody is silently
+reducer (allowances join the ledger in Phase 1; see [conflict-free ledger](conflict-free-ledger.md)) writes an `overspend` exception with both transactions and zeroes the allowance. Nobody is silently
 overdrawn and the retailer does not silently eat it; a human decides, with both sides in front of them.
 
 **Posting cannot fail for funds.** When the box phones home, each account charge posts against the member's

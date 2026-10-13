@@ -38,7 +38,7 @@ over.
 
 **The split is a scan, not a mode.** Tablet B's clerk scans eight jackets off the box with B as the destination.
 That writes child allocations with `parent` pointing at the box's allocation and `custodian: tablet-B`, and the
-box's allocation drops by eight. Tablet B walks out of range. Its replicators go idle and its queries, sales and
+box's count drops by eight, derived from those movements. Tablet B walks out of range. Its replicators go idle and its queries, sales and
 upsell suggestions carry on against its own database. Nothing on B knows or cares that it is alone.
 
 **Splitting again.** A roaming seller's phone scans three jackets off tablet B, at the far end of the festival,
@@ -46,7 +46,7 @@ with neither device able to see the box. The phone's allocation has `parent` poi
 now store, box, tablet B, phone. Every level is selling.
 
 **Merging is a scan, in any order.** When the phone comes back to tablet B, it scans its remaining units in, which
-closes the phone's allocation and returns the quantity to B's. When B reaches the box, the same thing happens one
+closes the phone's allocation, and its units are B's again by derivation. When B reaches the box, the same thing happens one
 level up. It is equally fine for B to merge into the box first and the phone to catch B later: the closed child
 allocation and the phone's two sales replicate to B, then to the box, and the totals land in the same place.
 Merge order does not matter because custody moves are additive facts, not edits to a shared number.

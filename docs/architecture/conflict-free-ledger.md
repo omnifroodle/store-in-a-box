@@ -318,8 +318,8 @@ venue is about to find the same fork from its side."
   to choose between."
 - "A count is a question, not a number we store. Ask it on any node and you get the same answer."
 - "The fork is the exception. Both sides are attached, and a person decides."
-- "There is no resolver to configure on the box, in App Services or on the tablet. There are rules, and a set of
-  golden fixtures that every implementation has to pass."
+- "There is no resolver for custody to configure on the box, in App Services or on the tablet. There are rules, and a
+  set of golden fixtures that every implementation has to pass."
 - "Two sales of one jacket are one disputed jacket. The conservation row still holds."
 
 ## Possible enhancements

@@ -9,7 +9,7 @@ flowchart TB
   subgraph Tablet["Tablet A (Couchbase Lite)"]
     SCAN["Scan a QR"] --> KIND{"Direction?"}
     KIND -->|"check out to this device"| OUT["allocation: custodian = tablet-A<br/>parent = the box's allocation"]
-    KIND -->|"check in to parent"| IN["close child allocation<br/>return qty to parent"]
+    KIND -->|"check in to parent"| IN["close child allocation<br/>counts are derived"]
     KIND -->|"sell"| SELL["txn:: sale<br/>one more immutable movement<br/>counts are derived"]
     OUT & IN & SELL --> DB[("store.allocation<br/>store.transaction<br/>store.product (+vector index)<br/>store.customer (encrypted)")]
     DB --> LQ["Live queries drive every screen"]
@@ -37,11 +37,12 @@ The pick list, the split, the merge and the sale are one gesture and one documen
 A scan that contradicts the record (checking in a unit the record says is elsewhere) does not fail. It writes
 an `exception`, because the physical scan is the stronger evidence and the record is what needs explaining.
 
-**Every sale is one batch.** The transaction, the allocation decrement and the allowance decrement (if the
+**Every sale is one batch.** The transaction and the allowance decrement (if the
 customer pays on account) are written in a single `inBatch`. They land together or not at all, on a tablet at
 3% battery.
 
-**Live queries drive the UI.** The shelf count on tablet B is a live query over `store.allocation`. When tablet
+**Live queries drive the UI.** The shelf count on tablet B is a live query over `store.transaction`, derived by the ledger
+([conflict-free ledger](conflict-free-ledger.md)). When tablet
 A sells a unit and device-to-device replication delivers the change, the count moves with no refresh and no
 server. The screens have no state of their own.
 

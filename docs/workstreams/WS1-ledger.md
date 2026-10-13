@@ -70,7 +70,8 @@ two or more movements with the same `(unit_id, predecessor)` (rule 2).
 ```
 reduce(transactions, resolutions, store) -> LedgerState
   transactions: every transaction document this node knows (any order, duplicates allowed by id)
-  resolutions:  exception documents with status == "resolved" (their chosen_txn settles a fork)
+  resolutions:  exception documents with status == "resolved" (which of them count, and which fork each settles:
+                rules 3 and 7 of `contracts/fixtures/README.md`)
   store:        the store custodian id ("store-richmond" in Phase 0; the fixtures carry it as `store`), which is
                 what tells a store root from a blind movement (rule 1). Required; the reducer is pure and reads
                 no registry (#59). Python: a required keyword argument, `reduce(transactions, resolutions, *, store)`.
@@ -96,7 +97,7 @@ conservation(state, store, inventory) -> [ Row{ sku, opening_on_hand, received, 
                (entered only by an unexpected check-in, rule 6; nothing says the store released it)
   left_store = every other unit of the SKU in the ledger (the release is presumed for any other root: a
                store root, or a dangling root, a blind movement with no predecessor in the input included)
-  returned_to_store = of the left_store units, those held by the store
+  returned_to_store = as defined for `returned_to_store` in `contracts/fixtures/README.md`
   Identity, true by construction and NOT the check:
     left_store + untraced == returned_to_store + sum(in_custody) + sold + disputed
   store_on_hand = opening_on_hand + received - left_store + returned_to_store   (may be negative)
@@ -138,10 +139,9 @@ HLC: string "<unix_ms:13 digits>-<counter:4 hex>-<device_id>", compared lexicogr
    side forks at the pack, whether the blind side is a take (`null-root-double-take`) or a sale
    (`null-root-sale-oversell`).
 3. An unresolved fork makes the unit `disputed`: holder `null`, counted under `disputed`, not under any custodian
-   or allocation. Only HQ resolves: a resolution counts only when `resolution.by == "hq"` and any other is ignored
-   (peer-to-peer sync never runs the App Services sync function, so the reducer enforces it; fixture
-   `non-hq-resolution-ignored`). A resolution naming `chosen_txn` makes that branch canonical; the other branches and their
-   descendants are ignored for holder and counts.
+   or allocation. Which resolutions count, which fork a resolution settles, which one wins and what a `chosen_txn`
+   does are rule 3 of `contracts/fixtures/README.md`, which wins over this blueprint (fixtures
+   `non-hq-resolution-ignored`, `null-root-take-resolved-fork`).
 4. Otherwise the unit's *leaf* is the movement with no successor; when several chains exist (dangling roots), the
    leaf with the greatest `hlc` wins. Holder is `leaf.to_custodian`, allocation `leaf.to_allocation`, state `sold`
    when `leaf.kind == "sale"` else `held`.
@@ -153,9 +153,9 @@ HLC: string "<unix_ms:13 digits>-<counter:4 hex>-<device_id>", compared lexicogr
    physical scan is the stronger evidence, the unit is now held by `to_custodian`) and an exception of kind
    `unexpected_check_in` attaches the check-in and, when present, its predecessor.
 7. `exceptions_for` never updates an existing exception: a new branch at the same fork yields a new document id
-   (different hash). Resolutions are HQ's to write (WS5); detectors only create, and `exceptions_for` leaves out any exception whose
-   `dispute_key` and `transactions` match a resolution in its input. `proposed_resolution.note` is fixed text per
-   kind, given in `contracts/fixtures/README.md`.
+   (different hash). Resolutions are HQ's to write (WS5); detectors only create. Which existing exceptions
+   `exceptions_for` leaves out, and the fixed `proposed_resolution.note` text per kind, are rule 7 and the notes
+   in `contracts/fixtures/README.md`.
 
 CLI (fixed): `python -m siab_ledger check [--fixtures DIR] [--seed N]` exits 0 and prints one line per fixture
 (`PASS <name>` / `FAIL <name>: <first difference>`), exits 1 on any failure.
@@ -184,7 +184,7 @@ CLI (fixed): `python -m siab_ledger check [--fixtures DIR] [--seed N]` exits 0 a
   a third branch reopens a settled fork, a fork inside a set-aside branch is not reported, the latest `resolution.at` wins,
   `chosen_txn` null settles nothing), and `returned_to_store` counts every unit the store holds. Six new fixtures; decision
   006. This changes the PR #60 reducer (`chain.py`, `conservation.py`, `ports/ledger.md`): rebase it onto 0.4.0.
-All five are applied before dispatch.
+All eight (CC1, CC3, CC5 to CC10) are applied before dispatch.
 
 ## Exit criteria
 
