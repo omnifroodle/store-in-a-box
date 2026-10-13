@@ -131,3 +131,8 @@ sup a { text-decoration: none; }
   .topnav .links a:not(.buy) { display: none; }
   .hero h1 { font-size: clamp(2.6rem, 14vw, 4rem); }
 }
+
+/* The "not a product" note at the foot of the page: the same words on every demo page, in this page's theme. */
+.disclaimer { margin-top: 24px; padding: 18px 22px; border: 2px dashed var(--ink); background: var(--cream); color: var(--ink); }
+.disclaimer p { margin: 0 0 .6rem; }
+.disclaimer .marks { margin: 0; color: var(--inkSoft); }
