@@ -25,6 +25,11 @@ swift test --package-path app/SIABCore                     # the same tests on m
 fixture, the same report as `uv run python -m siab_ledger check`. `Fixtures/ledger` is a symlink to that directory,
 copied into the test bundle at build time, so a new fixture is picked up with no change here.
 
+Order-independent fixtures are also re-run in shuffled orders from a new seed each run, printed before the report
+(`LedgerFixtureTests seed 716596 ...`). To replay a failure, set `SIAB_LEDGER_SEED=716596` for `swift test`, or
+`TEST_RUNNER_SIAB_LEDGER_SEED=716596` for `xcodebuild test` (xcodebuild passes `TEST_RUNNER_`-prefixed variables to
+the tests without the prefix).
+
 ## Couchbase Lite edition
 
 Couchbase Lite Swift 4.1.2 through Swift Package Manager. **Community Edition** (`couchbase-lite-swift`) is the
@@ -83,4 +88,5 @@ runs over Wi-Fi (DNS-SD) and Diagnostics notes the missing transport.
   (this device's identity). Never replicated.
 - `CustodyStore` is the only writer to `store.*`: `checkOut`, `checkIn` and `sell` are each one `inBatch` (the
   transaction and the allocation it opens or closes), and `detectAndWriteExceptions()` writes only documents whose
-  id does not exist yet.
+  id does not exist yet. Nothing in the app writes `product` or `trip` (#50: Edge Server cannot hold a device to
+  some collections, so `testNoWriteTouchesProductOrTrip` is the guard).

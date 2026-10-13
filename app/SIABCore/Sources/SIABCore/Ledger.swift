@@ -53,6 +53,12 @@ public struct LedgerState {
 }
 
 public enum Ledger {
+    /// `unit_id` in contracts/schemas/common.schema.json (`<SKU>#<serial>`), as a whole-string match: an anchored
+    /// `^...$` regex would also accept a trailing newline (#133 item 2).
+    public static func isUnitID(_ text: String) -> Bool {
+        text.wholeMatch(of: #/[A-Z0-9]+(-[A-Z0-9]+)*#[0-9]{3}/#) != nil
+    }
+
     public static func skuOf(_ unitID: String) -> String {
         String(unitID.split(separator: "#", maxSplits: 1, omittingEmptySubsequences: false)[0])
     }
