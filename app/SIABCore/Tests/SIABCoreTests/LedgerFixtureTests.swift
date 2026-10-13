@@ -5,6 +5,10 @@ import XCTest
 /// directory (Fixtures/ledger is a symlink to it, copied into the bundle at build time; nothing is duplicated in the
 /// repository). Prints one `PASS <name>` / `FAIL <name>: <difference>` line per fixture in file-name order, the same
 /// report as `python -m siab_ledger check`.
+///
+/// Transactions and resolutions are read as raw JSON, because a fixture may carry documents that fail their schema
+/// (rule 0, contracts 0.7.0): the runner ingests them (`DocumentCheck.ingest`), reduces what was accepted, and
+/// compares `drops` (`{id, collection, code}`, no `detail`) with the rest of `expected`.
 final class LedgerFixtureTests: XCTestCase {
     struct Fixture: Decodable {
         var name: String
@@ -13,12 +17,19 @@ final class LedgerFixtureTests: XCTestCase {
         var box: String
         var store: String
         var inventory: [Inventory]?
-        var transactions: [Transaction]
-        var resolutions: [ExceptionDoc]
+        var transactions: [JSONValue]
+        var resolutions: [JSONValue]
         var expected: JSONValue
         enum CodingKeys: String, CodingKey {
             case name, orderIndependent = "order_independent", trip, box, store, inventory, transactions,
                  resolutions, expected
+        }
+
+        var detector: String {
+            if case .object(let e) = expected, case .object(let x)? = e["exceptions"], case .string(let d)? = x["detector"] {
+                return d
+            }
+            return box
         }
     }
 
@@ -42,7 +53,7 @@ final class LedgerFixtureTests: XCTestCase {
 
     func testEveryFixturePasses() throws {
         let fixtures = try Self.loadFixtures()
-        XCTAssertGreaterThanOrEqual(fixtures.count, 33, "contracts 0.5.0 has 33 ledger fixtures")
+        XCTAssertGreaterThanOrEqual(fixtures.count, 47, "contracts 0.7.0 has 47 ledger fixtures")
         var lines: [String] = []
         for (file, fixture) in fixtures {
             XCTAssertEqual(file, fixture.name + ".json")
@@ -66,30 +77,39 @@ final class LedgerFixtureTests: XCTestCase {
         return nil
     }
 
-    static func run(_ f: Fixture, _ txns: [Transaction], _ res: [ExceptionDoc]) -> JSONValue {
-        let state = Ledger.reduce(transactions: txns, resolutions: res, store: f.store)
-        let detector: String
-        if case .object(let e) = f.expected, case .object(let x)? = e["exceptions"], case .string(let d)? = x["detector"] {
-            detector = d
-        } else {
-            detector = f.box
-        }
-        let docs = Ledger.exceptions(for: state, detector: detector, trip: f.trip, box: f.box)
-        let withInventory = f.inventory.map { inv in
-            JSONValue.array(Ledger.conservation(state: state, store: f.store, inventory: inv).map(\.json))
+    static func run(_ f: Fixture, _ txns: [JSONValue], _ res: [JSONValue]) -> JSONValue {
+        result(trip: f.trip, box: f.box, store: f.store, detector: f.detector, inventory: f.inventory,
+               transactions: txns, resolutions: res)
+    }
+
+    /// The fixture runner's answer (`src/siab_ledger/fixtures.py`'s `run`): rule 0, then the reducer over what it
+    /// accepted, `exceptions_for` with the detector, `conservation` with and without the inventory, and the drops.
+    /// Also the differential test's, for one set.
+    static func result(trip: String, box: String, store: String, detector: String, inventory: [Inventory]?,
+                       transactions: [JSONValue], resolutions: [JSONValue]) -> JSONValue {
+        let txnIn = DocumentCheck.ingest(documents: transactions, collection: "transaction", as: Transaction.self)
+        let resIn = DocumentCheck.ingest(documents: resolutions, collection: "exception", as: ExceptionDoc.self)
+        let state = Ledger.reduce(transactions: txnIn.accepted, resolutions: resIn.accepted, store: store)
+        let docs = Ledger.exceptions(for: state, detector: detector, trip: trip, box: box)
+        let withInventory = inventory.map { inv in
+            JSONValue.array(Ledger.conservation(state: state, store: store, inventory: inv).map(\.json))
         } ?? .null
         var out = state.json
         out["exceptions"] = .object(["detector": .string(detector),
                                      "docs": .array(docs.map { try! JSONValue(encoding: $0) })])
         out["conservation"] = .object([
             "with_inventory": withInventory,
-            "venue_only": .array(Ledger.conservation(state: state, store: f.store, inventory: nil).map(\.json)),
+            "venue_only": .array(Ledger.conservation(state: state, store: store, inventory: nil).map(\.json)),
         ])
+        // Sorted by collection, then id (both ingests already sort by id).
+        out["drops"] = .array((resIn.drops + txnIn.drops).map { d in
+            .object(["id": .string(d.id), "collection": .string(d.collection), "code": .string(d.code.rawValue)])
+        })
         return .object(out)
     }
 
-    static func orderings(_ f: Fixture, seed: Int) -> [(String, [Transaction], [ExceptionDoc])] {
-        var out: [(String, [Transaction], [ExceptionDoc])] = [("reversed", f.transactions.reversed(), f.resolutions.reversed())]
+    static func orderings(_ f: Fixture, seed: Int) -> [(String, [JSONValue], [JSONValue])] {
+        var out: [(String, [JSONValue], [JSONValue])] = [("reversed", f.transactions.reversed(), f.resolutions.reversed())]
         for i in 0..<shuffles {
             var rng = SplitMix64(seed: "\(seed)/\(f.name)/\(i)")
             var t = f.transactions, r = f.resolutions

@@ -11,6 +11,8 @@ final class AppModel: ObservableObject {
     static let log = Logger(subsystem: "com.example.storeinabox", category: "ledger")
     @Published private(set) var identity: DeviceIdentity?
     @Published private(set) var state: LedgerState = .empty(store: Custodian.store)
+    /// What the last rebuild dropped (rule 0, decision 010), newest first: Diagnostics lists it, the status bar counts it.
+    @Published private(set) var drops: [DropRecord] = []
     @Published private(set) var sync: SyncCoordinator?
     @Published private(set) var problem: String?
     /// Sell, Shelf, Custody, Exceptions and the scanner; nil until this device is paired.
@@ -73,6 +75,10 @@ final class AppModel: ObservableObject {
                 sync?.refreshPending()
             }
             .store(in: &subscriptions)
+        custody.drops
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] drops in self?.drops = drops }
+            .store(in: &subscriptions)
         self.custody = custody
         self.sync = sync
         identity = pairing.identity
@@ -98,4 +104,12 @@ final class AppModel: ObservableObject {
             problem = "Check-out failed: \(error)"
         }
     }
+
+    #if DEBUG
+    /// Diagnostics' drop check (Debug builds): writes a take as a newer schema would (`v: 2`), for the two-device check
+    /// that the other device lists it under Dropped documents and its status bar shows `1 dropped`.
+    func writeNewerSchemaMovement(_ unit: String) {
+        do { try custody?.writeNewerSchemaMovement(unit: unit) } catch { problem = "Drop check failed: \(error)" }
+    }
+    #endif
 }

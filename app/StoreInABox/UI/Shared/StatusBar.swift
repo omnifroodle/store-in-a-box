@@ -23,23 +23,31 @@ enum StatusText {
         }
     }
 
+    /// `N dropped` when rule 0 dropped documents (decision 010; owner, #161); nil at 0, so the label is not shown.
+    static func dropped(_ count: Int) -> String? {
+        count > 0 ? "\(count) dropped" : nil
+    }
+
     static func clock(_ ms: Int64) -> String {
         Date(timeIntervalSince1970: Double(ms) / 1000).formatted(.dateTime.hour().minute())
     }
 }
 
-/// On every screen: the box link, the peer count and this device's id. The gear opens Diagnostics.
+/// On every screen: the box link, the peer count, `N dropped` in amber when rule 0 dropped documents, and this
+/// device's id. The gear, or the dropped label, opens Diagnostics.
 struct StatusBar: View {
     @ObservedObject var sync: SyncCoordinator
+    /// The drops come from the composition root, which every screen has in its environment.
+    @EnvironmentObject private var model: AppModel
     let device: String
     let openDiagnostics: () -> Void
 
     var body: some View {
         // One line on an iPad; two on a phone, rather than truncating.
         ViewThatFits(in: .horizontal) {
-            HStack(spacing: 24) { link; peers; Spacer(minLength: 8); deviceAndGear }
+            HStack(spacing: 24) { link; peers; dropped; Spacer(minLength: 8); deviceAndGear }
             VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 16) { link; Spacer(minLength: 0) }
+                HStack(spacing: 16) { link; dropped; Spacer(minLength: 0) }
                 HStack(spacing: 16) { peers; Spacer(minLength: 8); deviceAndGear }
             }
         }
@@ -60,6 +68,24 @@ struct StatusBar: View {
         Label(StatusText.peers(sync.mesh, sync.peers.map(\.state)), systemImage: "point.3.connected.trianglepath.dotted")
             .fixedSize()
             .accessibilityIdentifier("status-peers")
+    }
+
+    /// Amber, black text (as the record-disagrees tag), and only when something was dropped: one tap to Diagnostics,
+    /// which lists the drops in words.
+    @ViewBuilder private var dropped: some View {
+        if let text = StatusText.dropped(model.drops.count) {
+            Button(action: openDiagnostics) {
+                Label(text, systemImage: "exclamationmark.triangle.fill")
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 2)
+                    .background(Stage.amber, in: Capsule())
+                    .foregroundStyle(.black)
+            }
+            .buttonStyle(.plain)
+            .fixedSize()
+            .accessibilityHint("Opens Diagnostics")
+            .accessibilityIdentifier("status-dropped")
+        }
     }
 
     private var deviceAndGear: some View {

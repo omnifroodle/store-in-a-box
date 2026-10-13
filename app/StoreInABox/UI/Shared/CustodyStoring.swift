@@ -10,6 +10,8 @@ protocol CustodyStoring: AnyObject {
     var identity: DeviceIdentity { get }
     var state: AnyPublisher<LedgerState, Never> { get }
     var currentState: LedgerState { get }
+    /// The documents the last rebuild dropped (rule 0), newest first; the status bar counts them.
+    var drops: AnyPublisher<[DropRecord], Never> { get }
     @discardableResult
     func checkOut(unit: String, from: String, to: String, actingFor box: String?) throws -> Transaction
     @discardableResult

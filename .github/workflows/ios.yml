@@ -49,6 +49,35 @@ jobs:
             -destination "platform=iOS Simulator,name=$SIM_NAME" \
             -test-timeouts-enabled YES -default-test-execution-time-allowance 60 | tee xcodebuild.log
           grep -E "^(PASS|FAIL) " xcodebuild.log
+      # The reducer does not depend on the edition, so the Python side runs on the community leg only.
+      - uses: astral-sh/setup-uv@v10.2.0
+        if: matrix.edition == 'community'
+      - name: Fixture report matches the Python reference, line for line
+        if: matrix.edition == 'community'
+        run: |
+          uv sync --locked
+          uv run python -m siab_ledger check > python-check.txt || true
+          grep -E "^(PASS|FAIL) " xcodebuild.log > swift-check.txt
+          diff python-check.txt swift-check.txt
+      - name: Differential test (both ledger ports on generated sets, invalid documents included)
+        # Decision 010, WS10: generate with seed = the run number, the Python report, the Swift report
+        # (LedgerDifferentialTests, on the simulator build of the step above), then compare set by set.
+        if: matrix.edition == 'community'
+        run: |
+          set -o pipefail
+          start=$(date +%s)
+          work="$RUNNER_TEMP/ledger-diff"
+          uv run python scripts/ledger_diff.py generate --seed "${{ github.run_number }}" --out "$work/sets"
+          uv run python -m siab_ledger report --sets "$work/sets" --out "$work/python.json"
+          # TEST_RUNNER_-prefixed variables reach the test process on the simulator without the prefix.
+          TEST_RUNNER_SIAB_DIFF_SETS="$work/sets" TEST_RUNNER_SIAB_DIFF_OUT="$work/swift.json" \
+            xcodebuild test-without-building -project app/StoreInABox.xcodeproj -scheme SIABCore \
+              -destination "platform=iOS Simulator,name=$SIM_NAME" \
+              -only-testing:SIABCoreTests/LedgerDifferentialTests -quiet
+          status=0
+          uv run python scripts/ledger_diff.py compare "$work/python.json" "$work/swift.json" || status=$?
+          echo "differential step: $(( $(date +%s) - start )) s, seed ${{ github.run_number }}"
+          exit $status
       - name: Check the edition that was built
         # The test bundle and the resolved package must be the edition this job asked for.
         run: |

@@ -34,6 +34,7 @@ struct DiagnosticsView: View {
                 LabeledContent("Movements", value: "\(model.state.transactions.count)")
                 LabeledContent("Forks", value: "\(model.state.forks.count)")
             }
+            DroppedSection(drops: model.drops)
             Section {
                 Button("Pair with a box") { pairing = true }
                 Button("Rebuild derived state") { model.rebuild() }.disabled(model.identity == nil)
@@ -110,7 +111,44 @@ private struct MovementCheck: View {
             let valid = unit.range(of: "^[A-Z0-9]+(-[A-Z0-9]+)*#[0-9]{3}$", options: .regularExpression) != nil
             Button("Pack onto the box") { model.check(unit, take: false) }.disabled(!valid)
             Button("Take from the box") { model.check(unit, take: true) }.disabled(!valid)
+            #if DEBUG
+            Button("Drop check: write a v 2 take") { model.writeNewerSchemaMovement(unit) }.disabled(!valid)
+            #endif
         }
+    }
+}
+
+/// Rule 0's drops (decision 010), never a plain pass: how many documents this device could not reduce, then the
+/// newest ten in words, with where each came from and when it was last seen.
+struct DroppedSection: View {
+    let drops: [DropRecord]
+    static let shown = 10
+
+    var body: some View {
+        Section("Dropped documents") {
+            Text(Self.count(drops.count)).accessibilityIdentifier("dropped")
+            ForEach(drops.prefix(Self.shown), id: \.key) { drop in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(drop.collection) \(drop.id)").font(.callout.monospaced())
+                    Text(Self.line(drop)).font(.footnote).foregroundStyle(.secondary)
+                }
+                .accessibilityElement(children: .combine)
+            }
+        }
+    }
+
+    static func count(_ n: Int) -> String { "dropped: \(n) documents" }
+
+    /// `<code in words> · <source> · <HH:mm>`; the words are HQ's, so both screens say the same thing.
+    static func line(_ drop: DropRecord) -> String {
+        let at = Self.parse(drop.lastSeen).map { Clock24.string(Int64($0.timeIntervalSince1970 * 1000)) } ?? drop.lastSeen
+        return [drop.code.words, drop.source ?? "unknown", at].joined(separator: " · ")
+    }
+
+    private static func parse(_ rfc3339: String) -> Date? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.date(from: rfc3339) ?? ISO8601DateFormatter().date(from: rfc3339)
     }
 }
 

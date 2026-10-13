@@ -45,7 +45,7 @@ public final class CustodyStore {
     public static let storeScope = "store"
     public static let localScope = "local"
     public static let replicatedCollections = ["product", "trip", "allocation", "transaction", "exception"]
-    public static let localCollections = ["unit_state", "device"]
+    public static let localCollections = ["unit_state", "device", "drop_log"]
 
     /// Creates (or opens) the five replicated `store` collections and the never-replicated `local` ones.
     public static func prepare(_ db: Database) throws {
@@ -60,15 +60,24 @@ public final class CustodyStore {
     let allocations: Collection
     let exceptions: Collection
     let unitStates: Collection
+    let dropLog: DropLog
     private let subject: CurrentValueSubject<LedgerState, Never>
+    private let dropSubject = CurrentValueSubject<[DropRecord], Never>([])
     private var tokens: [ListenerToken] = []
     private(set) var lastHLC: HLC?
     /// Test seam: runs inside the write batch right after each transaction is saved.
     var afterTransactionWrite: (() throws -> Void)?
+    /// Whether the box replicator reported this document id pulled, for a drop's `source` (`box`). Set by whoever
+    /// owns the replicator; nil means it is never known, and a drop not written here is `peer`.
+    public var pulledFromBox: ((String) -> Bool)?
 
     /// Recomputed on any `store.transaction` or `store.exception` change.
     public var state: AnyPublisher<LedgerState, Never> { subject.eraseToAnyPublisher() }
     public var currentState: LedgerState { subject.value }
+    /// The documents the last rebuild dropped (rule 0), as `local.drop_log` entries, newest first; published after
+    /// every rebuild, `[]` when nothing was dropped.
+    public var drops: AnyPublisher<[DropRecord], Never> { dropSubject.eraseToAnyPublisher() }
+    public var currentDrops: [DropRecord] { dropSubject.value }
 
     public init(database: Database, identity: DeviceIdentity, clock: Clock) throws {
         try Self.prepare(database)
@@ -79,6 +88,7 @@ public final class CustodyStore {
         allocations = try database.collection(name: "allocation", scope: Self.storeScope)!
         exceptions = try database.collection(name: "exception", scope: Self.storeScope)!
         unitStates = try database.collection(name: "unit_state", scope: Self.localScope)!
+        dropLog = DropLog(database: database, collection: try database.collection(name: "drop_log", scope: Self.localScope)!)
         subject = CurrentValueSubject(.empty(store: identity.store))
         try rebuild()
         for collection in [transactions, exceptions] {
@@ -197,14 +207,34 @@ public final class CustodyStore {
         return docs
     }
 
+    #if DEBUG
+    /// Diagnostics' drop check (Debug builds only): a take from the box as an app on a newer schema would write it
+    /// (`v: 2`). Rule 0 drops it here (`source: local`) and on every device it reaches (`peer` or `box`), as
+    /// `newer schema: update the app`. Returns its id.
+    @discardableResult
+    public func writeNewerSchemaMovement(unit: String) throws -> String {
+        let txn = movement(.checkOut, unit: unit, from: identity.box, to: identity.device, prev: nil,
+                           fromAllocation: nil, toAllocation: nil)
+        guard case .object(var body) = try JSONValue(encoding: txn) else { return txn.id }
+        body["_id"] = nil
+        body["v"] = .int(2)
+        try transactions.save(document: MutableDocument(id: txn.id, json: JSONValue.object(body).canonical))
+        try rebuild()
+        return txn.id
+    }
+    #endif
+
     // MARK: - Derived state
 
-    /// Re-reads every transaction and exception, merges their clocks, reduces, rewrites `local.unit_state` and
-    /// publishes the state. Also the Diagnostics screen's "Rebuild derived state".
+    /// Re-reads every transaction and exception, drops what fails its schema (rule 0) into `local.drop_log`, merges
+    /// the accepted ones' clocks, reduces them, rewrites `local.unit_state` and publishes the state and the drops.
+    /// Also the Diagnostics screen's "Rebuild derived state".
     @discardableResult
     public func rebuild() throws -> LedgerState {
-        let txns: [Transaction] = try all(transactions)
-        let excs: [ExceptionDoc] = try all(exceptions)
+        let (txns, txnDrops): ([Transaction], [Drop]) = try all(transactions)
+        let (excs, excDrops): ([ExceptionDoc], [Drop]) = try all(exceptions)
+        // Best effort: the log never fails the rebuild (DropLog.record does not throw).
+        let drops = dropLog.record(excDrops + txnDrops, now: Self.rfc3339(clock.nowMs())) { self.source(of: $0) }
         observe(txns.map(\.hlc) + excs.compactMap { $0.detectedBy == identity.device ? $0.detectedAt : nil })
         let state = Ledger.reduce(transactions: txns, resolutions: excs, store: identity.store)
         var latest: [String: Transaction] = [:]
@@ -219,9 +249,37 @@ public final class CustodyStore {
                                         latestTxn: unit.lastTxn ?? latest[unitID]?.id)
                 if try load(id: unitID, from: unitStates) != record { try save(record, id: unitID, in: unitStates) }
             }
+            // A unit no longer in the state (its movements were dropped) has no record: the write path then treats
+            // it as the screens do, as a unit this device does not know (a blind movement, which rule 1 links).
+            let query = try database.createQuery("SELECT META().id AS id FROM `\(Self.localScope)`.`unit_state`")
+            for row in try query.execute().allResults() {
+                guard let id = row.string(forKey: "id"), state.units[id] == nil,
+                      let stale = try unitStates.document(id: id) else { continue }
+                try unitStates.delete(document: stale)
+            }
         }
         subject.send(state)
+        dropSubject.send(drops)
         return state
+    }
+
+    /// Where a dropped document came from: `local` when its id names this device (a transaction's HLC, an
+    /// exception's detector), `box` when the box replicator reported it pulled, else `peer` (inferred).
+    func source(of drop: Drop) -> String {
+        let parts = drop.id.components(separatedBy: "::")
+        let writer: String? = switch parts.first {
+        case "txn" where parts.count == 2: HLC(parts[1])?.device
+        case "exc" where parts.count >= 2: parts[1]
+        default: nil
+        }
+        if writer == identity.device { return "local" }
+        return pulledFromBox?(drop.id) == true ? "box" : "peer"
+    }
+
+    static func rfc3339(_ ms: Int64) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.string(from: Date(timeIntervalSince1970: Double(ms) / 1000))
     }
 
     /// `hlc_receive` on what was pulled: the local clock stays ahead of every transaction it has seen.
@@ -244,12 +302,25 @@ public final class CustodyStore {
 
     struct Known { var holder: String?; var allocation: String?; var latest: Transaction? }
 
-    /// What this device knows of a unit, from `local.unit_state`; nil when it has no record.
+    /// What this device knows of a unit, from `local.unit_state`; nil when it has no record, or when the movement the
+    /// record names no longer passes rule 0 (replaced by an invalid revision since the last rebuild): a dropped
+    /// document never refuses a scan, it makes the unit one this device does not know.
     func known(_ unit: String) throws -> Known? {
         guard let record: UnitRecord = try load(id: unit, from: unitStates) else { return nil }
-        let latest: Transaction? = try record.latestTxn.flatMap { try load(id: $0, from: transactions) }
+        var latest: Transaction?
+        if let id = record.latestTxn {
+            guard let valid = try validTransaction(id) else { return nil }
+            latest = valid
+        }
         if record.state == .disputed { return Known(holder: latest?.toCustodian, allocation: latest?.toAllocation, latest: latest) }
         return Known(holder: record.holder, allocation: record.allocation, latest: latest)
+    }
+
+    /// `store.transaction`'s document `id` through rule 0: nil when it is missing or would be dropped.
+    func validTransaction(_ id: String) throws -> Transaction? {
+        guard let doc = try transactions.document(id: id),
+              let body = try? JSONDecoder().decode([String: JSONValue].self, from: Data(doc.toJSON().utf8)) else { return nil }
+        return DocumentCheck.ingest([(id, body)], collection: "transaction", as: Transaction.self).accepted.first
     }
 
     func activeAllocation(custodian: String, sku: String, parent: String? = nil,
@@ -300,12 +371,24 @@ public final class CustodyStore {
         try rebuild()
     }
 
-    func all<T: Decodable>(_ collection: Collection) throws -> [T] {
+    /// Every document of `collection`, through rule 0: the ones that pass their schema, decoded, and a drop for each
+    /// one that does not (never skipped: `DocumentCheck` reads any JSON object).
+    func all<T: Decodable>(_ collection: Collection) throws -> ([T], [Drop]) {
         let query = try database.createQuery(
             "SELECT META().id AS id FROM `\(collection.scope.name)`.`\(collection.name)`")
-        return try query.execute().allResults().compactMap { row in
-            row.string(forKey: "id").flatMap { try? load(id: $0, from: collection) }  // undecodable: skipped
+        var bodies: [(id: String, body: [String: JSONValue])] = []
+        var unreadable: [Drop] = []
+        for row in try query.execute().allResults() {
+            guard let id = row.string(forKey: "id"), let doc = try collection.document(id: id) else { continue }
+            do {
+                bodies.append((id, try JSONDecoder().decode([String: JSONValue].self, from: Data(doc.toJSON().utf8))))
+            } catch {
+                unreadable.append(Drop(id: id, collection: collection.name, code: .malformed,
+                                       detail: "the document is not JSON the app can read: \(error)"))
+            }
         }
+        let result = DocumentCheck.ingest(bodies, collection: collection.name, as: T.self)
+        return (result.accepted, result.drops + unreadable)
     }
 
     func load<T: Decodable>(id: String, from collection: Collection) throws -> T? {
