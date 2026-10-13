@@ -73,7 +73,7 @@ One bucket, `retail`. Three scopes. Same names on the tablet, the box and the cl
 | Scope.collection | Document | What it is |
 |---|---|---|
 | `store.product` | `product::<sku>` | Catalog: name, price, images (blobs), category, `embedding[]`. Filtered on the way down: no cost, supplier or margin fields reach the venue |
-| `store.allocation` | `allocation::<id>` | **Custody.** `sku`, `qty`, `custodian`, `parent`, `trip`, `status`. Store to box to tablet to phone is a tree of these |
+| `store.allocation` | `allocation::<id>` | **Custody.** `sku`, `custodian`, `parent`, `trip`, `status`. Store to box to tablet to phone is a tree of these |
 | `store.allowance` | `allowance::<id>` | **Credit as custody.** A loyalty member's reserved offline spend, split and merged like inventory |
 | `store.transaction` | `txn::<id>` | Sales and returns. Stamped with custodian, jurisdiction, tax basis, both clocks, and any `upsell_suggestion` with accept/decline |
 | `store.customer` | `cust::<id>` | Region-filtered loyalty members, minimal fields, phone hash, encrypted at rest on devices |

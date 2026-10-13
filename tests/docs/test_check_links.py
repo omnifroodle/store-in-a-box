@@ -52,16 +52,16 @@ def test_check_links_passes_when_every_target_exists(tmp_path, capsys):
 def test_check_links_resolves_github_blob_link_to_checkout(tmp_path, capsys):
     repo = make_repo(tmp_path, {
         "site/index.html": (
-            '<a href="https://github.com/acme/demo/blob/main/docs/architecture/overview.md">ok</a>\n'
-            '<a href="https://github.com/acme/demo/blob/main/docs/architecture/gone.md#x">dead</a>\n'
-            '<a href="https://github.com/acme/demo/tree/main/contracts/">dir</a>\n'
+            '<a href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/overview.md">ok</a>\n'
+            '<a href="https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/gone.md#x">dead</a>\n'
+            '<a href="https://github.com/omnifroodle/store-in-a-box/tree/main/contracts/">dir</a>\n'
         ),
         "docs/architecture/overview.md": "x\n",
         "contracts/README.md": "x\n",
     })
     code, out, _ = run(capsys, "--root", str(repo), "site/index.html")
     assert code == 1
-    assert out == ["site/index.html:2: https://github.com/acme/demo/blob/main/docs/architecture/gone.md#x"]
+    assert out == ["site/index.html:2: https://github.com/omnifroodle/store-in-a-box/blob/main/docs/architecture/gone.md#x"]
 
 
 def test_other_absolute_urls_are_listed_not_fetched(tmp_path, capsys):
@@ -148,3 +148,43 @@ def test_cite_checks_paths_inside_commands_and_globs(tmp_path, capsys):
     code, out, _ = run(capsys, "--root", str(repo), "--cite", "docs/note.md")
     assert code == 1
     assert out == ["docs/note.md:2: scripts/gone.py"]
+
+
+def test_single_quoted_link_title_is_still_a_link(tmp_path, capsys):
+    repo = make_repo(tmp_path, {
+        "README.md": "[a](gone.md 'T') and [b](here.md \"T\") and [c](also-gone.md 'it is')\n",
+        "here.md": "x\n",
+    })
+    code, out, _ = run(capsys, "--root", str(repo))
+    assert code == 1
+    assert out == ["README.md:1: gone.md", "README.md:1: also-gone.md"]
+
+
+def test_existence_is_case_exact(tmp_path, capsys):
+    repo = make_repo(tmp_path, {
+        "README.md": "[b](readme-two.md) [c](Docs/a.md) [d](docs/A.md) [e](docs/a.md)\n`docs/A.md`\n",
+        "Readme-Two.md": "x\n",
+        "docs/a.md": "x\n",
+    })
+    code, out, _ = run(capsys, "--root", str(repo), "README.md")
+    assert code == 1
+    assert out == ["README.md:1: readme-two.md", "README.md:1: Docs/a.md", "README.md:1: docs/A.md"]
+    code, out, _ = run(capsys, "--root", str(repo), "--cite", "README.md")
+    assert (code, out) == (1, ["README.md:2: docs/A.md"])
+
+
+def test_github_links_into_other_repositories_are_not_checked_against_the_checkout(tmp_path, capsys):
+    repo = make_repo(tmp_path, {
+        "README.md": (
+            "[a](https://github.com/couchbase/couchbase-lite-ios/blob/master/Objective-C/CBLDatabase.h)\n"
+            "[b](https://github.com/someone/else/blob/main/README.md)\n"
+            "[c](https://github.com/omnifroodle/store-in-a-box/blob/main/gone.md)\n"
+        ),
+    })
+    code, out, err = run(capsys, "--root", str(repo), "README.md")
+    assert code == 1
+    assert out == ["README.md:3: https://github.com/omnifroodle/store-in-a-box/blob/main/gone.md"]
+    assert err == [
+        "not fetched: README.md:1: https://github.com/couchbase/couchbase-lite-ios/blob/master/Objective-C/CBLDatabase.h",
+        "not fetched: README.md:2: https://github.com/someone/else/blob/main/README.md",
+    ]

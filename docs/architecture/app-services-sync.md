@@ -32,16 +32,16 @@ config and briefings). A tablet's user holds the same set through its box. The c
 other regions' members are not filtered out at the venue. They never arrive.
 
 **The sync function does three jobs.** Validation (a `trip` is required on venue documents; the type must match
-the collection), authorisation (the writing user must already hold the trip channel; a tablet cannot write a
-transaction with another custodian's id), and routing (`channel("trip:" + doc.trip)`). It is short enough to
-put on screen, which is the point.
+the collection), authorisation (the writing user must already hold the trip channel; a box cannot write a
+transaction for another box), and routing (`channel("trip:" + doc.trip)`). It is short enough to
+put on screen, which is the point. (The real functions are in `sync/functions/`; this one is the shape.)
 
 ```javascript
 function (doc, oldDoc, meta) {
   if (doc._deleted) { return; }
   if (!doc.trip) { throw({ forbidden: "trip is required" }); }
-  if (doc.type === "transaction" && doc.custodian !== meta.user.name) {
-    throw({ forbidden: "a device writes only its own transactions" });
+  if (doc.type === "transaction" && doc.box !== meta.user.name) {
+    throw({ forbidden: "a box writes only its own documents" });
   }
   requireAccess("trip:" + doc.trip);
   channel("trip:" + doc.trip);

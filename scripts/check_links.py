@@ -4,7 +4,9 @@ Usage:
     python scripts/check_links.py [--root .] [FILE ...]
         FILE defaults to README.md, docs/**/*.md and site/index.html. Checks every relative link
         ([text](path), ![alt](path), [ref]: path, <a href="path">) and every
-        https://github.com/<owner>/<repo>/blob|tree/<branch>/<path> link against the checkout. Anchors and query
+        https://github.com/omnifroodle/store-in-a-box/blob|tree/<branch>/<path> link against the checkout (--repo
+        changes the repository); GitHub links into other repositories are listed as not fetched. Existence is
+        case-exact, because macOS is case-insensitive and GitHub is not. Anchors and query
         strings are ignored, and so are fenced code blocks (mermaid included), inline code and HTML comments.
         Other absolute URLs are listed on stderr, never fetched.
     python scripts/check_links.py [--root .] --cite FILE
@@ -19,23 +21,25 @@ Standard library only, no network.
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import sys
 from collections.abc import Iterator
 from pathlib import Path
 from urllib.parse import unquote
 
+THIS_REPO = "omnifroodle/store-in-a-box"
 DEFAULT_FILES = ("README.md", "docs/**/*.md", "site/index.html")
 CITE_DIRS = frozenset({"contracts", "docs", "src", "ports", "app", "scripts", "site", "sync", "box", "tests"})
 
 _FENCE = re.compile(r"^\s{0,3}(```|~~~)")
 _INLINE_CODE = re.compile(r"(`+)(.+?)\1")
-_MD_LINK = re.compile(r"!?\[[^\]]*\]\(\s*<?([^)\s>]+)>?(?:\s+\"[^\"]*\")?\s*\)")
+_MD_LINK = re.compile(r"!?\[[^\]]*\]\(\s*<?([^)\s>]+)>?(?:\s+(?:\"[^\"]*\"|'[^']*'))?\s*\)")
 _MD_REF_DEF = re.compile(r"^\s{0,3}\[[^\]]+\]:\s*<?(\S+?)>?(?:\s+.*)?$")
 _HTML_ATTR = re.compile(r"""\b(?:href|src)\s*=\s*["']([^"']+)["']""", re.IGNORECASE)
 _AUTOLINK = re.compile(r"<(https?://[^>\s]+)>")
 _SCHEME = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*:")
-_GITHUB_FILE = re.compile(r"^https?://github\.com/[^/]+/[^/]+/(?:blob|tree)/[^/]+/(.+)$")
+_GITHUB_FILE = re.compile(r"^https?://github\.com/([^/]+/[^/]+)/(?:blob|tree)/[^/]+/(.+)$")
 _PLACEHOLDER = re.compile(r"[<>{}]|\.\.\.|…")
 
 
@@ -78,16 +82,35 @@ def links(text: str, *, markdown: bool) -> Iterator[tuple[int, str]]:
             yield lineno, target
 
 
+def _exact_exists(base: Path, rel: str) -> bool:
+    """True when every segment of rel exists in base with exactly this case (macOS is case-insensitive)."""
+    current = base
+    for part in Path(rel).parts:
+        if part in ("", ".", "/"):
+            continue
+        if part == "..":
+            current = current.parent
+            continue
+        try:
+            names = os.listdir(current)
+        except OSError:
+            return False
+        if part not in names:
+            return False
+        current = current / part
+    return True
+
+
 def _exists(root: Path, rel: str) -> bool:
     rel = unquote(rel).strip()
     if not rel:
         return True
     if any(ch in rel for ch in "*?["):
         return any(root.glob(rel.lstrip("/")))
-    return (root / rel.lstrip("/")).exists()
+    return _exact_exists(root, rel.lstrip("/"))
 
 
-def check_file(path: Path, root: Path) -> tuple[list[str], list[str]]:
+def check_file(path: Path, root: Path, repo: str = THIS_REPO) -> tuple[list[str], list[str]]:
     """Return (misses, external URLs), each as "<file>:<line>: <target>"."""
     rel_name = path.relative_to(root).as_posix() if path.is_relative_to(root) else path.as_posix()
     text = path.read_text(encoding="utf-8")
@@ -98,7 +121,10 @@ def check_file(path: Path, root: Path) -> tuple[list[str], list[str]]:
         where = f"{rel_name}:{lineno}: {target}"
         github = _GITHUB_FILE.match(target)
         if github:
-            repo_path = github.group(1).split("#", 1)[0].split("?", 1)[0]
+            if github.group(1).lower() != repo.lower():
+                external.append(where)  # another repository: not this checkout, not fetched
+                continue
+            repo_path = github.group(2).split("#", 1)[0].split("?", 1)[0]
             if not _exists(root, repo_path):
                 misses.append(where)
             continue
@@ -109,7 +135,7 @@ def check_file(path: Path, root: Path) -> tuple[list[str], list[str]]:
         if not local:
             continue  # an anchor in the same file
         base = root if local.startswith("/") else path.parent
-        if not (base / unquote(local).lstrip("/")).exists():
+        if not _exact_exists(base, unquote(local).lstrip("/")):
             misses.append(where)
     return misses, external
 
@@ -166,6 +192,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     parser.add_argument("--root", default=".", help="repository root (default: the current directory)")
     parser.add_argument("--cite", metavar="FILE", help="check the backticked repository paths in FILE instead")
+    parser.add_argument("--repo", default=THIS_REPO, help="owner/repo whose GitHub links are checked here")
     parser.add_argument("files", nargs="*", metavar="FILE")
     args = parser.parse_args(argv)
     root = Path(args.root).resolve()
@@ -180,7 +207,7 @@ def main(argv: list[str] | None = None) -> int:
         files = [resolve(f) for f in args.files] if args.files else default_files(root)
         misses = []
         for f in files:
-            file_misses, external = check_file(f, root)
+            file_misses, external = check_file(f, root, args.repo)
             misses += file_misses
             for line in external:
                 print(f"not fetched: {line}", file=sys.stderr)

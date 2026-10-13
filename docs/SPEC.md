@@ -190,7 +190,6 @@ allocation::<id>
 {
   type: "allocation",
   sku: "JKT-RAIN-M-BLU",
-  qty: 12,
   custodian: "box-07",
   from: "store-richmond",
   trip: "trip-2026-10-18-riverfest",
@@ -199,7 +198,8 @@ allocation::<id>
 ```
 
 Pack creates an allocation and decrements the store's on-hand in the same
-write. Sales on the road decrement the allocation. Transfers between boxes
+write. A sale on the road is one more movement, and the allocation's count is derived from the movements (see the
+[conflict-free ledger](architecture/conflict-free-ledger.md)). Transfers between boxes
 create a new allocation and close the old one for the moved qty. Rejoin closes
 the allocation and returns the remainder to store on-hand.
 
@@ -299,8 +299,8 @@ is created, so the same credit cannot be spent online and at the venue. The
 box can split an allowance to a tablet the same way it splits inventory, so a
 customer served by tablet B at the far end of the festival spends against
 tablet B's slice. A customer spending at two custodians that together exceed
-the allowance produces a conflict the resolver turns into an exception, never
-a silent overdraft. Rejoin closes the allowance and releases the unspent
+the allowance becomes an exception once allowances join the ledger in Phase 1
+([conflict-free ledger](architecture/conflict-free-ledger.md)), never a silent overdraft. Rejoin closes the allowance and releases the unspent
 reservation. Same tree, same invariant, same gestures.
 
 **Identity, offline.** The customer presents a QR from their loyalty app or
@@ -794,8 +794,8 @@ demo.
    the checkpoint document.
 10. **Blobs.** Permit PDF and product images sync like anything else.
 11. **Clock skew tolerance.** One tablet deliberately wrong.
-12. **Multi-hop.** Phone to tablet to box to cloud, conflict resolves
-    identically three hops out.
+12. **Multi-hop.** Phone to tablet to box to cloud, the same fork is
+    found identically three hops out.
 13. **Document history on the box.** "What did inventory look like at 2pm",
     answered offline.
 14. **Box-to-box custody transfer.** Two boxes in a parking lot, phase 4. Same
